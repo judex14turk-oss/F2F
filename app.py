@@ -8,6 +8,8 @@ from models import UserRole, SellerType, TariffType, PropertyType, PropertyStatu
 
 app = Flask(__name__)
 app.secret_key = os.environ.get('SESSION_SECRET', 'real-estate-bot-secret-key')
+app.config['SESSION_COOKIE_SAMESITE'] = 'None'
+app.config['SESSION_COOKIE_SECURE'] = True
 
 ADMIN_USERNAME = os.environ.get('ADMIN_USERNAME', 'InvictumMurad')
 
