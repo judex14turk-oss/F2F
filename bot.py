@@ -1129,6 +1129,7 @@ async def show_property_card(message, property_id, state=None):
     if photos:
         from aiogram.types import InputMediaPhoto
         if len(photos) > 1:
+            await message.answer("🏠", reply_markup=search_keyboard)
             media_group = []
             for i, photo_id in enumerate(photos[:10]):
                 if i == 0:
@@ -1136,7 +1137,6 @@ async def show_property_card(message, property_id, state=None):
                 else:
                     media_group.append(InputMediaPhoto(media=photo_id))
             await message.answer_media_group(media_group)
-            await message.answer("·", reply_markup=search_keyboard)
         else:
             await message.answer_photo(photo=photos[0], caption=text, reply_markup=search_keyboard)
     else:
