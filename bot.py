@@ -1901,16 +1901,11 @@ async def deals(message: types.Message):
         contact_phone = contact.phone or "Не указан"
         
         prop_info = ""
+        prop_button = None
         if prop:
             prop_id = prop.unique_id or f"#{prop.id}"
-            rooms_text = f"{prop.rooms} комн." if prop.rooms else "Студия"
-            prop_type_text = "Продажа" if prop.property_type == PropertyType.SALE else "Аренда"
-            prop_info = (
-                f"\n🆔 ID объекта: {prop_id}\n"
-                f"📍 Объект: {prop.district}\n"
-                f"🏠 {rooms_text} | {prop.area} м² | ${prop.price:,}\n"
-                f"📋 Тип: {prop_type_text}"
-            )
+            prop_info = f"\n🆔 ID объекта: {prop_id}"
+            prop_button = InlineKeyboardButton(text=f"📋 Открыть объект {prop_id}", callback_data=f"view_deal_prop_{prop.id}")
         
         buyer_info = ""
         if contact.role == UserRole.BUYER:
@@ -1963,18 +1958,72 @@ async def deals(message: types.Message):
         if match.note:
             card_text += f"\n\n📝 Заметка: {match.note}"
         
-        keyboard = None
+        buttons = []
+        if prop_button:
+            buttons.append([prop_button])
         if contact.username:
-            keyboard = InlineKeyboardMarkup(inline_keyboard=[
-                [InlineKeyboardButton(text="💬 Написать в Telegram", url=f"https://t.me/{contact.username}")]
-            ])
+            buttons.append([InlineKeyboardButton(text="💬 Написать в Telegram", url=f"https://t.me/{contact.username}")])
         
+        keyboard = InlineKeyboardMarkup(inline_keyboard=buttons) if buttons else None
         await message.answer(card_text, reply_markup=keyboard)
     
     if len(matches) > 10:
         await message.answer(f"... и ещё {len(matches) - 10} контактов")
     
     db.close()
+
+
+@dp.callback_query(F.data.startswith("view_deal_prop_"))
+async def view_deal_property(callback: types.CallbackQuery):
+    prop_id = int(callback.data.replace("view_deal_prop_", ""))
+    
+    db = SessionLocal()
+    prop = db.query(Property).filter(Property.id == prop_id).first()
+    
+    if not prop:
+        await callback.answer("Объект не найден")
+        db.close()
+        return
+    
+    unique_id = prop.unique_id or f"#{prop.id}"
+    type_emoji = "🏷" if prop.property_type == PropertyType.SALE else "🔑"
+    type_name = "Продажа" if prop.property_type == PropertyType.SALE else "Аренда"
+    furniture = "Да" if prop.has_furniture else "Нет"
+    
+    text = (
+        f"🆔 {unique_id}\n\n"
+        f"{type_emoji} {type_name}\n\n"
+        f"📍 {prop.district or 'Район не указан'}\n"
+        f"🚪 {prop.rooms} комн. | 📐 {prop.area} м²\n"
+        f"🏢 Этаж {prop.floor}/{prop.total_floors}\n"
+        f"🏠 {prop.building_type or ''}\n"
+        f"🔨 {prop.renovation or ''}\n"
+        f"🛋 Мебель: {furniture}\n\n"
+        f"💰 ${prop.price:,}\n"
+    )
+    
+    if prop.description:
+        text += f"\n📝 {prop.description}"
+    
+    photos = [p for p in (prop.photos.split(",") if prop.photos else []) if p]
+    db.close()
+    
+    await callback.answer()
+    
+    if photos:
+        from aiogram.types import InputMediaPhoto
+        if len(photos) > 1:
+            media_group = []
+            for i, photo_id in enumerate(photos[:10]):
+                if i == 0:
+                    media_group.append(InputMediaPhoto(media=photo_id, caption=text))
+                else:
+                    media_group.append(InputMediaPhoto(media=photo_id))
+            await callback.message.answer_media_group(media_group)
+        else:
+            await callback.message.answer_photo(photo=photos[0], caption=text)
+    else:
+        await callback.message.answer(text)
 
 
 class FindBuyerStates(StatesGroup):
