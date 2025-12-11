@@ -3,7 +3,7 @@ from datetime import datetime, timedelta
 from functools import wraps
 
 from flask import Flask, render_template, request, jsonify, redirect, url_for, session
-from models import SessionLocal, User, Property, Like, Match, Offer, District, ResidentialComplex, PromoCode
+from models import SessionLocal, User, Property, Like, Match, Offer, District, ResidentialComplex, PromoCode, TariffSettings
 from models import UserRole, SellerType, TariffType, PropertyType, PropertyStatus, AdminRole, init_db
 
 app = Flask(__name__)
@@ -782,6 +782,150 @@ def webapp_delete_user(user_id):
     db.close()
     
     return redirect(url_for('webapp_admin', tg_id=tg_id))
+
+
+@app.route('/webapp/admin/tariffs')
+def webapp_tariff_settings():
+    tg_id = request.args.get('tg_id')
+    if not tg_id:
+        return "Telegram ID не указан", 400
+    
+    db = get_db()
+    admin_user = db.query(User).filter(User.telegram_id == int(tg_id)).first()
+    
+    if not admin_user or not admin_user.is_admin:
+        db.close()
+        return "Доступ запрещён", 403
+    
+    permissions = get_admin_permissions(admin_user.admin_role)
+    if not permissions['can_edit_tariff']:
+        db.close()
+        return "У вас нет прав для управления тарифами", 403
+    
+    tariffs = db.query(TariffSettings).order_by(TariffSettings.price.asc()).all()
+    promo_codes = db.query(PromoCode).order_by(PromoCode.created_at.desc()).all()
+    db.close()
+    
+    return render_template('webapp_tariff_settings.html',
+        tg_id=tg_id,
+        permissions=permissions,
+        admin_user=admin_user,
+        tariffs=tariffs,
+        promo_codes=promo_codes
+    )
+
+
+@app.route('/webapp/admin/tariff/update', methods=['POST'])
+def webapp_update_tariff_settings():
+    tg_id = request.form.get('tg_id')
+    tariff_type = request.form.get('tariff_type')
+    price = request.form.get('price', 0)
+    properties_limit = request.form.get('properties_limit', 2)
+    likes_per_day = request.form.get('likes_per_day', 1)
+    priority = request.form.get('priority_display') == 'on'
+    
+    db = get_db()
+    admin = db.query(User).filter(User.telegram_id == int(tg_id)).first() if tg_id else None
+    
+    if not admin or not admin.is_admin:
+        db.close()
+        return "Доступ запрещён", 403
+    
+    permissions = get_admin_permissions(admin.admin_role)
+    if not permissions['can_edit_tariff']:
+        db.close()
+        return "У вас нет прав", 403
+    
+    tariff = db.query(TariffSettings).filter(TariffSettings.tariff_type == tariff_type).first()
+    if tariff:
+        tariff.price = int(price)
+        tariff.properties_limit = int(properties_limit)
+        tariff.likes_per_day = int(likes_per_day)
+        tariff.priority_display = priority
+        db.commit()
+    db.close()
+    
+    return redirect(url_for('webapp_tariff_settings', tg_id=tg_id))
+
+
+@app.route('/webapp/admin/promo/create', methods=['POST'])
+def webapp_create_promo():
+    tg_id = request.form.get('tg_id')
+    code = request.form.get('code', '').strip().upper()
+    tariff = request.form.get('tariff')
+    discount_percent = request.form.get('discount_percent', 0)
+    days_valid = request.form.get('days_valid', 30)
+    max_uses = request.form.get('max_uses', 1)
+    description = request.form.get('description', '')
+    
+    db = get_db()
+    admin = db.query(User).filter(User.telegram_id == int(tg_id)).first() if tg_id else None
+    
+    if not admin or not admin.is_admin:
+        db.close()
+        return "Доступ запрещён", 403
+    
+    permissions = get_admin_permissions(admin.admin_role)
+    if not permissions['can_edit_tariff']:
+        db.close()
+        return "У вас нет прав", 403
+    
+    existing = db.query(PromoCode).filter(PromoCode.code == code).first()
+    if not existing and code:
+        promo = PromoCode(
+            code=code,
+            tariff=tariff,
+            discount_percent=int(discount_percent),
+            max_uses=int(max_uses),
+            expires_at=datetime.utcnow() + timedelta(days=int(days_valid)),
+            description=description,
+            is_active=True
+        )
+        db.add(promo)
+        db.commit()
+    db.close()
+    
+    return redirect(url_for('webapp_tariff_settings', tg_id=tg_id))
+
+
+@app.route('/webapp/admin/promo/<int:promo_id>/toggle', methods=['POST'])
+def webapp_toggle_promo(promo_id):
+    tg_id = request.form.get('tg_id')
+    
+    db = get_db()
+    admin = db.query(User).filter(User.telegram_id == int(tg_id)).first() if tg_id else None
+    
+    if not admin or not admin.is_admin:
+        db.close()
+        return "Доступ запрещён", 403
+    
+    promo = db.query(PromoCode).filter(PromoCode.id == promo_id).first()
+    if promo:
+        promo.is_active = not promo.is_active
+        db.commit()
+    db.close()
+    
+    return redirect(url_for('webapp_tariff_settings', tg_id=tg_id))
+
+
+@app.route('/webapp/admin/promo/<int:promo_id>/delete', methods=['POST'])
+def webapp_delete_promo(promo_id):
+    tg_id = request.form.get('tg_id')
+    
+    db = get_db()
+    admin = db.query(User).filter(User.telegram_id == int(tg_id)).first() if tg_id else None
+    
+    if not admin or not admin.is_admin:
+        db.close()
+        return "Доступ запрещён", 403
+    
+    promo = db.query(PromoCode).filter(PromoCode.id == promo_id).first()
+    if promo:
+        db.delete(promo)
+        db.commit()
+    db.close()
+    
+    return redirect(url_for('webapp_tariff_settings', tg_id=tg_id))
 
 
 @app.route('/webapp/admin/stats')

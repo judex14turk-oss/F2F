@@ -1,0 +1,414 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Управление тарифами</title>
+    <script src="https://telegram.org/js/telegram-web-app.js"></script>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.0/font/bootstrap-icons.css" rel="stylesheet">
+    <style>
+        :root {
+            --tg-theme-bg-color: #ffffff;
+            --tg-theme-text-color: #000000;
+            --tg-theme-button-color: #5288c1;
+        }
+        
+        body {
+            background-color: var(--tg-theme-bg-color);
+            color: var(--tg-theme-text-color);
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            padding-bottom: 100px;
+        }
+        
+        .header {
+            background: linear-gradient(135deg, #4f46e5 0%, #7c3aed 100%);
+            color: white;
+            padding: 20px 15px;
+            margin-bottom: 15px;
+        }
+        
+        .header h1 { font-size: 1.3rem; margin: 0; }
+        .header-role { font-size: 0.85rem; opacity: 0.9; margin-top: 4px; }
+        
+        .nav-tabs {
+            display: flex;
+            gap: 6px;
+            padding: 0 10px;
+            margin-bottom: 15px;
+            overflow-x: auto;
+        }
+        
+        .nav-tab {
+            flex: 1;
+            text-align: center;
+            padding: 8px 10px;
+            background: #f1f5f9;
+            border-radius: 10px;
+            text-decoration: none;
+            color: #475569;
+            font-size: 0.8rem;
+            white-space: nowrap;
+        }
+        
+        .nav-tab.active {
+            background: var(--tg-theme-button-color);
+            color: white;
+        }
+        
+        .section-title {
+            font-size: 1rem;
+            font-weight: 600;
+            padding: 0 15px;
+            margin: 20px 0 10px;
+            color: #333;
+        }
+        
+        .tariff-card {
+            background: white;
+            margin: 10px;
+            padding: 15px;
+            border-radius: 12px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+        }
+        
+        .tariff-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 12px;
+        }
+        
+        .tariff-name {
+            font-weight: 600;
+            font-size: 1rem;
+        }
+        
+        .tariff-price {
+            font-size: 1.1rem;
+            font-weight: 700;
+            color: #10b981;
+        }
+        
+        .form-row {
+            display: flex;
+            gap: 8px;
+            margin-bottom: 10px;
+            flex-wrap: wrap;
+        }
+        
+        .form-group {
+            flex: 1;
+            min-width: 80px;
+        }
+        
+        .form-group label {
+            display: block;
+            font-size: 0.75rem;
+            color: #666;
+            margin-bottom: 4px;
+        }
+        
+        .form-group input, .form-group select {
+            width: 100%;
+            padding: 8px 10px;
+            border: 1px solid #e2e8f0;
+            border-radius: 8px;
+            font-size: 0.9rem;
+        }
+        
+        .form-check {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-size: 0.85rem;
+        }
+        
+        .btn-save {
+            background: #10b981;
+            color: white;
+            border: none;
+            padding: 8px 16px;
+            border-radius: 8px;
+            font-size: 0.9rem;
+            width: 100%;
+            margin-top: 10px;
+        }
+        
+        .promo-card {
+            background: white;
+            margin: 10px;
+            padding: 12px;
+            border-radius: 12px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+        }
+        
+        .promo-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        
+        .promo-code {
+            font-weight: 700;
+            font-size: 1rem;
+            color: #4f46e5;
+        }
+        
+        .promo-info {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 6px;
+            margin-top: 8px;
+        }
+        
+        .badge {
+            padding: 4px 8px;
+            border-radius: 12px;
+            font-size: 0.7rem;
+            font-weight: 500;
+        }
+        
+        .badge-discount { background: #dcfce7; color: #15803d; }
+        .badge-tariff { background: #e0f2fe; color: #0369a1; }
+        .badge-uses { background: #f1f5f9; color: #475569; }
+        .badge-active { background: #dcfce7; color: #15803d; }
+        .badge-inactive { background: #fee2e2; color: #dc2626; }
+        .badge-expired { background: #fef3c7; color: #92400e; }
+        
+        .promo-actions {
+            display: flex;
+            gap: 8px;
+            margin-top: 10px;
+        }
+        
+        .btn-toggle {
+            flex: 1;
+            background: #f59e0b;
+            color: white;
+            border: none;
+            padding: 6px 12px;
+            border-radius: 6px;
+            font-size: 0.8rem;
+        }
+        
+        .btn-delete {
+            background: #ef4444;
+            color: white;
+            border: none;
+            padding: 6px 12px;
+            border-radius: 6px;
+            font-size: 0.8rem;
+        }
+        
+        .create-promo {
+            background: #f8f9fa;
+            margin: 10px;
+            padding: 15px;
+            border-radius: 12px;
+        }
+        
+        .create-promo h3 {
+            font-size: 1rem;
+            margin-bottom: 12px;
+        }
+        
+        .tariff-names {
+            free: 'Бесплатный',
+            pro: 'PRO',
+            premium: 'Премиум',
+            agency_start: 'Агентство',
+            developer_pro: 'Застройщик'
+        }
+        
+        .empty-state {
+            text-align: center;
+            padding: 30px;
+            color: #999;
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <h1><i class="bi bi-currency-dollar"></i> Тарифы и промокоды</h1>
+        <div class="header-role">{{ permissions.role_name }}</div>
+    </div>
+    
+    <div class="nav-tabs">
+        <a href="{{ url_for('webapp_admin', tg_id=tg_id) }}" class="nav-tab">
+            <i class="bi bi-people"></i> Пользователи
+        </a>
+        {% if permissions.can_view_admins %}
+        <a href="{{ url_for('webapp_admins', tg_id=tg_id) }}" class="nav-tab">
+            <i class="bi bi-shield"></i> Админы
+        </a>
+        {% endif %}
+        <a href="{{ url_for('webapp_stats', tg_id=tg_id) }}" class="nav-tab">
+            <i class="bi bi-graph-up"></i> Статистика
+        </a>
+        <a href="{{ url_for('webapp_tariff_settings', tg_id=tg_id) }}" class="nav-tab active">
+            <i class="bi bi-tag"></i> Тарифы
+        </a>
+    </div>
+    
+    <div class="section-title"><i class="bi bi-tags"></i> Настройка тарифов</div>
+    
+    {% for tariff in tariffs %}
+    <div class="tariff-card">
+        <form method="POST" action="{{ url_for('webapp_update_tariff_settings') }}">
+            <input type="hidden" name="tg_id" value="{{ tg_id }}">
+            <input type="hidden" name="tariff_type" value="{{ tariff.tariff_type }}">
+            
+            <div class="tariff-header">
+                <span class="tariff-name">
+                    {% if tariff.tariff_type == 'free' %}Бесплатный
+                    {% elif tariff.tariff_type == 'pro' %}PRO
+                    {% elif tariff.tariff_type == 'premium' %}Премиум
+                    {% elif tariff.tariff_type == 'agency_start' %}Агентство
+                    {% elif tariff.tariff_type == 'developer_pro' %}Застройщик
+                    {% else %}{{ tariff.tariff_type }}{% endif %}
+                </span>
+                <span class="tariff-price">{{ "{:,.0f}".format(tariff.price).replace(",", " ") }} сум</span>
+            </div>
+            
+            <div class="form-row">
+                <div class="form-group">
+                    <label>Цена (сум)</label>
+                    <input type="number" name="price" value="{{ tariff.price }}" min="0" step="1000">
+                </div>
+                <div class="form-group">
+                    <label>Объявлений</label>
+                    <input type="number" name="properties_limit" value="{{ tariff.properties_limit }}" min="0">
+                </div>
+                <div class="form-group">
+                    <label>Лайков/день</label>
+                    <input type="number" name="likes_per_day" value="{{ tariff.likes_per_day }}" min="0">
+                </div>
+            </div>
+            
+            <div class="form-check">
+                <input type="checkbox" name="priority_display" id="priority_{{ tariff.id }}" {% if tariff.priority_display %}checked{% endif %}>
+                <label for="priority_{{ tariff.id }}">Приоритетный показ</label>
+            </div>
+            
+            <button type="submit" class="btn-save"><i class="bi bi-check-lg"></i> Сохранить</button>
+        </form>
+    </div>
+    {% endfor %}
+    
+    <div class="section-title"><i class="bi bi-percent"></i> Создать промокод</div>
+    
+    <div class="create-promo">
+        <form method="POST" action="{{ url_for('webapp_create_promo') }}">
+            <input type="hidden" name="tg_id" value="{{ tg_id }}">
+            
+            <div class="form-row">
+                <div class="form-group" style="flex:2;">
+                    <label>Код промокода</label>
+                    <input type="text" name="code" placeholder="NEWYEAR50" required style="text-transform:uppercase;">
+                </div>
+                <div class="form-group">
+                    <label>Скидка %</label>
+                    <input type="number" name="discount_percent" value="10" min="1" max="100" required>
+                </div>
+            </div>
+            
+            <div class="form-row">
+                <div class="form-group">
+                    <label>Тариф</label>
+                    <select name="tariff" required>
+                        <option value="pro">PRO</option>
+                        <option value="premium">Премиум</option>
+                        <option value="agency_start">Агентство</option>
+                        <option value="developer_pro">Застройщик</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label>Дней действует</label>
+                    <input type="number" name="days_valid" value="30" min="1" required>
+                </div>
+                <div class="form-group">
+                    <label>Макс. исп.</label>
+                    <input type="number" name="max_uses" value="100" min="1" required>
+                </div>
+            </div>
+            
+            <div class="form-group" style="margin-bottom:10px;">
+                <label>Описание</label>
+                <input type="text" name="description" placeholder="Новогодняя акция">
+            </div>
+            
+            <button type="submit" class="btn-save"><i class="bi bi-plus-lg"></i> Создать промокод</button>
+        </form>
+    </div>
+    
+    <div class="section-title"><i class="bi bi-list-ul"></i> Активные промокоды</div>
+    
+    {% if promo_codes %}
+        {% for promo in promo_codes %}
+        <div class="promo-card">
+            <div class="promo-header">
+                <span class="promo-code">{{ promo.code }}</span>
+                {% if promo.is_active %}
+                    {% if promo.expires_at and promo.expires_at < now %}
+                    <span class="badge badge-expired">Истёк</span>
+                    {% else %}
+                    <span class="badge badge-active">Активен</span>
+                    {% endif %}
+                {% else %}
+                <span class="badge badge-inactive">Отключён</span>
+                {% endif %}
+            </div>
+            
+            <div class="promo-info">
+                <span class="badge badge-discount">-{{ promo.discount_percent }}%</span>
+                <span class="badge badge-tariff">
+                    {% if promo.tariff == 'pro' %}PRO
+                    {% elif promo.tariff == 'premium' %}Премиум
+                    {% elif promo.tariff == 'agency_start' %}Агентство
+                    {% elif promo.tariff == 'developer_pro' %}Застройщик
+                    {% else %}{{ promo.tariff }}{% endif %}
+                </span>
+                <span class="badge badge-uses">{{ promo.current_uses }}/{{ promo.max_uses }} исп.</span>
+                {% if promo.expires_at %}
+                <span class="badge" style="background:#f1f5f9;color:#475569;">до {{ promo.expires_at.strftime('%d.%m.%Y') }}</span>
+                {% endif %}
+            </div>
+            
+            {% if promo.description %}
+            <div style="font-size:0.8rem;color:#666;margin-top:8px;">{{ promo.description }}</div>
+            {% endif %}
+            
+            <div class="promo-actions">
+                <form method="POST" action="{{ url_for('webapp_toggle_promo', promo_id=promo.id) }}" style="flex:1;">
+                    <input type="hidden" name="tg_id" value="{{ tg_id }}">
+                    <button type="submit" class="btn-toggle" style="width:100%;">
+                        {% if promo.is_active %}<i class="bi bi-pause"></i> Отключить{% else %}<i class="bi bi-play"></i> Включить{% endif %}
+                    </button>
+                </form>
+                <form method="POST" action="{{ url_for('webapp_delete_promo', promo_id=promo.id) }}" onsubmit="return confirm('Удалить промокод?')">
+                    <input type="hidden" name="tg_id" value="{{ tg_id }}">
+                    <button type="submit" class="btn-delete"><i class="bi bi-trash"></i></button>
+                </form>
+            </div>
+        </div>
+        {% endfor %}
+    {% else %}
+        <div class="empty-state">
+            <i class="bi bi-tag" style="font-size:2rem;"></i>
+            <p>Промокодов пока нет</p>
+        </div>
+    {% endif %}
+    
+    <script>
+        const tg = window.Telegram.WebApp;
+        tg.ready();
+        tg.expand();
+        
+        document.body.style.setProperty('--tg-theme-bg-color', tg.themeParams.bg_color || '#ffffff');
+        document.body.style.setProperty('--tg-theme-text-color', tg.themeParams.text_color || '#000000');
+        document.body.style.setProperty('--tg-theme-button-color', tg.themeParams.button_color || '#5288c1');
+    </script>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+</body>
+</html>

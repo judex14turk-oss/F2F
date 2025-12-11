@@ -198,6 +198,18 @@ class PromoCode(Base):
     description = Column(String(200))
 
 
+class TariffSettings(Base):
+    __tablename__ = 'tariff_settings'
+    
+    id = Column(Integer, primary_key=True)
+    tariff_type = Column(String(50), unique=True, nullable=False)
+    price = Column(Integer, default=0)
+    properties_limit = Column(Integer, default=2)
+    likes_per_day = Column(Integer, default=1)
+    priority_display = Column(Boolean, default=False)
+    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+
+
 def init_db():
     Base.metadata.create_all(engine)
     
