@@ -4,7 +4,7 @@ from functools import wraps
 
 from flask import Flask, render_template, request, jsonify, redirect, url_for, session
 from models import SessionLocal, User, Property, Like, Match, Offer, District, ResidentialComplex, PromoCode
-from models import UserRole, SellerType, TariffType, PropertyType, PropertyStatus, init_db
+from models import UserRole, SellerType, TariffType, PropertyType, PropertyStatus, AdminRole, init_db
 
 app = Flask(__name__)
 app.secret_key = os.environ.get('SESSION_SECRET', 'real-estate-bot-secret-key')
@@ -529,6 +529,41 @@ def webapp_tariffs():
     return render_template('tariffs.html')
 
 
+def get_admin_permissions(admin_role):
+    """Возвращает права доступа для роли администратора"""
+    if admin_role == AdminRole.SUPER_ADMIN:
+        return {
+            'can_edit_tariff': True,
+            'can_view_admins': True,
+            'can_manage_admins': True,
+            'can_delete_users': True,
+            'role_name': 'Старший администратор'
+        }
+    elif admin_role == AdminRole.ADMIN:
+        return {
+            'can_edit_tariff': True,
+            'can_view_admins': True,
+            'can_manage_admins': False,
+            'can_delete_users': False,
+            'role_name': 'Администратор'
+        }
+    elif admin_role == AdminRole.OPERATOR:
+        return {
+            'can_edit_tariff': False,
+            'can_view_admins': False,
+            'can_manage_admins': False,
+            'can_delete_users': False,
+            'role_name': 'Оператор'
+        }
+    return {
+        'can_edit_tariff': False,
+        'can_view_admins': False,
+        'can_manage_admins': False,
+        'can_delete_users': False,
+        'role_name': 'Нет доступа'
+    }
+
+
 @app.route('/webapp/admin')
 def webapp_admin():
     tg_id = request.args.get('tg_id')
@@ -536,13 +571,15 @@ def webapp_admin():
         return "Telegram ID не указан", 400
     
     db = get_db()
-    user = db.query(User).filter(User.telegram_id == int(tg_id)).first()
+    admin_user = db.query(User).filter(User.telegram_id == int(tg_id)).first()
     
-    if not user or not user.is_admin:
+    if not admin_user or not admin_user.is_admin:
         db.close()
         return "Доступ запрещён", 403
     
-    session['user_id'] = user.id
+    permissions = get_admin_permissions(admin_user.admin_role)
+    
+    session['user_id'] = admin_user.id
     session['is_admin'] = True
     
     role_filter = request.args.get('role', 'all')
@@ -599,6 +636,7 @@ def webapp_admin():
     total_count = db.query(User).count()
     buyers_count = db.query(User).filter(User.role == UserRole.BUYER).count()
     sellers_count = db.query(User).filter(User.role == UserRole.SELLER).count()
+    admins_count = db.query(User).filter(User.is_admin == True).count()
     
     db.close()
     
@@ -612,7 +650,10 @@ def webapp_admin():
         total_count=total_count,
         buyers_count=buyers_count,
         sellers_count=sellers_count,
-        tg_id=tg_id
+        admins_count=admins_count,
+        tg_id=tg_id,
+        permissions=permissions,
+        admin_user=admin_user
     )
 
 
@@ -628,6 +669,11 @@ def webapp_update_tariff(user_id):
         db.close()
         return "Доступ запрещён", 403
     
+    permissions = get_admin_permissions(admin.admin_role)
+    if not permissions['can_edit_tariff']:
+        db.close()
+        return "У вас нет прав для редактирования тарифов", 403
+    
     user = db.query(User).filter(User.id == user_id).first()
     if user:
         tariff_map = {
@@ -642,6 +688,96 @@ def webapp_update_tariff(user_id):
             user.tariff_expires = datetime.utcnow() + timedelta(days=30)
         else:
             user.tariff_expires = None
+        db.commit()
+    db.close()
+    
+    return redirect(url_for('webapp_admin', tg_id=tg_id))
+
+
+@app.route('/webapp/admin/admins')
+def webapp_admins():
+    tg_id = request.args.get('tg_id')
+    if not tg_id:
+        return "Telegram ID не указан", 400
+    
+    db = get_db()
+    admin_user = db.query(User).filter(User.telegram_id == int(tg_id)).first()
+    
+    if not admin_user or not admin_user.is_admin:
+        db.close()
+        return "Доступ запрещён", 403
+    
+    permissions = get_admin_permissions(admin_user.admin_role)
+    if not permissions['can_view_admins']:
+        db.close()
+        return "У вас нет прав для просмотра администраторов", 403
+    
+    admins = db.query(User).filter(User.is_admin == True).order_by(User.created_at.desc()).all()
+    db.close()
+    
+    return render_template('webapp_admins.html',
+        admins=admins,
+        tg_id=tg_id,
+        permissions=permissions,
+        admin_user=admin_user
+    )
+
+
+@app.route('/webapp/admin/user/<int:user_id>/set_admin', methods=['POST'])
+def webapp_set_admin_role(user_id):
+    tg_id = request.form.get('tg_id')
+    admin_role = request.form.get('admin_role')
+    
+    db = get_db()
+    admin = db.query(User).filter(User.telegram_id == int(tg_id)).first() if tg_id else None
+    
+    if not admin or not admin.is_admin:
+        db.close()
+        return "Доступ запрещён", 403
+    
+    permissions = get_admin_permissions(admin.admin_role)
+    if not permissions['can_manage_admins']:
+        db.close()
+        return "У вас нет прав для управления администраторами", 403
+    
+    user = db.query(User).filter(User.id == user_id).first()
+    if user:
+        if admin_role == 'remove':
+            user.is_admin = False
+            user.admin_role = None
+        else:
+            role_map = {
+                'super_admin': AdminRole.SUPER_ADMIN,
+                'admin': AdminRole.ADMIN,
+                'operator': AdminRole.OPERATOR
+            }
+            user.is_admin = True
+            user.admin_role = role_map.get(admin_role, AdminRole.OPERATOR)
+        db.commit()
+    db.close()
+    
+    return redirect(url_for('webapp_admins', tg_id=tg_id))
+
+
+@app.route('/webapp/admin/user/<int:user_id>/delete', methods=['POST'])
+def webapp_delete_user(user_id):
+    tg_id = request.form.get('tg_id')
+    
+    db = get_db()
+    admin = db.query(User).filter(User.telegram_id == int(tg_id)).first() if tg_id else None
+    
+    if not admin or not admin.is_admin:
+        db.close()
+        return "Доступ запрещён", 403
+    
+    permissions = get_admin_permissions(admin.admin_role)
+    if not permissions['can_delete_users']:
+        db.close()
+        return "У вас нет прав для удаления пользователей", 403
+    
+    user = db.query(User).filter(User.id == user_id).first()
+    if user and user.id != admin.id:
+        db.delete(user)
         db.commit()
     db.close()
     

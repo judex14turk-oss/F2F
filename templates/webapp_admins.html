@@ -1,0 +1,247 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Администраторы</title>
+    <script src="https://telegram.org/js/telegram-web-app.js"></script>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.0/font/bootstrap-icons.css" rel="stylesheet">
+    <style>
+        :root {
+            --tg-theme-bg-color: #ffffff;
+            --tg-theme-text-color: #000000;
+            --tg-theme-button-color: #5288c1;
+        }
+        
+        body {
+            background-color: var(--tg-theme-bg-color);
+            color: var(--tg-theme-text-color);
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            padding-bottom: 100px;
+        }
+        
+        .header {
+            background: linear-gradient(135deg, #4f46e5 0%, #7c3aed 100%);
+            color: white;
+            padding: 20px 15px;
+            margin-bottom: 15px;
+        }
+        
+        .header h1 {
+            font-size: 1.3rem;
+            margin: 0;
+        }
+        
+        .header-role {
+            font-size: 0.85rem;
+            opacity: 0.9;
+            margin-top: 4px;
+        }
+        
+        .nav-tabs {
+            display: flex;
+            gap: 8px;
+            padding: 0 10px;
+            margin-bottom: 15px;
+        }
+        
+        .nav-tab {
+            flex: 1;
+            text-align: center;
+            padding: 10px 15px;
+            background: #f1f5f9;
+            border-radius: 10px;
+            text-decoration: none;
+            color: #475569;
+            font-size: 0.9rem;
+        }
+        
+        .nav-tab.active {
+            background: var(--tg-theme-button-color);
+            color: white;
+        }
+        
+        .admin-card {
+            background: white;
+            margin: 10px;
+            padding: 15px;
+            border-radius: 12px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+        }
+        
+        .admin-name {
+            font-weight: 600;
+            font-size: 1rem;
+        }
+        
+        .admin-id {
+            color: #999;
+            font-size: 0.8rem;
+            margin-top: 4px;
+        }
+        
+        .admin-info {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+            margin-top: 10px;
+        }
+        
+        .badge {
+            padding: 4px 10px;
+            border-radius: 20px;
+            font-size: 0.75rem;
+            font-weight: 500;
+        }
+        
+        .badge-super { background: #fce7f3; color: #be185d; }
+        .badge-admin { background: #fef3c7; color: #92400e; }
+        .badge-operator { background: #e0f2fe; color: #0369a1; }
+        
+        .role-form {
+            margin-top: 12px;
+            padding-top: 12px;
+            border-top: 1px solid #eee;
+        }
+        
+        .role-select {
+            display: flex;
+            gap: 8px;
+        }
+        
+        .role-select select {
+            flex: 1;
+            padding: 8px 12px;
+            border: 1px solid #e2e8f0;
+            border-radius: 8px;
+            font-size: 0.9rem;
+        }
+        
+        .btn-save {
+            background: #10b981;
+            color: white;
+            border: none;
+            padding: 8px 16px;
+            border-radius: 8px;
+            font-size: 0.9rem;
+        }
+        
+        .info-box {
+            background: #f8f9fa;
+            padding: 15px;
+            margin: 10px;
+            border-radius: 12px;
+            font-size: 0.85rem;
+            color: #666;
+        }
+        
+        .info-box h3 {
+            font-size: 1rem;
+            margin-bottom: 10px;
+            color: #333;
+        }
+        
+        .info-box ul {
+            margin: 0;
+            padding-left: 20px;
+        }
+        
+        .info-box li {
+            margin-bottom: 5px;
+        }
+        
+        .empty-state {
+            text-align: center;
+            padding: 40px 20px;
+            color: #999;
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <h1><i class="bi bi-shield-lock"></i> Администраторы</h1>
+        <div class="header-role">{{ permissions.role_name }}</div>
+    </div>
+    
+    <div class="nav-tabs">
+        <a href="{{ url_for('webapp_admin', tg_id=tg_id) }}" class="nav-tab">
+            <i class="bi bi-people"></i> Пользователи
+        </a>
+        <a href="{{ url_for('webapp_admins', tg_id=tg_id) }}" class="nav-tab active">
+            <i class="bi bi-shield"></i> Админы
+        </a>
+    </div>
+    
+    <div class="info-box">
+        <h3>Уровни доступа:</h3>
+        <ul>
+            <li><strong>Старший админ</strong> - полный доступ, управление ролями</li>
+            <li><strong>Администратор</strong> - редактирование тарифов, просмотр админов</li>
+            <li><strong>Оператор</strong> - только просмотр пользователей</li>
+        </ul>
+    </div>
+    
+    {% if admins %}
+        {% for admin in admins %}
+        <div class="admin-card">
+            <div class="admin-name">{{ admin.first_name or '-' }} {{ admin.last_name or '' }}</div>
+            <div class="admin-id">
+                ID: {{ admin.telegram_id }} 
+                {% if admin.username %}@{{ admin.username }}{% endif %}
+                {% if admin.id == admin_user.id %}<span style="color:#10b981">(это вы)</span>{% endif %}
+            </div>
+            
+            <div class="admin-info">
+                {% if admin.admin_role %}
+                    {% if admin.admin_role.value == 'super_admin' %}
+                    <span class="badge badge-super">Старший администратор</span>
+                    {% elif admin.admin_role.value == 'admin' %}
+                    <span class="badge badge-admin">Администратор</span>
+                    {% else %}
+                    <span class="badge badge-operator">Оператор</span>
+                    {% endif %}
+                {% else %}
+                <span class="badge badge-operator">Роль не назначена</span>
+                {% endif %}
+                
+                {% if admin.phone %}
+                <span class="badge" style="background:#f1f5f9;color:#475569;">{{ admin.phone }}</span>
+                {% endif %}
+            </div>
+            
+            {% if permissions.can_manage_admins and admin.id != admin_user.id %}
+            <form class="role-form" method="POST" action="{{ url_for('webapp_set_admin_role', user_id=admin.id) }}">
+                <input type="hidden" name="tg_id" value="{{ tg_id }}">
+                <div class="role-select">
+                    <select name="admin_role">
+                        <option value="super_admin" {% if admin.admin_role and admin.admin_role.value == 'super_admin' %}selected{% endif %}>Старший админ</option>
+                        <option value="admin" {% if admin.admin_role and admin.admin_role.value == 'admin' %}selected{% endif %}>Администратор</option>
+                        <option value="operator" {% if admin.admin_role and admin.admin_role.value == 'operator' %}selected{% endif %}>Оператор</option>
+                        <option value="remove">Снять права</option>
+                    </select>
+                    <button type="submit" class="btn-save"><i class="bi bi-check-lg"></i></button>
+                </div>
+            </form>
+            {% endif %}
+        </div>
+        {% endfor %}
+    {% else %}
+        <div class="empty-state">
+            <i class="bi bi-shield"></i>
+            <p>Администраторы не найдены</p>
+        </div>
+    {% endif %}
+    
+    <script>
+        const tg = window.Telegram.WebApp;
+        tg.ready();
+        tg.expand();
+        
+        document.body.style.setProperty('--tg-theme-bg-color', tg.themeParams.bg_color || '#ffffff');
+        document.body.style.setProperty('--tg-theme-text-color', tg.themeParams.text_color || '#000000');
+        document.body.style.setProperty('--tg-theme-button-color', tg.themeParams.button_color || '#5288c1');
+    </script>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+</body>
+</html>

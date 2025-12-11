@@ -36,10 +36,17 @@
             margin: 0;
         }
         
+        .header-role {
+            font-size: 0.85rem;
+            opacity: 0.9;
+            margin-top: 4px;
+        }
+        
         .stats-row {
             display: flex;
             gap: 8px;
             margin-top: 12px;
+            flex-wrap: wrap;
         }
         
         .stat-badge {
@@ -47,6 +54,29 @@
             padding: 6px 12px;
             border-radius: 20px;
             font-size: 0.85rem;
+        }
+        
+        .nav-tabs {
+            display: flex;
+            gap: 8px;
+            padding: 0 10px;
+            margin-bottom: 15px;
+        }
+        
+        .nav-tab {
+            flex: 1;
+            text-align: center;
+            padding: 10px 15px;
+            background: #f1f5f9;
+            border-radius: 10px;
+            text-decoration: none;
+            color: #475569;
+            font-size: 0.9rem;
+        }
+        
+        .nav-tab.active {
+            background: var(--tg-theme-button-color);
+            color: white;
         }
         
         .filter-section {
@@ -131,6 +161,7 @@
         .badge-developer { background: #fef3c7; color: #92400e; }
         .badge-pro { background: #dcfce7; color: #15803d; }
         .badge-premium { background: #fce7f3; color: #be185d; }
+        .badge-admin { background: #fef3c7; color: #92400e; }
         
         .tariff-form {
             margin-top: 12px;
@@ -160,6 +191,30 @@
             font-size: 0.9rem;
         }
         
+        .btn-danger {
+            background: #ef4444;
+            color: white;
+            border: none;
+            padding: 8px 12px;
+            border-radius: 8px;
+            font-size: 0.85rem;
+        }
+        
+        .btn-admin {
+            background: #f59e0b;
+            color: white;
+            border: none;
+            padding: 8px 12px;
+            border-radius: 8px;
+            font-size: 0.85rem;
+        }
+        
+        .action-buttons {
+            display: flex;
+            gap: 8px;
+            margin-top: 10px;
+        }
+        
         .empty-state {
             text-align: center;
             padding: 40px 20px;
@@ -177,16 +232,38 @@
             font-size: 0.85rem;
             padding: 10px;
         }
+        
+        .no-permission {
+            text-align: center;
+            padding: 20px;
+            color: #999;
+            font-size: 0.85rem;
+        }
     </style>
 </head>
 <body>
     <div class="header">
         <h1><i class="bi bi-shield-lock"></i> Админ-панель</h1>
+        <div class="header-role">{{ permissions.role_name }}</div>
         <div class="stats-row">
             <span class="stat-badge">Всего: {{ total_count }}</span>
             <span class="stat-badge">Покупатели: {{ buyers_count }}</span>
             <span class="stat-badge">Продавцы: {{ sellers_count }}</span>
+            {% if permissions.can_view_admins %}
+            <span class="stat-badge">Админы: {{ admins_count }}</span>
+            {% endif %}
         </div>
+    </div>
+    
+    <div class="nav-tabs">
+        <a href="{{ url_for('webapp_admin', tg_id=tg_id) }}" class="nav-tab active">
+            <i class="bi bi-people"></i> Пользователи
+        </a>
+        {% if permissions.can_view_admins %}
+        <a href="{{ url_for('webapp_admins', tg_id=tg_id) }}" class="nav-tab">
+            <i class="bi bi-shield"></i> Админы
+        </a>
+        {% endif %}
     </div>
     
     <div class="filter-section">
@@ -260,11 +337,22 @@
                     {% endif %}
                 {% endif %}
                 
+                {% if user.is_admin %}
+                <span class="badge badge-admin">
+                    {% if user.admin_role %}
+                        {% if user.admin_role.value == 'super_admin' %}Старший админ
+                        {% elif user.admin_role.value == 'admin' %}Админ
+                        {% else %}Оператор{% endif %}
+                    {% else %}Админ{% endif %}
+                </span>
+                {% endif %}
+                
                 {% if user.phone %}
                 <span class="badge" style="background:#f1f5f9;color:#475569;">{{ user.phone }}</span>
                 {% endif %}
             </div>
             
+            {% if permissions.can_edit_tariff %}
             <form class="tariff-form" method="POST" action="{{ url_for('webapp_update_tariff', user_id=user.id) }}">
                 <input type="hidden" name="tg_id" value="{{ tg_id }}">
                 <div class="tariff-select">
@@ -278,6 +366,26 @@
                     <button type="submit" class="btn-save"><i class="bi bi-check-lg"></i></button>
                 </div>
             </form>
+            {% endif %}
+            
+            {% if permissions.can_manage_admins or permissions.can_delete_users %}
+            <div class="action-buttons">
+                {% if permissions.can_manage_admins and not user.is_admin %}
+                <form method="POST" action="{{ url_for('webapp_set_admin_role', user_id=user.id) }}" style="display:inline;">
+                    <input type="hidden" name="tg_id" value="{{ tg_id }}">
+                    <input type="hidden" name="admin_role" value="operator">
+                    <button type="submit" class="btn-admin"><i class="bi bi-person-plus"></i> Сделать админом</button>
+                </form>
+                {% endif %}
+                
+                {% if permissions.can_delete_users and user.id != admin_user.id %}
+                <form method="POST" action="{{ url_for('webapp_delete_user', user_id=user.id) }}" style="display:inline;" onsubmit="return confirm('Удалить пользователя?')">
+                    <input type="hidden" name="tg_id" value="{{ tg_id }}">
+                    <button type="submit" class="btn-danger"><i class="bi bi-trash"></i></button>
+                </form>
+                {% endif %}
+            </div>
+            {% endif %}
         </div>
         {% endfor %}
         
