@@ -1878,6 +1878,10 @@ async def profile(message: types.Message):
             f"📞 Телефон: {user.phone or 'Не указан'}\n"
             f"💳 Тариф: {tariff_names.get(user.tariff, 'Бесплатный')}\n"
         )
+        
+        keyboard = InlineKeyboardMarkup(inline_keyboard=[
+            [InlineKeyboardButton(text="🏠 Перейти в режим покупателя", callback_data="switch_to_buyer")]
+        ])
     else:
         payment_names = {"cash": "Наличные", "mortgage": "Ипотека", "installment": "Рассрочка"}
         budget = f"${user.search_budget_max:,}" if user.search_budget_max else "Не указан"
@@ -1889,8 +1893,73 @@ async def profile(message: types.Message):
             f"💰 Бюджет: до {budget}\n"
             f"💳 Оплата: {payment_names.get(user.search_payment_type, 'Не указано')}\n"
         )
+        
+        keyboard = InlineKeyboardMarkup(inline_keyboard=[
+            [InlineKeyboardButton(text="💼 Перейти в режим продавца", callback_data="switch_to_seller")]
+        ])
     
-    await message.answer(text)
+    await message.answer(text, reply_markup=keyboard)
+
+
+@dp.callback_query(F.data == "switch_to_buyer")
+async def switch_to_buyer(callback: types.CallbackQuery, state: FSMContext):
+    db = SessionLocal()
+    user = db.query(User).filter(User.telegram_id == callback.from_user.id).first()
+    
+    if user:
+        user.role = UserRole.BUYER
+        db.commit()
+    db.close()
+    
+    await callback.answer("Режим изменён на покупателя")
+    await callback.message.delete()
+    
+    keyboard = ReplyKeyboardMarkup(
+        keyboard=[
+            [KeyboardButton(text="🏠 Смотреть квартиры")],
+            [KeyboardButton(text="❤️ Мои лайки"), KeyboardButton(text="💬 Мэтчи")],
+            [KeyboardButton(text="👤 Профиль"), KeyboardButton(text="⚙️ Настройки поиска")]
+        ],
+        resize_keyboard=True
+    )
+    
+    await callback.message.answer(
+        "🏠 Вы теперь в режиме покупателя!\n\n"
+        "Нажмите '🏠 Смотреть квартиры', чтобы начать поиск.",
+        reply_markup=keyboard
+    )
+
+
+@dp.callback_query(F.data == "switch_to_seller")
+async def switch_to_seller(callback: types.CallbackQuery, state: FSMContext):
+    db = SessionLocal()
+    user = db.query(User).filter(User.telegram_id == callback.from_user.id).first()
+    
+    if user:
+        user.role = UserRole.SELLER
+        db.commit()
+    
+    buyers_count = db.query(User).filter(User.role == UserRole.BUYER).count()
+    db.close()
+    
+    await callback.answer("Режим изменён на продавца")
+    await callback.message.delete()
+    
+    keyboard = ReplyKeyboardMarkup(
+        keyboard=[
+            [KeyboardButton(text="➕ Добавить объект")],
+            [KeyboardButton(text="🏢 Мои объекты"), KeyboardButton(text="🎯 Найти покупателя")],
+            [KeyboardButton(text="❤️ Меня лайкнули"), KeyboardButton(text="💬 Сделки")],
+            [KeyboardButton(text="👤 Профиль"), KeyboardButton(text="💳 Тарифы")]
+        ],
+        resize_keyboard=True
+    )
+    
+    await callback.message.answer(
+        f"💼 Вы теперь в режиме продавца!\n\n"
+        f"🔥 Прямо сейчас в боте {buyers_count} человек ищут квартиру!",
+        reply_markup=keyboard
+    )
 
 
 @dp.message(F.text == "💳 Тарифы")
