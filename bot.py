@@ -1902,10 +1902,12 @@ async def deals(message: types.Message):
         
         prop_info = ""
         if prop:
+            prop_id = prop.unique_id or f"#{prop.id}"
             rooms_text = f"{prop.rooms} комн." if prop.rooms else "Студия"
             prop_type_text = "Продажа" if prop.property_type == PropertyType.SALE else "Аренда"
             prop_info = (
-                f"\n📍 Объект: {prop.district}\n"
+                f"\n🆔 ID объекта: {prop_id}\n"
+                f"📍 Объект: {prop.district}\n"
                 f"🏠 {rooms_text} | {prop.area} м² | ${prop.price:,}\n"
                 f"📋 Тип: {prop_type_text}"
             )
