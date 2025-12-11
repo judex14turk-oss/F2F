@@ -101,9 +101,11 @@ def get_active_buyers_count(rooms=None, district=None, budget_max=None):
 
 def get_tariff_limits(tariff: TariffType):
     limits = {
-        TariffType.FREE: {"properties": 2, "daily_offers": 0},
-        TariffType.AGENCY_START: {"properties": 20, "daily_offers": 10},
-        TariffType.DEVELOPER_PRO: {"properties": 999, "daily_offers": 50},
+        TariffType.FREE: {"properties": 2, "daily_likes": 1, "priority": False},
+        TariffType.PRO: {"properties": 50, "daily_likes": 10, "priority": False},
+        TariffType.PREMIUM: {"properties": 100, "daily_likes": 30, "priority": True},
+        TariffType.AGENCY_START: {"properties": 50, "daily_likes": 10, "priority": False},
+        TariffType.DEVELOPER_PRO: {"properties": 100, "daily_likes": 30, "priority": True},
     }
     return limits.get(tariff, limits[TariffType.FREE])
 
@@ -637,9 +639,11 @@ async def show_seller_menu(message, user_id, buyers_count=None):
     db.close()
     
     tariff_names = {
-        TariffType.FREE: "Бесплатный",
-        TariffType.AGENCY_START: "Агентство Start",
-        TariffType.DEVELOPER_PRO: "Застройщик PRO"
+        TariffType.FREE: "🆓 Бесплатный",
+        TariffType.PRO: "⭐ Про",
+        TariffType.PREMIUM: "👑 Премиум",
+        TariffType.AGENCY_START: "⭐ Про",
+        TariffType.DEVELOPER_PRO: "👑 Премиум"
     }
     
     keyboard = ReplyKeyboardMarkup(
@@ -659,7 +663,7 @@ async def show_seller_menu(message, user_id, buyers_count=None):
         f"👁 Просмотров: {total_views}\n"
         f"❤️ Лайков: {total_likes}\n"
         f"🤝 Мэтчей: {matches_count}\n"
-        f"💰 Тариф: {tariff_names.get(user.tariff, 'Бесплатный')}",
+        f"💳 Тариф: {tariff_names.get(user.tariff, 'Бесплатный')}",
         reply_markup=keyboard
     )
 
@@ -2104,9 +2108,11 @@ async def profile(message: types.Message):
             SellerType.DEVELOPER: "Застройщик"
         }
         tariff_names = {
-            TariffType.FREE: "Бесплатный",
-            TariffType.AGENCY_START: "Агентство Start",
-            TariffType.DEVELOPER_PRO: "Застройщик PRO"
+            TariffType.FREE: "🆓 Бесплатный",
+            TariffType.PRO: "⭐ Про",
+            TariffType.PREMIUM: "👑 Премиум",
+            TariffType.AGENCY_START: "⭐ Про",
+            TariffType.DEVELOPER_PRO: "👑 Премиум"
         }
         
         text = (
@@ -2203,25 +2209,47 @@ async def switch_to_seller(callback: types.CallbackQuery, state: FSMContext):
 
 @dp.message(F.text == "💳 Тарифы")
 async def tariffs(message: types.Message):
-    text = (
-        "💳 Тарифные планы\n\n"
-        "━━━━━━━━━━━━━━━━━━\n"
-        "🆓 Частник (Бесплатно)\n"
-        "• 2 объекта\n"
-        "• Нельзя писать первым\n\n"
-        "━━━━━━━━━━━━━━━━━━\n"
-        "🏢 Агентство Start (500,000 сум/мес)\n"
-        "• 20 объектов\n"
-        "• 10 предложений в день\n\n"
-        "━━━━━━━━━━━━━━━━━━\n"
-        "🏗 Застройщик PRO (2,000,000 сум/мес)\n"
-        "• Безлимит объектов\n"
-        "• 50 предложений в день\n\n"
-        "━━━━━━━━━━━━━━━━━━\n"
-        "Для оплаты: @InvictumMurad"
-    )
+    webapp_url = WEBAPP_BASE_URL or os.environ.get('REPLIT_DEV_DOMAIN', '')
+    if webapp_url and not webapp_url.startswith('https://'):
+        webapp_url = f"https://{webapp_url}"
     
-    await message.answer(text)
+    if webapp_url:
+        keyboard = InlineKeyboardMarkup(inline_keyboard=[
+            [InlineKeyboardButton(
+                text="📋 Посмотреть тарифы",
+                web_app=WebAppInfo(url=f"{webapp_url}/webapp/tariffs")
+            )],
+            [InlineKeyboardButton(
+                text="💬 Связаться с администратором",
+                url="https://t.me/InvictumMurad"
+            )]
+        ])
+        
+        await message.answer(
+            "💳 Тарифные планы\n\n"
+            "Нажмите кнопку ниже, чтобы посмотреть подробное описание тарифов:",
+            reply_markup=keyboard
+        )
+    else:
+        text = (
+            "💳 Тарифные планы\n\n"
+            "━━━━━━━━━━━━━━━━━━\n"
+            "🆓 Бесплатный\n"
+            "• 2 объявления\n"
+            "• 1 лайк в день\n\n"
+            "━━━━━━━━━━━━━━━━━━\n"
+            "⭐ Про (500 000 сум/мес)\n"
+            "• 50 объявлений в месяц\n"
+            "• 10 лайков в день\n\n"
+            "━━━━━━━━━━━━━━━━━━\n"
+            "👑 Премиум (1 500 000 сум/мес)\n"
+            "• 100 объявлений в месяц\n"
+            "• 30 лайков в день\n"
+            "• Приоритетный показ\n\n"
+            "━━━━━━━━━━━━━━━━━━\n"
+            "Для оплаты: @InvictumMurad"
+        )
+        await message.answer(text)
 
 
 @dp.message(F.text == "❤️ Мои лайки")

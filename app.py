@@ -447,6 +447,11 @@ def update_match_note(match_id):
     return redirect(url_for('seller_crm'))
 
 
+@app.route('/webapp/tariffs')
+def webapp_tariffs():
+    return render_template('tariffs.html')
+
+
 @app.route('/api/districts')
 def api_districts():
     db = get_db()

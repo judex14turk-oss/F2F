@@ -25,6 +25,8 @@ class TariffType(enum.Enum):
     FREE = "free"
     AGENCY_START = "agency_start"
     DEVELOPER_PRO = "developer_pro"
+    PRO = "pro"
+    PREMIUM = "premium"
 
 
 class PropertyType(enum.Enum):
