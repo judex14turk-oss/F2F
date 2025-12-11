@@ -332,15 +332,15 @@
                 {% endif %}
                 
                 {% if user.tariff %}
-                    {% if user.tariff.value == 'free' %}
+                    {% if user.tariff.value|lower == 'free' %}
                     <span class="badge badge-free">Бесплатный</span>
-                    {% elif user.tariff.value == 'agency_start' %}
+                    {% elif user.tariff.value|lower == 'agency_start' %}
                     <span class="badge badge-agency">Агентство</span>
-                    {% elif user.tariff.value == 'developer_pro' %}
+                    {% elif user.tariff.value|lower == 'developer_pro' %}
                     <span class="badge badge-developer">Застройщик</span>
-                    {% elif user.tariff.value == 'pro' %}
+                    {% elif user.tariff.value|lower == 'pro' %}
                     <span class="badge badge-pro">PRO</span>
-                    {% elif user.tariff.value == 'premium' %}
+                    {% elif user.tariff.value|lower == 'premium' %}
                     <span class="badge badge-premium">Premium</span>
                     {% endif %}
                 {% endif %}
@@ -365,11 +365,11 @@
                 <input type="hidden" name="tg_id" value="{{ tg_id }}">
                 <div class="tariff-select">
                     <select name="tariff">
-                        <option value="free" {% if user.tariff and user.tariff.value == 'free' %}selected{% endif %}>Бесплатный</option>
-                        <option value="agency_start" {% if user.tariff and user.tariff.value == 'agency_start' %}selected{% endif %}>Агентство</option>
-                        <option value="developer_pro" {% if user.tariff and user.tariff.value == 'developer_pro' %}selected{% endif %}>Застройщик</option>
-                        <option value="pro" {% if user.tariff and user.tariff.value == 'pro' %}selected{% endif %}>PRO</option>
-                        <option value="premium" {% if user.tariff and user.tariff.value == 'premium' %}selected{% endif %}>Premium</option>
+                        <option value="free" {% if user.tariff and user.tariff.value|lower == 'free' %}selected{% endif %}>Бесплатный</option>
+                        <option value="agency_start" {% if user.tariff and user.tariff.value|lower == 'agency_start' %}selected{% endif %}>Агентство</option>
+                        <option value="developer_pro" {% if user.tariff and user.tariff.value|lower == 'developer_pro' %}selected{% endif %}>Застройщик</option>
+                        <option value="pro" {% if user.tariff and user.tariff.value|lower == 'pro' %}selected{% endif %}>PRO</option>
+                        <option value="premium" {% if user.tariff and user.tariff.value|lower == 'premium' %}selected{% endif %}>Premium</option>
                     </select>
                     <button type="submit" class="btn-save"><i class="bi bi-check-lg"></i></button>
                 </div>
