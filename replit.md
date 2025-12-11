@@ -20,6 +20,9 @@ The platform has two main user interfaces:
 - Improved "Сделки" section with detailed contact cards showing client info
 - Added WebView tariffs page with modern minimalist design
 - Updated tariff system: Бесплатный (2 объявления, 1 лайк), Про (50/10), Премиум (100/30 + приоритет)
+- Added three-tier admin role system (Super Admin, Admin, Operator) with granular permissions
+- Admin panel accessible via WebApp in Telegram bot
+- Separate page for managing administrators (only visible to Super Admin and Admin roles)
 
 ## User Preferences
 
