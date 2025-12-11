@@ -1287,7 +1287,19 @@ async def my_properties(message: types.Message):
             ])
         keyboard = InlineKeyboardMarkup(inline_keyboard=buttons)
         
-        await message.answer(text, reply_markup=keyboard, parse_mode="HTML")
+        photos_list = prop.photos.split(",") if prop.photos else []
+        if photos_list and photos_list[0]:
+            try:
+                await message.answer_photo(
+                    photo=photos_list[0],
+                    caption=text,
+                    reply_markup=keyboard,
+                    parse_mode="HTML"
+                )
+            except:
+                await message.answer(text, reply_markup=keyboard, parse_mode="HTML")
+        else:
+            await message.answer(text, reply_markup=keyboard, parse_mode="HTML")
 
 
 @dp.callback_query(F.data.startswith("prop_likers_"))
