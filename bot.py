@@ -1040,16 +1040,26 @@ async def view_properties(message: types.Message, state: FSMContext):
     user = db.query(User).filter(User.telegram_id == message.from_user.id).first()
     
     liked_ids = [l.property_id for l in db.query(Like).filter(Like.user_id == user.id).all()]
+    skipped_ids_data = await state.get_data()
+    skipped_ids = skipped_ids_data.get("skipped_ids", [])
     
-    query = db.query(Property).filter(Property.status == PropertyStatus.ACTIVE)
+    query = db.query(Property).filter(
+        Property.status == PropertyStatus.ACTIVE,
+        Property.owner_id != user.id
+    )
     if liked_ids:
         query = query.filter(Property.id.notin_(liked_ids))
+    if skipped_ids:
+        query = query.filter(Property.id.notin_(skipped_ids))
     properties = query.order_by(Property.created_at.desc()).all()
     
     db.close()
     
     if not properties:
-        await message.answer("😔 Пока нет новых квартир. Попробуйте позже!")
+        if liked_ids or skipped_ids:
+            await message.answer("✅ Вы просмотрели все доступные квартиры!\n\nПопробуйте позже — появятся новые объекты.")
+        else:
+            await message.answer("😔 Пока нет квартир по вашим критериям. Попробуйте позже!")
         return
     
     await state.update_data(properties=[p.id for p in properties], current_index=0)
