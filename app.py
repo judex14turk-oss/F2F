@@ -662,6 +662,8 @@ def webapp_update_tariff(user_id):
     tg_id = request.form.get('tg_id')
     tariff = request.form.get('tariff')
     
+    print(f"[DEBUG] Updating tariff for user {user_id}: tg_id={tg_id}, tariff={tariff}")
+    
     db = get_db()
     admin = db.query(User).filter(User.telegram_id == int(tg_id)).first() if tg_id else None
     
@@ -683,12 +685,16 @@ def webapp_update_tariff(user_id):
             'pro': TariffType.PRO,
             'premium': TariffType.PREMIUM
         }
+        old_tariff = user.tariff
         user.tariff = tariff_map.get(tariff, TariffType.FREE)
         if tariff != 'free':
             user.tariff_expires = datetime.utcnow() + timedelta(days=30)
         else:
             user.tariff_expires = None
         db.commit()
+        print(f"[DEBUG] User {user_id} tariff changed from {old_tariff} to {user.tariff}")
+    else:
+        print(f"[DEBUG] User {user_id} not found!")
     db.close()
     
     return redirect(url_for('webapp_admin', tg_id=tg_id))
