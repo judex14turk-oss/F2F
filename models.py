@@ -28,11 +28,11 @@ class SellerType(enum.Enum):
 
 
 class TariffType(enum.Enum):
-    FREE = "free"
-    AGENCY_START = "agency_start"
-    DEVELOPER_PRO = "developer_pro"
-    PRO = "pro"
-    PREMIUM = "premium"
+    FREE = "FREE"
+    AGENCY_START = "AGENCY_START"
+    DEVELOPER_PRO = "DEVELOPER_PRO"
+    PRO = "PRO"
+    PREMIUM = "PREMIUM"
 
 
 class PropertyType(enum.Enum):
