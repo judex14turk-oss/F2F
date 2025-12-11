@@ -15,6 +15,12 @@ class UserRole(enum.Enum):
     SELLER = "seller"
 
 
+class AdminRole(enum.Enum):
+    SUPER_ADMIN = "super_admin"
+    ADMIN = "admin"
+    OPERATOR = "operator"
+
+
 class SellerType(enum.Enum):
     OWNER = "owner"
     REALTOR = "realtor"
@@ -53,6 +59,7 @@ class User(Base):
     password = Column(String(200))
     role = Column(Enum(UserRole), default=UserRole.BUYER)
     is_admin = Column(Boolean, default=False)
+    admin_role = Column(Enum(AdminRole), nullable=True)
     created_at = Column(DateTime, default=datetime.utcnow)
     
     search_rooms = Column(String(50))
