@@ -725,6 +725,80 @@ def webapp_update_role(user_id):
     return redirect(url_for('webapp_admin', tg_id=tg_id))
 
 
+@app.route('/webapp/admin/user/<int:user_id>/edit')
+def webapp_user_edit(user_id):
+    tg_id = request.args.get('tg_id')
+    if not tg_id:
+        return "Telegram ID не указан", 400
+    
+    db = get_db()
+    admin = db.query(User).filter(User.telegram_id == int(tg_id)).first()
+    
+    if not admin or not admin.is_admin:
+        db.close()
+        return "Доступ запрещён", 403
+    
+    permissions = get_admin_permissions(admin.admin_role)
+    user = db.query(User).filter(User.id == user_id).first()
+    
+    if not user:
+        db.close()
+        return "Пользователь не найден", 404
+    
+    db.close()
+    
+    return render_template('webapp_user_edit.html',
+        user=user,
+        tg_id=tg_id,
+        permissions=permissions,
+        admin_user=admin
+    )
+
+
+@app.route('/webapp/admin/user/<int:user_id>/save', methods=['POST'])
+def webapp_user_save(user_id):
+    tg_id = request.form.get('tg_id')
+    
+    db = get_db()
+    admin = db.query(User).filter(User.telegram_id == int(tg_id)).first() if tg_id else None
+    
+    if not admin or not admin.is_admin:
+        db.close()
+        return "Доступ запрещён", 403
+    
+    permissions = get_admin_permissions(admin.admin_role)
+    user = db.query(User).filter(User.id == user_id).first()
+    
+    if user:
+        role = request.form.get('role')
+        tariff = request.form.get('tariff')
+        
+        role_map = {
+            'buyer': UserRole.BUYER,
+            'seller': UserRole.SELLER
+        }
+        user.role = role_map.get(role, UserRole.BUYER)
+        
+        if permissions['can_edit_tariff']:
+            tariff_map = {
+                'free': TariffType.FREE,
+                'agency_start': TariffType.AGENCY_START,
+                'developer_pro': TariffType.DEVELOPER_PRO,
+                'pro': TariffType.PRO,
+                'premium': TariffType.PREMIUM
+            }
+            user.tariff = tariff_map.get(tariff, TariffType.FREE)
+            if tariff != 'free':
+                user.tariff_expires = datetime.utcnow() + timedelta(days=30)
+            else:
+                user.tariff_expires = None
+        
+        db.commit()
+    db.close()
+    
+    return redirect(url_for('webapp_admin', tg_id=tg_id))
+
+
 @app.route('/webapp/admin/admins')
 def webapp_admins():
     tg_id = request.args.get('tg_id')

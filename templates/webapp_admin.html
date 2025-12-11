@@ -110,47 +110,46 @@
             font-size: 0.9rem;
         }
         
-        .user-card {
-            background: white;
-            margin: 10px;
-            padding: 15px;
-            border-radius: 12px;
-            box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+        .users-grid {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 10px;
+            padding: 0 10px;
         }
         
-        .user-header {
-            display: flex;
-            justify-content: space-between;
-            align-items: flex-start;
-            margin-bottom: 10px;
+        .user-card {
+            background: white;
+            padding: 12px;
+            border-radius: 10px;
+            box-shadow: 0 2px 6px rgba(0,0,0,0.08);
         }
         
         .user-name {
             font-weight: 600;
-            font-size: 1rem;
-        }
-        
-        .user-company {
-            color: #666;
-            font-size: 0.85rem;
+            font-size: 0.9rem;
+            margin-bottom: 2px;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
         }
         
         .user-id {
             color: #999;
-            font-size: 0.8rem;
+            font-size: 0.7rem;
+            margin-bottom: 6px;
         }
         
-        .user-info {
+        .user-badges {
             display: flex;
             flex-wrap: wrap;
-            gap: 8px;
-            margin-top: 10px;
+            gap: 4px;
+            margin-bottom: 8px;
         }
         
         .badge {
-            padding: 4px 10px;
-            border-radius: 20px;
-            font-size: 0.75rem;
+            padding: 2px 6px;
+            border-radius: 10px;
+            font-size: 0.65rem;
             font-weight: 500;
         }
         
@@ -163,62 +162,32 @@
         .badge-premium { background: #fce7f3; color: #be185d; }
         .badge-admin { background: #fef3c7; color: #92400e; }
         
-        .tariff-form {
-            margin-top: 12px;
-            padding-top: 12px;
-            border-top: 1px solid #eee;
-        }
-        
-        .tariff-select {
+        .card-buttons {
             display: flex;
-            gap: 8px;
-        }
-        
-        .tariff-select select {
-            flex: 1;
-            padding: 8px 12px;
-            border: 1px solid #e2e8f0;
-            border-radius: 8px;
-            font-size: 0.9rem;
-        }
-        
-        .user-controls {
-            margin-top: 12px;
-            padding-top: 12px;
-            border-top: 1px solid #eee;
-            display: flex;
-            flex-direction: column;
-            gap: 12px;
-        }
-        
-        .control-section {
-            display: flex;
-            flex-direction: column;
             gap: 6px;
         }
         
-        .control-label {
-            font-size: 0.8rem;
-            color: #666;
-            font-weight: 500;
-        }
-        
-        .control-form {
-            margin: 0;
-        }
-        
-        .control-row {
-            display: flex;
-            gap: 8px;
-        }
-        
-        .control-select {
+        .btn-edit {
             flex: 1;
-            padding: 8px 12px;
-            border: 1px solid #e2e8f0;
-            border-radius: 8px;
-            font-size: 0.9rem;
-            background: white;
+            background: #3b82f6;
+            color: white;
+            border: none;
+            padding: 6px 8px;
+            border-radius: 6px;
+            font-size: 0.75rem;
+            cursor: pointer;
+            text-decoration: none;
+            text-align: center;
+        }
+        
+        .btn-delete {
+            background: #ef4444;
+            color: white;
+            border: none;
+            padding: 6px 10px;
+            border-radius: 6px;
+            font-size: 0.75rem;
+            cursor: pointer;
         }
         
         .btn-save {
@@ -351,98 +320,61 @@
     </div>
     
     {% if users %}
+    <div class="users-grid">
         {% for user in users %}
         <div class="user-card">
-            <div class="user-header">
-                <div>
-                    <div class="user-name">{{ user.first_name or '-' }} {{ user.last_name or '' }}</div>
-                    {% if user.company_name %}
-                    <div class="user-company">{{ user.company_name }}</div>
+            <div class="user-name">{{ user.first_name or '-' }} {{ user.last_name or '' }}</div>
+            <div class="user-id">{{ user.telegram_id }} {% if user.username %}@{{ user.username }}{% endif %}</div>
+            
+            <div class="user-badges">
+                {% if user.role and user.role.value == 'buyer' %}
+                <span class="badge badge-buyer">Покупатель</span>
+                {% else %}
+                <span class="badge badge-seller">Продавец</span>
+                {% endif %}
+                
+                {% if user.tariff %}
+                    {% if user.tariff.value|lower == 'free' %}
+                    <span class="badge badge-free">Бесплатный</span>
+                    {% elif user.tariff.value|lower == 'agency_start' %}
+                    <span class="badge badge-agency">Агентство</span>
+                    {% elif user.tariff.value|lower == 'developer_pro' %}
+                    <span class="badge badge-developer">Застройщик</span>
+                    {% elif user.tariff.value|lower == 'pro' %}
+                    <span class="badge badge-pro">PRO</span>
+                    {% elif user.tariff.value|lower == 'premium' %}
+                    <span class="badge badge-premium">Premium</span>
                     {% endif %}
-                    <div class="user-id">ID: {{ user.telegram_id }} {% if user.username %}@{{ user.username }}{% endif %}</div>
-                </div>
-            </div>
-            
-            <div class="user-info">
+                {% endif %}
+                
                 {% if user.is_admin %}
-                <span class="badge badge-admin">
-                    {% if user.admin_role %}
-                        {% if user.admin_role.value == 'super_admin' %}Старший админ
-                        {% elif user.admin_role.value == 'admin' %}Админ
-                        {% else %}Оператор{% endif %}
-                    {% else %}Админ{% endif %}
-                </span>
-                {% endif %}
-                
-                {% if user.phone %}
-                <span class="badge" style="background:#f1f5f9;color:#475569;">{{ user.phone }}</span>
+                <span class="badge badge-admin">Админ</span>
                 {% endif %}
             </div>
             
-            <div class="user-controls">
-                <div class="control-section">
-                    <label class="control-label">Роль:</label>
-                    <form class="control-form" method="POST" action="{{ url_for('webapp_update_role', user_id=user.id) }}">
-                        <input type="hidden" name="tg_id" value="{{ tg_id }}">
-                        <div class="control-row">
-                            <select name="role" class="control-select">
-                                <option value="buyer" {% if user.role and user.role.value == 'buyer' %}selected{% endif %}>Покупатель</option>
-                                <option value="seller" {% if user.role and user.role.value == 'seller' %}selected{% endif %}>Продавец</option>
-                            </select>
-                            <button type="submit" class="btn-save"><i class="bi bi-check-lg"></i></button>
-                        </div>
-                    </form>
-                </div>
-                
-                {% if permissions.can_edit_tariff %}
-                <div class="control-section">
-                    <label class="control-label">Тариф:</label>
-                    <form class="control-form" method="POST" action="{{ url_for('webapp_update_tariff', user_id=user.id) }}">
-                        <input type="hidden" name="tg_id" value="{{ tg_id }}">
-                        <div class="control-row">
-                            <select name="tariff" class="control-select">
-                                <option value="free" {% if user.tariff and user.tariff.value|lower == 'free' %}selected{% endif %}>Бесплатный</option>
-                                <option value="agency_start" {% if user.tariff and user.tariff.value|lower == 'agency_start' %}selected{% endif %}>Агентство</option>
-                                <option value="developer_pro" {% if user.tariff and user.tariff.value|lower == 'developer_pro' %}selected{% endif %}>Застройщик</option>
-                                <option value="pro" {% if user.tariff and user.tariff.value|lower == 'pro' %}selected{% endif %}>PRO</option>
-                                <option value="premium" {% if user.tariff and user.tariff.value|lower == 'premium' %}selected{% endif %}>Premium</option>
-                            </select>
-                            <button type="submit" class="btn-save"><i class="bi bi-check-lg"></i></button>
-                        </div>
-                    </form>
-                </div>
-                {% endif %}
-            </div>
-            
-            {% if permissions.can_manage_admins or permissions.can_delete_users %}
-            <div class="action-buttons">
-                {% if permissions.can_manage_admins and not user.is_admin %}
-                <form method="POST" action="{{ url_for('webapp_set_admin_role', user_id=user.id) }}" style="display:inline;">
-                    <input type="hidden" name="tg_id" value="{{ tg_id }}">
-                    <input type="hidden" name="admin_role" value="operator">
-                    <button type="submit" class="btn-admin"><i class="bi bi-person-plus"></i> Сделать админом</button>
-                </form>
-                {% endif %}
-                
+            <div class="card-buttons">
+                <a href="{{ url_for('webapp_user_edit', user_id=user.id, tg_id=tg_id) }}" class="btn-edit">
+                    <i class="bi bi-pencil"></i> Редактировать
+                </a>
                 {% if permissions.can_delete_users and user.id != admin_user.id %}
-                <form method="POST" action="{{ url_for('webapp_delete_user', user_id=user.id) }}" style="display:inline;" onsubmit="return confirm('Удалить пользователя?')">
+                <form method="POST" action="{{ url_for('webapp_delete_user', user_id=user.id) }}" style="margin:0;" onsubmit="return confirm('Удалить пользователя?')">
                     <input type="hidden" name="tg_id" value="{{ tg_id }}">
-                    <button type="submit" class="btn-danger"><i class="bi bi-trash"></i></button>
+                    <button type="submit" class="btn-delete"><i class="bi bi-trash"></i></button>
                 </form>
                 {% endif %}
             </div>
-            {% endif %}
         </div>
         {% endfor %}
-        
-        <div class="user-count">
-            Показано: {{ users|length }} пользователей
-        </div>
+    </div>
+    
+    <div class="user-count" style="text-align:center;padding:15px;color:#666;font-size:0.85rem;">
+        Показано: {{ users|length }} пользователей
+    </div>
     {% else %}
-        <div class="empty-state">
-            <i class="bi bi-people"></i>
-            <p>Пользователи не найдены</p>
-        </div>
+    <div class="empty-state">
+        <i class="bi bi-people"></i>
+        <p>Пользователи не найдены</p>
+    </div>
     {% endif %}
     
     <script>
