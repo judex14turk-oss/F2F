@@ -2117,6 +2117,7 @@ async def profile(message: types.Message):
         
         text = (
             f"👤 Ваш профиль\n\n"
+            f"🆔 Ваш ID: {user.telegram_id}\n"
             f"📋 Тип: {type_names.get(user.seller_type, 'Не указан')}\n"
             f"🏢 Компания: {user.company_name or 'Не указана'}\n"
             f"👤 Менеджер: {user.manager_name or 'Не указан'}\n"
@@ -2133,6 +2134,7 @@ async def profile(message: types.Message):
         
         text = (
             f"👤 Ваш профиль\n\n"
+            f"🆔 Ваш ID: {user.telegram_id}\n"
             f"🚪 Ищу: {user.search_rooms or 'Любые'} комн.\n"
             f"📍 Район: {user.search_district or 'Любой'}\n"
             f"💰 Бюджет: до {budget}\n"
