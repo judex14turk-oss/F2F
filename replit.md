@@ -17,6 +17,9 @@ The platform has two main user interfaces:
 - Created matching and offer systems
 - Built admin panel and seller CRM web interface
 - Configured PostgreSQL database with all required tables
+- Improved "Сделки" section with detailed contact cards showing client info
+- Added WebView tariffs page with modern minimalist design
+- Updated tariff system: Бесплатный (2 объявления, 1 лайк), Про (50/10), Премиум (100/30 + приоритет)
 
 ## User Preferences
 
@@ -38,9 +41,9 @@ The platform has two main user interfaces:
 - **Admins**: Full platform management through web interface
 
 ### Tariff System
-- **Free (Частник)**: 2 properties, cannot send offers to buyers
-- **Agency Start**: 20 properties, 10 daily offers (500,000 sum/month)
-- **Developer PRO**: Unlimited properties, 50 daily offers (2,000,000 sum/month)
+- **Бесплатный**: 2 properties, 1 like per day
+- **Про** (500,000 sum/month): 50 properties, 10 likes per day
+- **Премиум** (1,500,000 sum/month): 100 properties, 30 likes per day, priority display
 
 ### Key Features
 - Property listing with moderation workflow (Active/Moderation/Archive statuses)
