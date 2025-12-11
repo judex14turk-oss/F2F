@@ -282,13 +282,16 @@ def admin_users():
     
     if search_query:
         search_pattern = f"%{search_query}%"
-        query = query.filter(
-            (User.first_name.ilike(search_pattern)) |
-            (User.last_name.ilike(search_pattern)) |
-            (User.username.ilike(search_pattern)) |
-            (User.phone.ilike(search_pattern)) |
-            (User.company_name.ilike(search_pattern))
-        )
+        if search_query.isdigit():
+            query = query.filter(User.telegram_id == int(search_query))
+        else:
+            query = query.filter(
+                (User.first_name.ilike(search_pattern)) |
+                (User.last_name.ilike(search_pattern)) |
+                (User.username.ilike(search_pattern)) |
+                (User.phone.ilike(search_pattern)) |
+                (User.company_name.ilike(search_pattern))
+            )
     
     sort_columns = {
         'created_at': User.created_at,
@@ -608,13 +611,16 @@ def webapp_admin():
     
     if search_query:
         search_pattern = f"%{search_query}%"
-        query = query.filter(
-            (User.first_name.ilike(search_pattern)) |
-            (User.last_name.ilike(search_pattern)) |
-            (User.username.ilike(search_pattern)) |
-            (User.phone.ilike(search_pattern)) |
-            (User.company_name.ilike(search_pattern))
-        )
+        if search_query.isdigit():
+            query = query.filter(User.telegram_id == int(search_query))
+        else:
+            query = query.filter(
+                (User.first_name.ilike(search_pattern)) |
+                (User.last_name.ilike(search_pattern)) |
+                (User.username.ilike(search_pattern)) |
+                (User.phone.ilike(search_pattern)) |
+                (User.company_name.ilike(search_pattern))
+            )
     
     sort_columns = {
         'created_at': User.created_at,
