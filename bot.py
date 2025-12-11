@@ -1136,7 +1136,7 @@ async def show_property_card(message, property_id, state=None):
                 else:
                     media_group.append(InputMediaPhoto(media=photo_id))
             await message.answer_media_group(media_group)
-            await message.answer("👆 Выберите действие:", reply_markup=search_keyboard)
+            await message.answer("ㅤ", reply_markup=search_keyboard)
         else:
             await message.answer_photo(photo=photos[0], caption=text, reply_markup=search_keyboard)
     else:
