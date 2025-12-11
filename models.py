@@ -1,6 +1,5 @@
 from sqlalchemy import create_engine, Column, Integer, String, Text, Float, Boolean, DateTime, ForeignKey, Enum, BigInteger
-from sqlalchemy.ext.declarative import declarative_base
-from sqlalchemy.orm import sessionmaker, relationship
+from sqlalchemy.orm import declarative_base, sessionmaker, relationship
 from datetime import datetime
 import enum
 import os
@@ -52,14 +51,12 @@ class User(Base):
     is_admin = Column(Boolean, default=False)
     created_at = Column(DateTime, default=datetime.utcnow)
     
-    # Buyer specific fields
     search_rooms = Column(String(50))
     search_district = Column(String(200))
     search_budget_min = Column(Integer)
     search_budget_max = Column(Integer)
     search_payment_type = Column(String(50))
     
-    # Seller specific fields
     seller_type = Column(Enum(SellerType))
     company_name = Column(String(200))
     manager_name = Column(String(100))
@@ -98,6 +95,12 @@ class Property(Base):
     likes_count = Column(Integer, default=0)
     created_at = Column(DateTime, default=datetime.utcnow)
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    
+    building_type = Column(String(50))
+    renovation = Column(String(50))
+    furniture = Column(String(50))
+    room_layout = Column(String(50))
+    bathroom = Column(String(50))
     
     owner = relationship("User", back_populates="properties")
     likes = relationship("Like", back_populates="property")
@@ -164,7 +167,7 @@ class District(Base):
     
     id = Column(Integer, primary_key=True)
     name = Column(String(200), nullable=False)
-    city = Column(String(100), default='Ташкент')
+    city = Column(String(100), default='Tashkent')
 
 
 def init_db():
@@ -172,7 +175,6 @@ def init_db():
     
     session = SessionLocal()
     try:
-        # Add default districts for Tashkent
         districts = [
             "Алмазарский", "Бектемирский", "Мирабадский", "Мирзо-Улугбекский",
             "Сергелийский", "Учтепинский", "Чиланзарский", "Шайхантаурский",
@@ -184,12 +186,11 @@ def init_db():
             if not existing:
                 session.add(District(name=district_name))
         
-        # Add some residential complexes
         complexes = [
-            {"name": "Ташкент Сити", "district": "Юнусабадский"},
-            {"name": "Сарбон Палас", "district": "Юнусабадский"},
-            {"name": "Grand Mir Residence", "district": "Мирзо-Улугбекский"},
-            {"name": "Mirabad Hills", "district": "Мирабадский"},
+            {"name": "Tashkent City", "district": "Yunusabad"},
+            {"name": "Sarbon Palace", "district": "Yunusabad"},
+            {"name": "Grand Mir Residence", "district": "Mirzo Ulugbek"},
+            {"name": "Mirabad Hills", "district": "Mirabad"},
         ]
         
         for complex_data in complexes:
