@@ -1256,7 +1256,7 @@ async def my_properties(message: types.Message):
             f"👁 Просмотров: {prop.views_count} | ❤️ Лайков: {prop.likes_count}\n"
         )
         
-        keyboard = InlineKeyboardMarkup(inline_keyboard=[
+        buttons = [
             [
                 InlineKeyboardButton(text="✏️ Редактировать", callback_data=f"prop_edit_{prop.id}"),
                 InlineKeyboardButton(text="🗑 Удалить", callback_data=f"prop_delete_{prop.id}")
@@ -1265,9 +1265,64 @@ async def my_properties(message: types.Message):
                 InlineKeyboardButton(text="📦 В архив" if prop.status == PropertyStatus.ACTIVE else "✅ Активировать", 
                                      callback_data=f"prop_toggle_{prop.id}")
             ]
-        ])
+        ]
+        if prop.likes_count > 0:
+            buttons.append([
+                InlineKeyboardButton(text=f"❤️ Кто лайкнул ({prop.likes_count})", callback_data=f"prop_likers_{prop.id}")
+            ])
+        keyboard = InlineKeyboardMarkup(inline_keyboard=buttons)
         
         await message.answer(text, reply_markup=keyboard, parse_mode="HTML")
+
+
+@dp.callback_query(F.data.startswith("prop_likers_"))
+async def show_property_likers(callback: types.CallbackQuery):
+    prop_id = int(callback.data.replace("prop_likers_", ""))
+    
+    db = SessionLocal()
+    prop = db.query(Property).filter(Property.id == prop_id).first()
+    
+    if not prop:
+        await callback.answer("Объект не найден")
+        db.close()
+        return
+    
+    user = db.query(User).filter(User.telegram_id == callback.from_user.id).first()
+    if not user or prop.owner_id != user.id:
+        await callback.answer("Нет доступа")
+        db.close()
+        return
+    
+    likes = db.query(Like).filter(Like.property_id == prop_id).order_by(Like.created_at.desc()).all()
+    
+    if not likes:
+        await callback.answer("Пока нет лайков")
+        db.close()
+        return
+    
+    text = f"❤️ <b>Кто лайкнул объект в {prop.district}:</b>\n\n"
+    
+    for like in likes:
+        liker = db.query(User).filter(User.id == like.user_id).first()
+        if liker:
+            time_ago = datetime.now() - like.created_at
+            hours = int(time_ago.total_seconds() // 3600)
+            time_str = f"{hours} ч. назад" if hours > 0 else "только что"
+            
+            budget_str = f"💰 Бюджет: до ${liker.search_budget_max:,}\n" if liker.search_budget_max else ""
+            
+            text += (
+                f"👤 <b>{liker.first_name or 'Покупатель'}</b>\n"
+                f"📞 {liker.phone or 'Телефон не указан'}\n"
+                f"🔍 Ищет: {liker.search_rooms or 'любые'} комн. | {liker.search_district or 'любой район'}\n"
+                f"{budget_str}"
+                f"⏰ {time_str}\n\n"
+            )
+    
+    db.close()
+    
+    await callback.message.answer(text, parse_mode="HTML")
+    await callback.answer()
 
 
 class EditPropertyStates(StatesGroup):
@@ -2374,6 +2429,37 @@ async def settings_budget_entered(message: types.Message, state: FSMContext):
 
 
 PROPERTY_LIFETIME_DAYS = 30
+LIKE_LIFETIME_DAYS = 1
+
+
+async def cleanup_old_likes():
+    """Фоновая задача для удаления лайков старше 1 дня"""
+    while True:
+        try:
+            await asyncio.sleep(3600)
+            
+            db = SessionLocal()
+            cutoff_date = datetime.utcnow() - timedelta(days=LIKE_LIFETIME_DAYS)
+            
+            old_likes = db.query(Like).filter(Like.created_at < cutoff_date).all()
+            
+            deleted_count = 0
+            for like in old_likes:
+                prop = db.query(Property).filter(Property.id == like.property_id).first()
+                if prop and prop.likes_count > 0:
+                    prop.likes_count -= 1
+                db.delete(like)
+                deleted_count += 1
+            
+            if deleted_count > 0:
+                db.commit()
+                print(f"Cleanup: deleted {deleted_count} old likes")
+            
+            db.close()
+            
+        except Exception as e:
+            print(f"Likes cleanup task error: {e}")
+            await asyncio.sleep(60)
 
 
 async def cleanup_old_properties():
@@ -2429,8 +2515,9 @@ async def main():
     print("Initializing database...")
     init_db()
     
-    print("Starting cleanup background task...")
+    print("Starting cleanup background tasks...")
     asyncio.create_task(cleanup_old_properties())
+    asyncio.create_task(cleanup_old_likes())
     
     print("Starting bot...")
     await dp.start_polling(bot)
