@@ -888,6 +888,13 @@ def webapp_delete_user(user_id):
     
     user = db.query(User).filter(User.id == user_id).first()
     if user and user.id != admin.id:
+        db.query(Like).filter(Like.user_id == user.id).delete()
+        db.query(Like).filter(Like.property_owner_id == user.id).delete()
+        db.query(Match).filter(Match.buyer_id == user.id).delete()
+        db.query(Match).filter(Match.seller_id == user.id).delete()
+        db.query(Offer).filter(Offer.buyer_id == user.id).delete()
+        db.query(Offer).filter(Offer.seller_id == user.id).delete()
+        db.query(Property).filter(Property.owner_id == user.id).delete()
         db.delete(user)
         db.commit()
     db.close()
