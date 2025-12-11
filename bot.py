@@ -2013,57 +2013,126 @@ async def my_likes(message: types.Message):
     await message.answer(text)
 
 
+class SearchSettingsStates(StatesGroup):
+    deal_type = State()
+    prop_type = State()
+    rooms = State()
+    district = State()
+    budget = State()
+
+
 @dp.message(F.text == "⚙️ Настройки поиска")
 async def search_settings(message: types.Message, state: FSMContext):
-    await message.answer(
-        "⚙️ Изменить параметры поиска\n\n🏷 Что вас интересует?",
-        reply_markup=InlineKeyboardMarkup(inline_keyboard=[
-            [InlineKeyboardButton(text="🏠 Купить", callback_data="settings_deal_buy")],
-            [InlineKeyboardButton(text="🔑 Снять в аренду", callback_data="settings_deal_rent")]
-        ])
+    keyboard = ReplyKeyboardMarkup(
+        keyboard=[
+            [KeyboardButton(text="🏠 Купить"), KeyboardButton(text="🔑 Снять в аренду")],
+            [KeyboardButton(text="⬅️ Назад")]
+        ],
+        resize_keyboard=True
     )
+    await message.answer("⚙️ Изменить параметры поиска\n\n🏷 Что вас интересует?", reply_markup=keyboard)
+    await state.set_state(SearchSettingsStates.deal_type)
 
 
-@dp.callback_query(F.data.startswith("settings_deal_"))
-async def settings_deal_selected(callback: types.CallbackQuery, state: FSMContext):
-    deal_type = callback.data.replace("settings_deal_", "")
+@dp.message(F.text == "⬅️ Назад", SearchSettingsStates.deal_type)
+async def settings_back_to_menu(message: types.Message, state: FSMContext):
+    await state.clear()
+    keyboard = ReplyKeyboardMarkup(
+        keyboard=[
+            [KeyboardButton(text="🏠 Смотреть квартиры")],
+            [KeyboardButton(text="❤️ Мои лайки"), KeyboardButton(text="💬 Мэтчи")],
+            [KeyboardButton(text="👤 Профиль"), KeyboardButton(text="⚙️ Настройки поиска")]
+        ],
+        resize_keyboard=True
+    )
+    await message.answer("Вы вернулись в главное меню", reply_markup=keyboard)
+
+
+@dp.message(SearchSettingsStates.deal_type)
+async def settings_deal_selected(message: types.Message, state: FSMContext):
+    if message.text == "🏠 Купить":
+        deal_type = "buy"
+    elif message.text == "🔑 Снять в аренду":
+        deal_type = "rent"
+    else:
+        return
+    
     await state.update_data(search_deal_type=deal_type)
     
-    await callback.message.edit_text(
-        "🏢 Выберите тип недвижимости:",
-        reply_markup=InlineKeyboardMarkup(inline_keyboard=[
-            [InlineKeyboardButton(text="🏢 Квартира", callback_data="settings_proptype_apartment")],
-            [InlineKeyboardButton(text="🏡 Дом / Участок", callback_data="settings_proptype_house")],
-            [InlineKeyboardButton(text="🏪 Коммерческая", callback_data="settings_proptype_commercial")]
-        ])
+    keyboard = ReplyKeyboardMarkup(
+        keyboard=[
+            [KeyboardButton(text="🏢 Квартира")],
+            [KeyboardButton(text="🏡 Дом / Участок")],
+            [KeyboardButton(text="🏪 Коммерческая")],
+            [KeyboardButton(text="⬅️ Назад")]
+        ],
+        resize_keyboard=True
     )
+    await message.answer("🏢 Выберите тип недвижимости:", reply_markup=keyboard)
+    await state.set_state(SearchSettingsStates.prop_type)
 
 
-@dp.callback_query(F.data.startswith("settings_proptype_"))
-async def settings_proptype_selected(callback: types.CallbackQuery, state: FSMContext):
-    prop_type = callback.data.replace("settings_proptype_", "")
+@dp.message(F.text == "⬅️ Назад", SearchSettingsStates.prop_type)
+async def settings_back_to_deal(message: types.Message, state: FSMContext):
+    keyboard = ReplyKeyboardMarkup(
+        keyboard=[
+            [KeyboardButton(text="🏠 Купить"), KeyboardButton(text="🔑 Снять в аренду")],
+            [KeyboardButton(text="⬅️ Назад")]
+        ],
+        resize_keyboard=True
+    )
+    await message.answer("🏷 Что вас интересует?", reply_markup=keyboard)
+    await state.set_state(SearchSettingsStates.deal_type)
+
+
+@dp.message(SearchSettingsStates.prop_type)
+async def settings_proptype_selected(message: types.Message, state: FSMContext):
+    prop_types = {
+        "🏢 Квартира": "apartment",
+        "🏡 Дом / Участок": "house",
+        "🏪 Коммерческая": "commercial"
+    }
+    prop_type = prop_types.get(message.text)
+    if not prop_type:
+        return
+    
     await state.update_data(search_prop_type=prop_type)
     
-    await callback.message.edit_text(
-        "🚪 Выберите количество комнат:",
-        reply_markup=InlineKeyboardMarkup(inline_keyboard=[
-            [
-                InlineKeyboardButton(text="1", callback_data="settings_rooms_1"),
-                InlineKeyboardButton(text="2", callback_data="settings_rooms_2"),
-                InlineKeyboardButton(text="3", callback_data="settings_rooms_3"),
-            ],
-            [
-                InlineKeyboardButton(text="4+", callback_data="settings_rooms_4"),
-                InlineKeyboardButton(text="Студия", callback_data="settings_rooms_studio"),
-            ],
-            [InlineKeyboardButton(text="Любое", callback_data="settings_rooms_any")]
-        ])
+    keyboard = ReplyKeyboardMarkup(
+        keyboard=[
+            [KeyboardButton(text="1"), KeyboardButton(text="2"), KeyboardButton(text="3")],
+            [KeyboardButton(text="4+"), KeyboardButton(text="Студия")],
+            [KeyboardButton(text="Любое")],
+            [KeyboardButton(text="⬅️ Назад")]
+        ],
+        resize_keyboard=True
     )
+    await message.answer("🚪 Выберите количество комнат:", reply_markup=keyboard)
+    await state.set_state(SearchSettingsStates.rooms)
 
 
-@dp.callback_query(F.data.startswith("settings_rooms_"))
-async def settings_rooms_selected(callback: types.CallbackQuery, state: FSMContext):
-    rooms = callback.data.replace("settings_rooms_", "")
+@dp.message(F.text == "⬅️ Назад", SearchSettingsStates.rooms)
+async def settings_back_to_proptype(message: types.Message, state: FSMContext):
+    keyboard = ReplyKeyboardMarkup(
+        keyboard=[
+            [KeyboardButton(text="🏢 Квартира")],
+            [KeyboardButton(text="🏡 Дом / Участок")],
+            [KeyboardButton(text="🏪 Коммерческая")],
+            [KeyboardButton(text="⬅️ Назад")]
+        ],
+        resize_keyboard=True
+    )
+    await message.answer("🏢 Выберите тип недвижимости:", reply_markup=keyboard)
+    await state.set_state(SearchSettingsStates.prop_type)
+
+
+@dp.message(SearchSettingsStates.rooms)
+async def settings_rooms_selected(message: types.Message, state: FSMContext):
+    rooms_map = {"1": "1", "2": "2", "3": "3", "4+": "4", "студия": "studio", "любое": "any"}
+    rooms = rooms_map.get(message.text.lower())
+    if not rooms:
+        return
+    
     await state.update_data(search_rooms=rooms)
     
     db = SessionLocal()
@@ -2073,51 +2142,88 @@ async def settings_rooms_selected(callback: types.CallbackQuery, state: FSMConte
     keyboard_buttons = []
     row = []
     for district in districts:
-        row.append(InlineKeyboardButton(text=district.name, callback_data=f"settings_district_{district.name[:20]}"))
+        row.append(KeyboardButton(text=district.name))
         if len(row) == 2:
             keyboard_buttons.append(row)
             row = []
     if row:
         keyboard_buttons.append(row)
-    keyboard_buttons.append([InlineKeyboardButton(text="Любой район", callback_data="settings_district_any")])
+    keyboard_buttons.append([KeyboardButton(text="Любой район")])
+    keyboard_buttons.append([KeyboardButton(text="⬅️ Назад")])
     
-    await callback.message.edit_text(
-        "📍 Выберите район:",
-        reply_markup=InlineKeyboardMarkup(inline_keyboard=keyboard_buttons)
+    keyboard = ReplyKeyboardMarkup(keyboard=keyboard_buttons, resize_keyboard=True)
+    await message.answer("📍 Выберите район:", reply_markup=keyboard)
+    await state.set_state(SearchSettingsStates.district)
+
+
+@dp.message(F.text == "⬅️ Назад", SearchSettingsStates.district)
+async def settings_back_to_rooms(message: types.Message, state: FSMContext):
+    keyboard = ReplyKeyboardMarkup(
+        keyboard=[
+            [KeyboardButton(text="1"), KeyboardButton(text="2"), KeyboardButton(text="3")],
+            [KeyboardButton(text="4+"), KeyboardButton(text="Студия")],
+            [KeyboardButton(text="Любое")],
+            [KeyboardButton(text="⬅️ Назад")]
+        ],
+        resize_keyboard=True
     )
+    await message.answer("🚪 Выберите количество комнат:", reply_markup=keyboard)
+    await state.set_state(SearchSettingsStates.rooms)
 
 
-@dp.callback_query(F.data.startswith("settings_district_"))
-async def settings_district_selected(callback: types.CallbackQuery, state: FSMContext):
-    district = callback.data.replace("settings_district_", "")
-    if district == "any":
-        district = "Любой"
+@dp.message(SearchSettingsStates.district)
+async def settings_district_selected(message: types.Message, state: FSMContext):
+    district = message.text if message.text != "Любой район" else "Любой"
     await state.update_data(search_district=district)
     
-    await callback.message.edit_text(
-        "💰 Введите максимальный бюджет в долларах:\n\n(например: 50000)"
+    keyboard = ReplyKeyboardMarkup(
+        keyboard=[[KeyboardButton(text="⬅️ Назад")]],
+        resize_keyboard=True
     )
-    await callback.answer()
+    await message.answer("💰 Введите максимальный бюджет в долларах:\n\n(например: 50000)", reply_markup=keyboard)
+    await state.set_state(SearchSettingsStates.budget)
 
 
-@dp.message(F.text.regexp(r'^\d+$'))
+@dp.message(F.text == "⬅️ Назад", SearchSettingsStates.budget)
+async def settings_back_to_district(message: types.Message, state: FSMContext):
+    db = SessionLocal()
+    districts = db.query(District).all()
+    db.close()
+    
+    keyboard_buttons = []
+    row = []
+    for district in districts:
+        row.append(KeyboardButton(text=district.name))
+        if len(row) == 2:
+            keyboard_buttons.append(row)
+            row = []
+    if row:
+        keyboard_buttons.append(row)
+    keyboard_buttons.append([KeyboardButton(text="Любой район")])
+    keyboard_buttons.append([KeyboardButton(text="⬅️ Назад")])
+    
+    keyboard = ReplyKeyboardMarkup(keyboard=keyboard_buttons, resize_keyboard=True)
+    await message.answer("📍 Выберите район:", reply_markup=keyboard)
+    await state.set_state(SearchSettingsStates.district)
+
+
+@dp.message(SearchSettingsStates.budget)
 async def settings_budget_entered(message: types.Message, state: FSMContext):
+    budget = validate_number(message.text)
+    if budget is None or budget <= 0:
+        await message.answer("❌ Введите корректный бюджет числом")
+        return
+    
     db = SessionLocal()
     user = db.query(User).filter(User.telegram_id == message.from_user.id).first()
     
-    if not user or user.role != UserRole.BUYER:
-        db.close()
-        return
-    
     data = await state.get_data()
-    budget = int(message.text)
-    
     deal_type = data.get("search_deal_type", "buy")
     prop_type = data.get("search_prop_type", "apartment")
     rooms = data.get("search_rooms", "any")
     district = data.get("search_district", "Любой")
     
-    user.search_budget_max = budget
+    user.search_budget_max = int(budget)
     user.search_rooms = rooms
     user.search_district = district
     user.search_payment_type = f"{deal_type}_{prop_type}"
@@ -2129,12 +2235,22 @@ async def settings_budget_entered(message: types.Message, state: FSMContext):
     deal_names = {"buy": "Покупка", "rent": "Аренда"}
     prop_names = {"apartment": "Квартира", "house": "Дом/Участок", "commercial": "Коммерческая"}
     
+    keyboard = ReplyKeyboardMarkup(
+        keyboard=[
+            [KeyboardButton(text="🏠 Смотреть квартиры")],
+            [KeyboardButton(text="❤️ Мои лайки"), KeyboardButton(text="💬 Мэтчи")],
+            [KeyboardButton(text="👤 Профиль"), KeyboardButton(text="⚙️ Настройки поиска")]
+        ],
+        resize_keyboard=True
+    )
+    
     await message.answer(
         f"✅ Настройки обновлены!\n\n"
         f"🏷 Тип: {deal_names.get(deal_type, deal_type)} — {prop_names.get(prop_type, prop_type)}\n"
         f"🚪 Комнаты: {rooms if rooms != 'any' else 'Любые'}\n"
         f"📍 Район: {district}\n"
-        f"💰 Бюджет: до ${budget:,}"
+        f"💰 Бюджет: до ${int(budget):,}",
+        reply_markup=keyboard
     )
 
 
