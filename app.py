@@ -784,6 +784,66 @@ def webapp_delete_user(user_id):
     return redirect(url_for('webapp_admin', tg_id=tg_id))
 
 
+@app.route('/webapp/admin/check_user/<int:telegram_id>')
+def webapp_check_user(telegram_id):
+    tg_id = request.args.get('tg_id')
+    
+    db = get_db()
+    admin = db.query(User).filter(User.telegram_id == int(tg_id)).first() if tg_id else None
+    
+    if not admin or not admin.is_admin:
+        db.close()
+        return jsonify({'error': 'Доступ запрещён'}), 403
+    
+    user = db.query(User).filter(User.telegram_id == telegram_id).first()
+    db.close()
+    
+    if not user:
+        return jsonify({'error': 'Пользователь с таким ID не найден в системе'})
+    
+    return jsonify({
+        'id': user.id,
+        'telegram_id': user.telegram_id,
+        'first_name': user.first_name,
+        'last_name': user.last_name,
+        'username': user.username,
+        'is_admin': user.is_admin
+    })
+
+
+@app.route('/webapp/admin/add_admin', methods=['POST'])
+def webapp_add_admin():
+    tg_id = request.form.get('tg_id')
+    new_admin_id = request.form.get('new_admin_id')
+    admin_role = request.form.get('admin_role')
+    
+    db = get_db()
+    admin = db.query(User).filter(User.telegram_id == int(tg_id)).first() if tg_id else None
+    
+    if not admin or not admin.is_admin:
+        db.close()
+        return "Доступ запрещён", 403
+    
+    permissions = get_admin_permissions(admin.admin_role)
+    if not permissions['can_manage_admins']:
+        db.close()
+        return "У вас нет прав для добавления администраторов", 403
+    
+    user = db.query(User).filter(User.telegram_id == int(new_admin_id)).first()
+    if user and not user.is_admin:
+        role_map = {
+            'super_admin': AdminRole.SUPER_ADMIN,
+            'admin': AdminRole.ADMIN,
+            'operator': AdminRole.OPERATOR
+        }
+        user.is_admin = True
+        user.admin_role = role_map.get(admin_role, AdminRole.OPERATOR)
+        db.commit()
+    db.close()
+    
+    return redirect(url_for('webapp_admins', tg_id=tg_id))
+
+
 @app.route('/api/districts')
 def api_districts():
     db = get_db()
