@@ -1963,9 +1963,64 @@ async def search_settings(message: types.Message, state: FSMContext):
     await state.set_state(RegistrationStates.buyer_rooms)
 
 
+PROPERTY_LIFETIME_DAYS = 30
+
+
+async def cleanup_old_properties():
+    """Фоновая задача для удаления объявлений старше 30 дней"""
+    while True:
+        try:
+            await asyncio.sleep(3600)
+            
+            db = SessionLocal()
+            cutoff_date = datetime.utcnow() - timedelta(days=PROPERTY_LIFETIME_DAYS)
+            
+            old_properties = db.query(Property).filter(
+                Property.created_at < cutoff_date
+            ).all()
+            
+            deleted_count = 0
+            for prop in old_properties:
+                try:
+                    owner = db.query(User).filter(User.id == prop.owner_id).first()
+                    
+                    if owner and owner.telegram_id:
+                        try:
+                            await bot.send_message(
+                                owner.telegram_id,
+                                f"⏰ Объявление удалено автоматически\n\n"
+                                f"📍 {prop.district or 'Объект'}\n"
+                                f"💰 ${prop.price:,}\n\n"
+                                f"Причина: прошло 30 дней с момента публикации.\n"
+                                f"Вы можете добавить новое объявление."
+                            )
+                        except:
+                            pass
+                    
+                    db.query(Like).filter(Like.property_id == prop.id).delete()
+                    db.delete(prop)
+                    deleted_count += 1
+                except Exception as e:
+                    print(f"Error deleting property {prop.id}: {e}")
+                    continue
+            
+            if deleted_count > 0:
+                db.commit()
+                print(f"Cleanup: deleted {deleted_count} old properties")
+            
+            db.close()
+            
+        except Exception as e:
+            print(f"Cleanup task error: {e}")
+            await asyncio.sleep(60)
+
+
 async def main():
     print("Initializing database...")
     init_db()
+    
+    print("Starting cleanup background task...")
+    asyncio.create_task(cleanup_old_properties())
     
     print("Starting bot...")
     await dp.start_polling(bot)
