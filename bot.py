@@ -1768,37 +1768,52 @@ async def likes_received(message: types.Message):
     db = SessionLocal()
     user = db.query(User).filter(User.telegram_id == message.from_user.id).first()
     
+    from datetime import timedelta
+    last_24h = datetime.utcnow() - timedelta(hours=24)
+    
     likes = db.query(Like).filter(
         Like.property_owner_id == user.id,
-        Like.is_matched == False
+        Like.is_matched == False,
+        Like.created_at >= last_24h
     ).order_by(Like.created_at.desc()).all()
-    db.close()
     
     if not likes:
-        await message.answer("Пока нет новых лайков. Добавьте больше объектов!")
+        await message.answer("Пока нет новых лайков за последние 24 часа. Добавьте больше объектов!")
+        db.close()
         return
     
-    text = "❤️ Вас лайкнули:\n\n"
+    text = f"❤️ Лайки за последние 24 часа ({len(likes)}):\n\n"
     
     keyboard_buttons = []
     for like in likes[:10]:
-        db = SessionLocal()
         buyer = db.query(User).filter(User.id == like.user_id).first()
         prop = db.query(Property).filter(Property.id == like.property_id).first()
-        db.close()
         
         if buyer and prop:
             name = buyer.first_name or "Покупатель"
-            budget = f"до ${buyer.search_budget_max:,}" if buyer.search_budget_max else ""
+            username = f"@{buyer.username}" if buyer.username else "нет"
+            phone = buyer.phone or "не указан"
+            budget = f"до ${buyer.search_budget_max:,}" if buyer.search_budget_max else "не указан"
+            prop_id = prop.unique_id or f"#{prop.id}"
+            
+            time_ago = datetime.utcnow() - like.created_at
+            hours_ago = int(time_ago.total_seconds() // 3600)
+            mins_ago = int((time_ago.total_seconds() % 3600) // 60)
+            time_str = f"{hours_ago}ч {mins_ago}м назад" if hours_ago > 0 else f"{mins_ago}м назад"
+            
             text += (
-                f"👤 {name}\n"
-                f"   Интересуется: {prop.district} (${prop.price:,})\n"
-                f"   Бюджет: {budget}\n\n"
+                f"🏠 Объект: {prop_id}\n"
+                f"👤 {name} | {username}\n"
+                f"📞 {phone}\n"
+                f"💰 Бюджет: {budget}\n"
+                f"⏰ {time_str}\n"
+                f"{'─' * 20}\n\n"
             )
             keyboard_buttons.append([
                 InlineKeyboardButton(text=f"🤝 Открыть контакт {name}", callback_data=f"match_{like.id}")
             ])
     
+    db.close()
     await message.answer(text, reply_markup=InlineKeyboardMarkup(inline_keyboard=keyboard_buttons))
 
 
