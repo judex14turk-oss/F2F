@@ -55,15 +55,43 @@
             font-weight: 600;
         }
         
-        .section-title {
-            color: white;
-            font-size: 1.1rem;
-            font-weight: 600;
-            padding: 0 15px;
-            margin: 25px 0 15px;
+        .sub-tabs {
             display: flex;
-            align-items: center;
-            gap: 8px;
+            gap: 10px;
+            padding: 0 10px;
+            margin-bottom: 20px;
+        }
+        
+        .sub-tab {
+            flex: 1;
+            padding: 14px;
+            background: rgba(255,255,255,0.2);
+            border-radius: 15px;
+            text-align: center;
+            color: white;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s;
+            border: 2px solid transparent;
+        }
+        
+        .sub-tab.active {
+            background: white;
+            color: #764ba2;
+        }
+        
+        .sub-tab i {
+            display: block;
+            font-size: 1.5rem;
+            margin-bottom: 5px;
+        }
+        
+        .content-section {
+            display: none;
+        }
+        
+        .content-section.active {
+            display: block;
         }
         
         .tariff-card {
@@ -83,8 +111,6 @@
         .tariff-header.free { background: linear-gradient(135deg, #e0e7ff 0%, #c7d2fe 100%); }
         .tariff-header.pro { background: linear-gradient(135deg, #d1fae5 0%, #a7f3d0 100%); }
         .tariff-header.premium { background: linear-gradient(135deg, #fce7f3 0%, #fbcfe8 100%); }
-        .tariff-header.agency { background: linear-gradient(135deg, #dbeafe 0%, #bfdbfe 100%); }
-        .tariff-header.developer { background: linear-gradient(135deg, #fef3c7 0%, #fde68a 100%); }
         
         .tariff-name {
             font-size: 1.2rem;
@@ -216,10 +242,6 @@
             box-shadow: 0 5px 20px rgba(139, 92, 246, 0.4);
         }
         
-        .btn-save-tariff:active {
-            transform: translateY(0);
-        }
-        
         .promo-create-card {
             background: white;
             margin: 0 10px 15px;
@@ -239,10 +261,6 @@
             display: grid;
             grid-template-columns: repeat(2, 1fr);
             gap: 12px;
-        }
-        
-        .form-grid .full-width {
-            grid-column: span 2;
         }
         
         .form-field {
@@ -283,6 +301,14 @@
             font-weight: 600;
             margin-top: 15px;
             cursor: pointer;
+        }
+        
+        .section-title {
+            color: white;
+            font-size: 1rem;
+            font-weight: 600;
+            padding: 0 15px;
+            margin: 20px 0 15px;
         }
         
         .promo-card {
@@ -377,8 +403,8 @@
 </head>
 <body>
     <div class="header">
-        <h1><i class="bi bi-sliders"></i> Управление тарифами</h1>
-        <div class="header-sub">Настройка цен и промокодов</div>
+        <h1><i class="bi bi-sliders"></i> Управление</h1>
+        <div class="header-sub">Тарифы и промокоды</div>
     </div>
     
     <div class="nav-tabs">
@@ -398,105 +424,113 @@
         </a>
     </div>
     
-    <div class="section-title"><i class="bi bi-gear"></i> Настройка тарифов</div>
-    
-    {% for tariff in tariffs %}
-    <div class="tariff-card">
-        <div class="tariff-header {% if tariff.tariff_type == 'free' %}free{% elif tariff.tariff_type == 'pro' %}pro{% elif tariff.tariff_type == 'premium' %}premium{% elif tariff.tariff_type == 'agency_start' %}agency{% elif tariff.tariff_type == 'developer_pro' %}developer{% endif %}">
-            <div class="tariff-name">
-                {% if tariff.tariff_type == 'free' %}<i class="bi bi-gift"></i> Бесплатный
-                {% elif tariff.tariff_type == 'pro' %}<i class="bi bi-star"></i> PRO
-                {% elif tariff.tariff_type == 'premium' %}<i class="bi bi-gem"></i> Премиум
-                {% elif tariff.tariff_type == 'agency_start' %}<i class="bi bi-building"></i> Агентство
-                {% elif tariff.tariff_type == 'developer_pro' %}<i class="bi bi-buildings"></i> Застройщик
-                {% else %}{{ tariff.tariff_type }}{% endif %}
-            </div>
-            <div class="tariff-price">{{ "{:,.0f}".format(tariff.price).replace(",", " ") }} сум</div>
+    <div class="sub-tabs">
+        <div class="sub-tab active" onclick="showSection('tariffs')">
+            <i class="bi bi-currency-dollar"></i>
+            Тарифы
         </div>
-        
-        <div class="tariff-body">
-            <form method="POST" action="{{ url_for('webapp_update_tariff_settings') }}">
+        <div class="sub-tab" onclick="showSection('promos')">
+            <i class="bi bi-percent"></i>
+            Промокоды
+        </div>
+    </div>
+    
+    <div id="tariffs-section" class="content-section active">
+        {% for tariff in tariffs %}
+        {% if tariff.tariff_type in ['free', 'pro', 'premium'] %}
+        <div class="tariff-card">
+            <div class="tariff-header {% if tariff.tariff_type == 'free' %}free{% elif tariff.tariff_type == 'pro' %}pro{% elif tariff.tariff_type == 'premium' %}premium{% endif %}">
+                <div class="tariff-name">
+                    {% if tariff.tariff_type == 'free' %}<i class="bi bi-gift"></i> Бесплатный
+                    {% elif tariff.tariff_type == 'pro' %}<i class="bi bi-star"></i> PRO
+                    {% elif tariff.tariff_type == 'premium' %}<i class="bi bi-gem"></i> Премиум
+                    {% endif %}
+                </div>
+                <div class="tariff-price">{{ "{:,.0f}".format(tariff.price).replace(",", " ") }} сум</div>
+            </div>
+            
+            <div class="tariff-body">
+                <form method="POST" action="{{ url_for('webapp_update_tariff_settings') }}">
+                    <input type="hidden" name="tg_id" value="{{ tg_id }}">
+                    <input type="hidden" name="tariff_type" value="{{ tariff.tariff_type }}">
+                    
+                    <div class="input-group-custom">
+                        <div class="input-item">
+                            <label>Цена (сум)</label>
+                            <input type="number" name="price" value="{{ tariff.price }}" min="0" step="1000">
+                        </div>
+                        <div class="input-item">
+                            <label>Объявлений</label>
+                            <input type="number" name="properties_limit" value="{{ tariff.properties_limit }}" min="0">
+                        </div>
+                        <div class="input-item">
+                            <label>Лайков/день</label>
+                            <input type="number" name="likes_per_day" value="{{ tariff.likes_per_day }}" min="0">
+                        </div>
+                    </div>
+                    
+                    <div class="priority-toggle">
+                        <label><i class="bi bi-lightning"></i> Приоритетный показ</label>
+                        <label class="toggle-switch">
+                            <input type="checkbox" name="priority_display" {% if tariff.priority_display %}checked{% endif %}>
+                            <span class="toggle-slider"></span>
+                        </label>
+                    </div>
+                    
+                    <button type="submit" class="btn-save-tariff">
+                        <i class="bi bi-check-lg"></i> Сохранить
+                    </button>
+                </form>
+            </div>
+        </div>
+        {% endif %}
+        {% endfor %}
+    </div>
+    
+    <div id="promos-section" class="content-section">
+        <div class="promo-create-card">
+            <h3><i class="bi bi-plus-circle"></i> Создать промокод</h3>
+            <form method="POST" action="{{ url_for('webapp_create_promo') }}">
                 <input type="hidden" name="tg_id" value="{{ tg_id }}">
-                <input type="hidden" name="tariff_type" value="{{ tariff.tariff_type }}">
                 
-                <div class="input-group-custom">
-                    <div class="input-item">
-                        <label>Цена (сум)</label>
-                        <input type="number" name="price" value="{{ tariff.price }}" min="0" step="1000">
+                <div class="form-grid">
+                    <div class="form-field">
+                        <label>Код</label>
+                        <input type="text" name="code" placeholder="SALE50" required style="text-transform:uppercase;">
                     </div>
-                    <div class="input-item">
-                        <label>Объявлений</label>
-                        <input type="number" name="properties_limit" value="{{ tariff.properties_limit }}" min="0">
+                    <div class="form-field">
+                        <label>Скидка %</label>
+                        <input type="number" name="discount_percent" value="10" min="1" max="100" required>
                     </div>
-                    <div class="input-item">
-                        <label>Лайков/день</label>
-                        <input type="number" name="likes_per_day" value="{{ tariff.likes_per_day }}" min="0">
+                    <div class="form-field">
+                        <label>Тариф</label>
+                        <select name="tariff" required>
+                            <option value="pro">PRO</option>
+                            <option value="premium">Премиум</option>
+                        </select>
+                    </div>
+                    <div class="form-field">
+                        <label>Дней</label>
+                        <input type="number" name="days_valid" value="30" min="1" required>
+                    </div>
+                    <div class="form-field">
+                        <label>Макс. исп.</label>
+                        <input type="number" name="max_uses" value="100" min="1" required>
+                    </div>
+                    <div class="form-field">
+                        <label>Описание</label>
+                        <input type="text" name="description" placeholder="Акция">
                     </div>
                 </div>
                 
-                <div class="priority-toggle">
-                    <label><i class="bi bi-lightning"></i> Приоритетный показ</label>
-                    <label class="toggle-switch">
-                        <input type="checkbox" name="priority_display" {% if tariff.priority_display %}checked{% endif %}>
-                        <span class="toggle-slider"></span>
-                    </label>
-                </div>
-                
-                <button type="submit" class="btn-save-tariff">
-                    <i class="bi bi-check-lg"></i> Сохранить изменения
+                <button type="submit" class="btn-create-promo">
+                    <i class="bi bi-plus-lg"></i> Создать
                 </button>
             </form>
         </div>
-    </div>
-    {% endfor %}
-    
-    <div class="section-title"><i class="bi bi-plus-circle"></i> Создать промокод</div>
-    
-    <div class="promo-create-card">
-        <form method="POST" action="{{ url_for('webapp_create_promo') }}">
-            <input type="hidden" name="tg_id" value="{{ tg_id }}">
-            
-            <div class="form-grid">
-                <div class="form-field">
-                    <label>Код промокода</label>
-                    <input type="text" name="code" placeholder="SALE50" required style="text-transform:uppercase;">
-                </div>
-                <div class="form-field">
-                    <label>Скидка %</label>
-                    <input type="number" name="discount_percent" value="10" min="1" max="100" required>
-                </div>
-                <div class="form-field">
-                    <label>Тариф</label>
-                    <select name="tariff" required>
-                        <option value="pro">PRO</option>
-                        <option value="premium">Премиум</option>
-                        <option value="agency_start">Агентство</option>
-                        <option value="developer_pro">Застройщик</option>
-                    </select>
-                </div>
-                <div class="form-field">
-                    <label>Дней действует</label>
-                    <input type="number" name="days_valid" value="30" min="1" required>
-                </div>
-                <div class="form-field">
-                    <label>Макс. использований</label>
-                    <input type="number" name="max_uses" value="100" min="1" required>
-                </div>
-                <div class="form-field">
-                    <label>Описание</label>
-                    <input type="text" name="description" placeholder="Описание акции">
-                </div>
-            </div>
-            
-            <button type="submit" class="btn-create-promo">
-                <i class="bi bi-plus-lg"></i> Создать промокод
-            </button>
-        </form>
-    </div>
-    
-    <div class="section-title"><i class="bi bi-list-check"></i> Промокоды</div>
-    
-    {% if promo_codes %}
+        
+        {% if promo_codes %}
+        <div class="section-title">Активные промокоды</div>
         {% for promo in promo_codes %}
         <div class="promo-card">
             <div class="promo-top">
@@ -511,11 +545,7 @@
             <div class="promo-badges">
                 <span class="badge badge-discount"><i class="bi bi-percent"></i> -{{ promo.discount_percent }}%</span>
                 <span class="badge badge-tariff">
-                    {% if promo.tariff == 'pro' %}PRO
-                    {% elif promo.tariff == 'premium' %}Премиум
-                    {% elif promo.tariff == 'agency_start' %}Агентство
-                    {% elif promo.tariff == 'developer_pro' %}Застройщик
-                    {% else %}{{ promo.tariff }}{% endif %}
+                    {% if promo.tariff == 'pro' %}PRO{% elif promo.tariff == 'premium' %}Премиум{% else %}{{ promo.tariff }}{% endif %}
                 </span>
                 <span class="badge badge-uses"><i class="bi bi-people"></i> {{ promo.current_uses }}/{{ promo.max_uses }}</span>
                 {% if promo.expires_at %}
@@ -534,24 +564,33 @@
                         {% if promo.is_active %}<i class="bi bi-pause-fill"></i> Отключить{% else %}<i class="bi bi-play-fill"></i> Включить{% endif %}
                     </button>
                 </form>
-                <form method="POST" action="{{ url_for('webapp_delete_promo', promo_id=promo.id) }}" onsubmit="return confirm('Удалить промокод {{ promo.code }}?')">
+                <form method="POST" action="{{ url_for('webapp_delete_promo', promo_id=promo.id) }}" onsubmit="return confirm('Удалить?')">
                     <input type="hidden" name="tg_id" value="{{ tg_id }}">
                     <button type="submit" class="btn-delete"><i class="bi bi-trash"></i></button>
                 </form>
             </div>
         </div>
         {% endfor %}
-    {% else %}
+        {% else %}
         <div class="empty-state">
             <i class="bi bi-tag"></i>
             <p>Промокодов пока нет</p>
         </div>
-    {% endif %}
+        {% endif %}
+    </div>
     
     <script>
         const tg = window.Telegram.WebApp;
         tg.ready();
         tg.expand();
+        
+        function showSection(section) {
+            document.querySelectorAll('.content-section').forEach(el => el.classList.remove('active'));
+            document.querySelectorAll('.sub-tab').forEach(el => el.classList.remove('active'));
+            
+            document.getElementById(section + '-section').classList.add('active');
+            event.target.closest('.sub-tab').classList.add('active');
+        }
     </script>
 </body>
 </html>
