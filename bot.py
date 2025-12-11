@@ -28,6 +28,7 @@ class RegistrationStates(StatesGroup):
     buyer_district = State()
     buyer_budget = State()
     buyer_payment = State()
+    buyer_phone = State()
     seller_type = State()
     seller_company = State()
     seller_manager = State()
@@ -341,6 +342,41 @@ async def process_payment(message: types.Message, state: FSMContext):
         "📄 рассрочка": "installment"
     }
     payment = payment_map.get(message.text.lower(), "cash")
+    await state.update_data(payment=payment)
+    
+    keyboard = ReplyKeyboardMarkup(
+        keyboard=[
+            [KeyboardButton(text="📱 Отправить номер", request_contact=True)],
+            [KeyboardButton(text="⏭ Пропустить")],
+            [KeyboardButton(text="⬅️ Назад")]
+        ],
+        resize_keyboard=True
+    )
+    
+    await message.answer(
+        "📞 Поделитесь номером телефона, чтобы продавцы могли с вами связаться:",
+        reply_markup=keyboard
+    )
+    await state.set_state(RegistrationStates.buyer_phone)
+
+
+@dp.message(F.text == "⬅️ Назад", RegistrationStates.buyer_phone)
+async def back_to_payment(message: types.Message, state: FSMContext):
+    keyboard = ReplyKeyboardMarkup(
+        keyboard=[
+            [KeyboardButton(text="💵 Наличные")],
+            [KeyboardButton(text="🏦 Ипотека")],
+            [KeyboardButton(text="📄 Рассрочка")],
+            [KeyboardButton(text="⬅️ Назад")]
+        ],
+        resize_keyboard=True
+    )
+    await message.answer("💳 Способ оплаты:", reply_markup=keyboard)
+    await state.set_state(RegistrationStates.buyer_payment)
+
+
+@dp.message(F.text == "⏭ Пропустить", RegistrationStates.buyer_phone)
+async def skip_buyer_phone(message: types.Message, state: FSMContext):
     data = await state.get_data()
     
     db = SessionLocal()
@@ -349,7 +385,51 @@ async def process_payment(message: types.Message, state: FSMContext):
         user.search_rooms = data.get("rooms", "")
         user.search_district = data.get("district", "")
         user.search_budget_max = data.get("budget", 0)
-        user.search_payment_type = payment
+        user.search_payment_type = data.get("payment", "cash")
+        db.commit()
+    db.close()
+    
+    await state.clear()
+    await show_buyer_menu(message, message.from_user.id)
+
+
+@dp.message(F.contact, RegistrationStates.buyer_phone)
+async def process_buyer_phone_contact(message: types.Message, state: FSMContext):
+    phone = message.contact.phone_number
+    data = await state.get_data()
+    
+    db = SessionLocal()
+    user = db.query(User).filter(User.telegram_id == message.from_user.id).first()
+    if user:
+        user.phone = phone
+        user.search_rooms = data.get("rooms", "")
+        user.search_district = data.get("district", "")
+        user.search_budget_max = data.get("budget", 0)
+        user.search_payment_type = data.get("payment", "cash")
+        db.commit()
+    db.close()
+    
+    await state.clear()
+    await show_buyer_menu(message, message.from_user.id)
+
+
+@dp.message(RegistrationStates.buyer_phone)
+async def process_buyer_phone_text(message: types.Message, state: FSMContext):
+    phone = message.text.strip()
+    if not re.match(r'^[\d\+\-\s\(\)]+$', phone) or len(phone) < 7:
+        await message.answer("❌ Пожалуйста, введите корректный номер телефона или нажмите кнопку 'Отправить номер'")
+        return
+    
+    data = await state.get_data()
+    
+    db = SessionLocal()
+    user = db.query(User).filter(User.telegram_id == message.from_user.id).first()
+    if user:
+        user.phone = phone
+        user.search_rooms = data.get("rooms", "")
+        user.search_district = data.get("district", "")
+        user.search_budget_max = data.get("budget", 0)
+        user.search_payment_type = data.get("payment", "cash")
         db.commit()
     db.close()
     
