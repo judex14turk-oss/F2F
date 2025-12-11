@@ -4,7 +4,7 @@ from datetime import datetime, timedelta
 
 from aiogram import Bot, Dispatcher, types, F
 from aiogram.filters import Command, CommandStart
-from aiogram.types import InlineKeyboardMarkup, InlineKeyboardButton, ReplyKeyboardMarkup, KeyboardButton, InputMediaPhoto
+from aiogram.types import InlineKeyboardMarkup, InlineKeyboardButton, WebAppInfo, ReplyKeyboardMarkup, KeyboardButton
 from aiogram.fsm.context import FSMContext
 from aiogram.fsm.state import State, StatesGroup
 from aiogram.fsm.storage.memory import MemoryStorage
@@ -14,6 +14,7 @@ from models import UserRole, SellerType, TariffType, PropertyType, PropertyStatu
 
 BOT_TOKEN = os.environ.get('TELEGRAM_BOT_TOKEN')
 ADMIN_USERNAME = os.environ.get('ADMIN_USERNAME', 'InvictumMurad')
+WEBAPP_URL = os.environ.get('WEBAPP_URL', '')
 
 bot = Bot(token=BOT_TOKEN)
 storage = MemoryStorage()
@@ -34,15 +35,11 @@ class RegistrationStates(StatesGroup):
 
 class PropertyStates(StatesGroup):
     property_type = State()
+    complex_name = State()
     district = State()
     rooms = State()
     floor = State()
-    total_floors = State()
-    building_type = State()
-    renovation = State()
-    furniture = State()
-    room_layout = State()
-    bathroom = State()
+    area = State()
     price = State()
     description = State()
     photos = State()
@@ -53,13 +50,20 @@ class SearchStates(StatesGroup):
     current_index = State()
 
 
-def get_tariff_limits(tariff: TariffType):
-    limits = {
-        TariffType.FREE: {"properties": 2, "daily_offers": 0},
-        TariffType.AGENCY_START: {"properties": 20, "daily_offers": 10},
-        TariffType.DEVELOPER_PRO: {"properties": 999, "daily_offers": 50},
-    }
-    return limits.get(tariff, limits[TariffType.FREE])
+def get_db():
+    db = SessionLocal()
+    try:
+        return db
+    except:
+        db.close()
+        raise
+
+
+def get_user(telegram_id: int):
+    db = SessionLocal()
+    user = db.query(User).filter(User.telegram_id == telegram_id).first()
+    db.close()
+    return user
 
 
 def get_active_buyers_count(rooms=None, district=None, budget_max=None):
@@ -76,6 +80,16 @@ def get_active_buyers_count(rooms=None, district=None, budget_max=None):
     return count
 
 
+def get_tariff_limits(tariff: TariffType):
+    limits = {
+        TariffType.FREE: {"properties": 2, "daily_offers": 0},
+        TariffType.AGENCY_START: {"properties": 20, "daily_offers": 10},
+        TariffType.DEVELOPER_PRO: {"properties": 999, "daily_offers": 50},
+    }
+    return limits.get(tariff, limits[TariffType.FREE])
+
+
+# Start command
 @dp.message(CommandStart())
 async def cmd_start(message: types.Message, state: FSMContext):
     db = SessionLocal()
@@ -91,6 +105,7 @@ async def cmd_start(message: types.Message, state: FSMContext):
         )
         db.add(user)
         db.commit()
+    
     db.close()
     
     keyboard = InlineKeyboardMarkup(inline_keyboard=[
@@ -107,6 +122,7 @@ async def cmd_start(message: types.Message, state: FSMContext):
     await state.set_state(RegistrationStates.choosing_role)
 
 
+# Role selection
 @dp.callback_query(F.data == "role_buyer")
 async def process_buyer_role(callback: types.CallbackQuery, state: FSMContext):
     db = SessionLocal()
@@ -117,26 +133,26 @@ async def process_buyer_role(callback: types.CallbackQuery, state: FSMContext):
     db.close()
     
     await callback.message.edit_text(
-        "🏠 Отлично! Давайте настроим ваши параметры поиска.\n\nСколько комнат вам нужно?",
+        "🏠 Отлично! Давайте настроим ваши параметры поиска.\n\n"
+        "Сколько комнат вам нужно?",
         reply_markup=InlineKeyboardMarkup(inline_keyboard=[
             [
-                InlineKeyboardButton(text="1", callback_data="brooms_1"),
-                InlineKeyboardButton(text="2", callback_data="brooms_2"),
-                InlineKeyboardButton(text="3", callback_data="brooms_3"),
+                InlineKeyboardButton(text="1", callback_data="rooms_1"),
+                InlineKeyboardButton(text="2", callback_data="rooms_2"),
+                InlineKeyboardButton(text="3", callback_data="rooms_3"),
             ],
             [
-                InlineKeyboardButton(text="4", callback_data="brooms_4"),
-                InlineKeyboardButton(text="5+", callback_data="brooms_5"),
-                InlineKeyboardButton(text="Студия", callback_data="brooms_studio"),
+                InlineKeyboardButton(text="4+", callback_data="rooms_4"),
+                InlineKeyboardButton(text="Студия", callback_data="rooms_studio"),
             ]
         ])
     )
     await state.set_state(RegistrationStates.buyer_rooms)
 
 
-@dp.callback_query(F.data.startswith("brooms_"))
-async def process_buyer_rooms(callback: types.CallbackQuery, state: FSMContext):
-    rooms = callback.data.replace("brooms_", "")
+@dp.callback_query(F.data.startswith("rooms_"))
+async def process_rooms(callback: types.CallbackQuery, state: FSMContext):
+    rooms = callback.data.replace("rooms_", "")
     await state.update_data(rooms=rooms)
     
     db = SessionLocal()
@@ -146,21 +162,24 @@ async def process_buyer_rooms(callback: types.CallbackQuery, state: FSMContext):
     keyboard_buttons = []
     row = []
     for district in districts:
-        row.append(InlineKeyboardButton(text=district.name, callback_data=f"bdistrict_{district.id}"))
+        row.append(InlineKeyboardButton(text=district.name, callback_data=f"district_{district.id}"))
         if len(row) == 2:
             keyboard_buttons.append(row)
             row = []
     if row:
         keyboard_buttons.append(row)
-    keyboard_buttons.append([InlineKeyboardButton(text="Любой район", callback_data="bdistrict_any")])
+    keyboard_buttons.append([InlineKeyboardButton(text="Любой район", callback_data="district_any")])
     
-    await callback.message.edit_text("📍 Выберите район:", reply_markup=InlineKeyboardMarkup(inline_keyboard=keyboard_buttons))
+    await callback.message.edit_text(
+        "📍 Выберите район:",
+        reply_markup=InlineKeyboardMarkup(inline_keyboard=keyboard_buttons)
+    )
     await state.set_state(RegistrationStates.buyer_district)
 
 
-@dp.callback_query(F.data.startswith("bdistrict_"))
-async def process_buyer_district(callback: types.CallbackQuery, state: FSMContext):
-    district_id = callback.data.replace("bdistrict_", "")
+@dp.callback_query(F.data.startswith("district_"))
+async def process_district(callback: types.CallbackQuery, state: FSMContext):
+    district_id = callback.data.replace("district_", "")
     
     if district_id == "any":
         district_name = "Любой"
@@ -173,38 +192,35 @@ async def process_buyer_district(callback: types.CallbackQuery, state: FSMContex
     await state.update_data(district=district_name)
     
     await callback.message.edit_text(
-        "💰 Какой у вас бюджет (в USD)?",
-        reply_markup=InlineKeyboardMarkup(inline_keyboard=[
-            [InlineKeyboardButton(text="До $30,000", callback_data="bbudget_30000")],
-            [InlineKeyboardButton(text="До $50,000", callback_data="bbudget_50000")],
-            [InlineKeyboardButton(text="До $70,000", callback_data="bbudget_70000")],
-            [InlineKeyboardButton(text="До $100,000", callback_data="bbudget_100000")],
-            [InlineKeyboardButton(text="До $150,000", callback_data="bbudget_150000")],
-            [InlineKeyboardButton(text="$150,000+", callback_data="bbudget_500000")],
-        ])
+        "💰 Какой у вас бюджет (в USD)?\n\nВведите максимальную сумму:",
     )
     await state.set_state(RegistrationStates.buyer_budget)
 
 
-@dp.callback_query(F.data.startswith("bbudget_"))
-async def process_buyer_budget(callback: types.CallbackQuery, state: FSMContext):
-    budget = int(callback.data.replace("bbudget_", ""))
-    await state.update_data(budget=budget)
+@dp.message(RegistrationStates.buyer_budget)
+async def process_budget(message: types.Message, state: FSMContext):
+    try:
+        budget = int(message.text.replace("$", "").replace(" ", "").replace(",", ""))
+        await state.update_data(budget=budget)
+        
+        await message.answer(
+            "💳 Способ оплаты:",
+            reply_markup=InlineKeyboardMarkup(inline_keyboard=[
+                [InlineKeyboardButton(text="💵 Наличные", callback_data="payment_cash")],
+                [InlineKeyboardButton(text="🏦 Ипотека", callback_data="payment_mortgage")],
+                [InlineKeyboardButton(text="📄 Рассрочка", callback_data="payment_installment")],
+            ])
+        )
+        await state.set_state(RegistrationStates.buyer_payment)
+    except ValueError:
+        await message.answer("Пожалуйста, введите число (например: 50000)")
+
+
+@dp.callback_query(F.data.startswith("payment_"))
+async def process_payment(callback: types.CallbackQuery, state: FSMContext):
+    payment = callback.data.replace("payment_", "")
+    payment_names = {"cash": "Наличные", "mortgage": "Ипотека", "installment": "Рассрочка"}
     
-    await callback.message.edit_text(
-        "💳 Способ оплаты:",
-        reply_markup=InlineKeyboardMarkup(inline_keyboard=[
-            [InlineKeyboardButton(text="💵 Наличные", callback_data="bpayment_cash")],
-            [InlineKeyboardButton(text="🏦 Ипотека", callback_data="bpayment_mortgage")],
-            [InlineKeyboardButton(text="📄 Рассрочка", callback_data="bpayment_installment")],
-        ])
-    )
-    await state.set_state(RegistrationStates.buyer_payment)
-
-
-@dp.callback_query(F.data.startswith("bpayment_"))
-async def process_buyer_payment(callback: types.CallbackQuery, state: FSMContext):
-    payment = callback.data.replace("bpayment_", "")
     data = await state.get_data()
     
     db = SessionLocal()
@@ -223,7 +239,10 @@ async def process_buyer_payment(callback: types.CallbackQuery, state: FSMContext
 
 async def show_buyer_menu(message, user_id):
     db = SessionLocal()
-    properties_count = db.query(Property).filter(Property.status == PropertyStatus.ACTIVE).count()
+    user = db.query(User).filter(User.telegram_id == user_id).first()
+    properties_count = db.query(Property).filter(
+        Property.status == PropertyStatus.ACTIVE
+    ).count()
     db.close()
     
     keyboard = ReplyKeyboardMarkup(
@@ -237,12 +256,13 @@ async def show_buyer_menu(message, user_id):
     
     await message.answer(
         f"✅ Регистрация завершена!\n\n"
-        f"📊 Сейчас доступно {properties_count} квартир.\n\n"
+        f"📊 Сейчас доступно {properties_count} квартир по вашим параметрам.\n\n"
         f"Нажмите '🏠 Смотреть квартиры', чтобы начать поиск!",
         reply_markup=keyboard
     )
 
 
+# Seller registration
 @dp.callback_query(F.data == "role_seller")
 async def process_seller_role(callback: types.CallbackQuery, state: FSMContext):
     db = SessionLocal()
@@ -253,30 +273,33 @@ async def process_seller_role(callback: types.CallbackQuery, state: FSMContext):
     db.close()
     
     await callback.message.edit_text(
-        "💼 Выберите тип аккаунта:",
+        "💼 Отлично! Выберите тип аккаунта:",
         reply_markup=InlineKeyboardMarkup(inline_keyboard=[
-            [InlineKeyboardButton(text="🏠 Собственник", callback_data="stype_owner")],
-            [InlineKeyboardButton(text="🔑 Риелтор", callback_data="stype_realtor")],
-            [InlineKeyboardButton(text="🏗 Застройщик", callback_data="stype_developer")],
+            [InlineKeyboardButton(text="🏠 Собственник", callback_data="seller_owner")],
+            [InlineKeyboardButton(text="🔑 Риелтор", callback_data="seller_realtor")],
+            [InlineKeyboardButton(text="🏗 Застройщик", callback_data="seller_developer")],
         ])
     )
     await state.set_state(RegistrationStates.seller_type)
 
 
-@dp.callback_query(F.data.startswith("stype_"))
+@dp.callback_query(F.data.startswith("seller_"))
 async def process_seller_type(callback: types.CallbackQuery, state: FSMContext):
-    seller_type = callback.data.replace("stype_", "")
+    seller_type = callback.data.replace("seller_", "")
     type_map = {"owner": SellerType.OWNER, "realtor": SellerType.REALTOR, "developer": SellerType.DEVELOPER}
     await state.update_data(seller_type=type_map.get(seller_type, SellerType.OWNER))
     
-    await callback.message.edit_text("🏢 Введите название компании или ваше имя:")
+    await callback.message.edit_text(
+        "🏢 Введите название компании или ваше имя:"
+    )
     await state.set_state(RegistrationStates.seller_company)
 
 
 @dp.message(RegistrationStates.seller_company)
 async def process_company_name(message: types.Message, state: FSMContext):
     await state.update_data(company_name=message.text)
-    await message.answer("👤 Введите имя менеджера:")
+    
+    await message.answer("👤 Введите имя менеджера (кто будет отвечать на звонки):")
     await state.set_state(RegistrationStates.seller_manager)
 
 
@@ -289,13 +312,18 @@ async def process_manager_name(message: types.Message, state: FSMContext):
         resize_keyboard=True,
         one_time_keyboard=True
     )
-    await message.answer("📱 Поделитесь номером телефона:", reply_markup=keyboard)
+    
+    await message.answer("📱 Поделитесь вашим номером телефона:", reply_markup=keyboard)
     await state.set_state(RegistrationStates.seller_phone)
 
 
 @dp.message(RegistrationStates.seller_phone)
 async def process_phone(message: types.Message, state: FSMContext):
-    phone = message.contact.phone_number if message.contact else message.text
+    if message.contact:
+        phone = message.contact.phone_number
+    else:
+        phone = message.text
+    
     data = await state.get_data()
     
     db = SessionLocal()
@@ -306,6 +334,7 @@ async def process_phone(message: types.Message, state: FSMContext):
         user.manager_name = data.get("manager_name", "")
         user.phone = phone
         user.tariff = TariffType.FREE
+        user.trial_used = False
         db.commit()
     
     buyers_count = db.query(User).filter(User.role == UserRole.BUYER).count()
@@ -326,6 +355,7 @@ async def show_seller_menu(message, user_id, buyers_count=None):
     total_views = sum(p.views_count for p in properties)
     total_likes = sum(p.likes_count for p in properties)
     matches_count = db.query(Match).filter(Match.seller_id == user.id).count()
+    
     db.close()
     
     tariff_names = {
@@ -345,8 +375,9 @@ async def show_seller_menu(message, user_id, buyers_count=None):
     )
     
     await message.answer(
-        f"✅ Добро пожаловать!\n\n"
-        f"🔥 Прямо сейчас в боте {buyers_count} покупателей!\n\n"
+        f"✅ Регистрация завершена!\n\n"
+        f"🔥 Прямо сейчас в боте {buyers_count} человек ищут квартиру!\n"
+        f"Разместите объект, чтобы их увидеть.\n\n"
         f"━━━━━━━━━━━━━━━━━━\n"
         f"📊 Ваша статистика:\n"
         f"👁 Просмотров: {total_views}\n"
@@ -358,30 +389,33 @@ async def show_seller_menu(message, user_id, buyers_count=None):
     )
 
 
+# Property viewing for buyers
 @dp.message(F.text == "🏠 Смотреть квартиры")
 async def view_properties(message: types.Message, state: FSMContext):
     db = SessionLocal()
     user = db.query(User).filter(User.telegram_id == message.from_user.id).first()
+    
     liked_ids = [l.property_id for l in db.query(Like).filter(Like.user_id == user.id).all()]
     
-    query = db.query(Property).filter(Property.status == PropertyStatus.ACTIVE)
-    if liked_ids:
-        query = query.filter(Property.id.notin_(liked_ids))
-    properties = query.order_by(Property.created_at.desc()).all()
+    properties = db.query(Property).filter(
+        Property.status == PropertyStatus.ACTIVE,
+        Property.id.notin_(liked_ids) if liked_ids else True
+    ).order_by(Property.created_at.desc()).all()
+    
     db.close()
     
     if not properties:
-        await message.answer("😔 Пока нет новых квартир. Попробуйте позже!")
+        await message.answer("😔 Пока нет новых квартир по вашим параметрам. Попробуйте позже!")
         return
     
     await state.update_data(properties=[p.id for p in properties], current_index=0)
-    await show_property_card(message, properties[0].id)
+    await show_property_card(message, properties[0])
     await state.set_state(SearchStates.viewing_properties)
 
 
-async def show_property_card(message, property_id):
+async def show_property_card(message, property_obj):
     db = SessionLocal()
-    prop = db.query(Property).filter(Property.id == property_id).first()
+    prop = db.query(Property).filter(Property.id == property_obj.id if hasattr(property_obj, 'id') else Property.id == property_obj).first()
     
     if not prop:
         await message.answer("Объект не найден")
@@ -391,38 +425,17 @@ async def show_property_card(message, property_id):
     prop.views_count += 1
     db.commit()
     
-    type_name = "🏷 Продажа" if prop.property_type == PropertyType.SALE else "🔑 Аренда"
-    
-    building_types = {"monolith": "Монолит", "panel": "Панель", "brick": "Кирпич"}
-    renovation_types = {"euro": "Евроремонт", "cosmetic": "Косметический", "none": "Без ремонта", "rough": "Черновая"}
-    furniture_types = {"yes": "С мебелью", "no": "Без мебели"}
-    layout_types = {"separate": "Раздельные", "adjacent": "Смежные"}
-    bathroom_types = {"separate": "Раздельный", "combined": "Совмещённый"}
-    
-    details = []
-    if prop.building_type:
-        details.append(f"🏗 {building_types.get(prop.building_type, prop.building_type)}")
-    if prop.renovation:
-        details.append(f"🔨 {renovation_types.get(prop.renovation, prop.renovation)}")
-    if prop.furniture:
-        details.append(f"🛋 {furniture_types.get(prop.furniture, prop.furniture)}")
-    if prop.room_layout:
-        details.append(f"🚪 Комнаты: {layout_types.get(prop.room_layout, prop.room_layout)}")
-    if prop.bathroom:
-        details.append(f"🚿 Санузел: {bathroom_types.get(prop.bathroom, prop.bathroom)}")
+    type_emoji = "🏷" if prop.property_type == PropertyType.SALE else "🔑"
+    type_name = "Продажа" if prop.property_type == PropertyType.SALE else "Аренда"
     
     text = (
-        f"{type_name}\n\n"
+        f"{type_emoji} {type_name}\n\n"
+        f"🏢 {prop.residential_complex or 'Не указан ЖК'}\n"
         f"📍 {prop.district or 'Район не указан'}\n"
-        f"🚪 {prop.rooms} комн. | Этаж {prop.floor}/{prop.total_floors}\n"
+        f"🚪 {prop.rooms} комн. | {prop.area} м² | Этаж {prop.floor}/{prop.total_floors}\n"
         f"💰 ${prop.price:,}\n\n"
+        f"{prop.description or ''}"
     )
-    
-    if details:
-        text += "\n".join(details) + "\n\n"
-    
-    if prop.description:
-        text += f"📝 {prop.description}\n"
     
     db.close()
     
@@ -432,15 +445,6 @@ async def show_property_card(message, property_id):
             InlineKeyboardButton(text="❤️ Нравится", callback_data=f"like_{prop.id}")
         ]
     ])
-    
-    if prop.photos:
-        photo_ids = prop.photos.split(",")
-        if len(photo_ids) > 0 and photo_ids[0]:
-            try:
-                await message.answer_photo(photo=photo_ids[0], caption=text, reply_markup=keyboard)
-                return
-            except:
-                pass
     
     await message.answer(text, reply_markup=keyboard)
 
@@ -454,9 +458,17 @@ async def process_like(callback: types.CallbackQuery, state: FSMContext):
     prop = db.query(Property).filter(Property.id == property_id).first()
     
     if user and prop:
-        existing = db.query(Like).filter(Like.user_id == user.id, Like.property_id == property_id).first()
-        if not existing:
-            like = Like(user_id=user.id, property_id=property_id, property_owner_id=prop.owner_id)
+        existing_like = db.query(Like).filter(
+            Like.user_id == user.id,
+            Like.property_id == property_id
+        ).first()
+        
+        if not existing_like:
+            like = Like(
+                user_id=user.id,
+                property_id=property_id,
+                property_owner_id=prop.owner_id
+            )
             db.add(like)
             prop.likes_count += 1
             db.commit()
@@ -466,13 +478,18 @@ async def process_like(callback: types.CallbackQuery, state: FSMContext):
                 try:
                     await bot.send_message(
                         owner.telegram_id,
-                        f"❤️ Новый лайк!\n\nПользователь заинтересовался вашим объектом:\n📍 {prop.district}\n💰 ${prop.price:,}"
+                        f"❤️ Новый лайк!\n\n"
+                        f"Пользователь заинтересовался вашим объектом:\n"
+                        f"🏢 {prop.residential_complex or 'Объект'}\n"
+                        f"💰 ${prop.price:,}\n\n"
+                        f"Перейдите в раздел 'Меня лайкнули', чтобы открыть контакт!"
                     )
                 except:
                     pass
+    
     db.close()
     
-    await callback.answer("❤️ Лайк!")
+    await callback.answer("❤️ Лайк отправлен!")
     await show_next_property(callback, state)
 
 
@@ -488,22 +505,19 @@ async def show_next_property(callback, state):
     current_index = data.get("current_index", 0) + 1
     
     if current_index >= len(properties):
-        try:
-            await callback.message.delete()
-        except:
-            pass
-        await callback.message.answer("🎉 Вы просмотрели все квартиры! Заходите позже.")
+        await callback.message.edit_text(
+            "🎉 Вы просмотрели все доступные квартиры!\n\n"
+            "Новые объекты появляются каждый день. Заходите позже!"
+        )
         await state.clear()
         return
     
     await state.update_data(current_index=current_index)
-    try:
-        await callback.message.delete()
-    except:
-        pass
+    await callback.message.delete()
     await show_property_card(callback.message, properties[current_index])
 
 
+# Add property for sellers
 @dp.message(F.text == "➕ Добавить объект")
 async def add_property_start(message: types.Message, state: FSMContext):
     db = SessionLocal()
@@ -515,369 +529,173 @@ async def add_property_start(message: types.Message, state: FSMContext):
         return
     
     limits = get_tariff_limits(user.tariff)
-    current_count = db.query(Property).filter(Property.owner_id == user.id, Property.status != PropertyStatus.ARCHIVE).count()
+    current_properties = db.query(Property).filter(
+        Property.owner_id == user.id,
+        Property.status != PropertyStatus.ARCHIVE
+    ).count()
     db.close()
     
-    if current_count >= limits["properties"]:
-        await message.answer(f"⚠️ Лимит объектов ({limits['properties']}) достигнут. Обновите тариф!")
+    if current_properties >= limits["properties"]:
+        await message.answer(
+            f"⚠️ Вы достигли лимита объектов ({limits['properties']}) для вашего тарифа.\n\n"
+            f"Перейдите на более высокий тариф, чтобы добавить больше объектов."
+        )
         return
     
-    await state.update_data(photos=[])
-    
     await message.answer(
-        "📝 Добавление объекта\n\nВыберите тип сделки:",
+        "📝 Добавление нового объекта\n\nВыберите тип:",
         reply_markup=InlineKeyboardMarkup(inline_keyboard=[
-            [InlineKeyboardButton(text="🏷 Продажа", callback_data="ptype_sale")],
-            [InlineKeyboardButton(text="🔑 Аренда", callback_data="ptype_rent")],
+            [InlineKeyboardButton(text="🏷 Продажа", callback_data="proptype_sale")],
+            [InlineKeyboardButton(text="🔑 Аренда", callback_data="proptype_rent")],
         ])
     )
     await state.set_state(PropertyStates.property_type)
 
 
-@dp.callback_query(F.data.startswith("ptype_"))
-async def prop_type(callback: types.CallbackQuery, state: FSMContext):
-    prop_type = "sale" if callback.data == "ptype_sale" else "rent"
+@dp.callback_query(F.data.startswith("proptype_"))
+async def process_property_type(callback: types.CallbackQuery, state: FSMContext):
+    prop_type = PropertyType.SALE if callback.data == "proptype_sale" else PropertyType.RENT
     await state.update_data(property_type=prop_type)
+    
+    await callback.message.edit_text("🏢 Введите название ЖК (или 'Нет' если вторичка):")
+    await state.set_state(PropertyStates.complex_name)
+
+
+@dp.message(PropertyStates.complex_name)
+async def process_complex_name(message: types.Message, state: FSMContext):
+    complex_name = message.text if message.text.lower() != "нет" else None
+    await state.update_data(complex_name=complex_name)
     
     db = SessionLocal()
     districts = db.query(District).all()
     db.close()
     
-    buttons = []
+    keyboard_buttons = []
     row = []
-    for d in districts:
-        row.append(InlineKeyboardButton(text=d.name, callback_data=f"pdistrict_{d.id}"))
+    for district in districts:
+        row.append(InlineKeyboardButton(text=district.name, callback_data=f"propdistrict_{district.id}"))
         if len(row) == 2:
-            buttons.append(row)
+            keyboard_buttons.append(row)
             row = []
     if row:
-        buttons.append(row)
+        keyboard_buttons.append(row)
     
-    await callback.message.edit_text("📍 Выберите район:", reply_markup=InlineKeyboardMarkup(inline_keyboard=buttons))
+    await message.answer("📍 Выберите район:", reply_markup=InlineKeyboardMarkup(inline_keyboard=keyboard_buttons))
     await state.set_state(PropertyStates.district)
 
 
-@dp.callback_query(F.data.startswith("pdistrict_"))
-async def prop_district(callback: types.CallbackQuery, state: FSMContext):
-    district_id = int(callback.data.replace("pdistrict_", ""))
+@dp.callback_query(F.data.startswith("propdistrict_"))
+async def process_prop_district(callback: types.CallbackQuery, state: FSMContext):
+    district_id = int(callback.data.replace("propdistrict_", ""))
+    
     db = SessionLocal()
     district = db.query(District).filter(District.id == district_id).first()
     db.close()
     
     await state.update_data(district=district.name if district else "")
     
-    await callback.message.edit_text(
-        "🚪 Количество комнат:",
-        reply_markup=InlineKeyboardMarkup(inline_keyboard=[
-            [
-                InlineKeyboardButton(text="1", callback_data="prooms_1"),
-                InlineKeyboardButton(text="2", callback_data="prooms_2"),
-                InlineKeyboardButton(text="3", callback_data="prooms_3"),
-            ],
-            [
-                InlineKeyboardButton(text="4", callback_data="prooms_4"),
-                InlineKeyboardButton(text="5", callback_data="prooms_5"),
-                InlineKeyboardButton(text="6+", callback_data="prooms_6"),
-            ]
-        ])
-    )
+    await callback.message.edit_text("🚪 Сколько комнат?")
     await state.set_state(PropertyStates.rooms)
 
 
-@dp.callback_query(F.data.startswith("prooms_"))
-async def prop_rooms(callback: types.CallbackQuery, state: FSMContext):
-    rooms = int(callback.data.replace("prooms_", ""))
-    await state.update_data(rooms=rooms)
-    
-    buttons = []
-    for i in range(1, 17, 4):
-        row = []
-        for j in range(4):
-            floor = i + j
-            if floor <= 16:
-                row.append(InlineKeyboardButton(text=str(floor), callback_data=f"pfloor_{floor}"))
-        buttons.append(row)
-    buttons.append([InlineKeyboardButton(text="17+", callback_data="pfloor_17")])
-    
-    await callback.message.edit_text("🏢 На каком этаже?", reply_markup=InlineKeyboardMarkup(inline_keyboard=buttons))
-    await state.set_state(PropertyStates.floor)
+@dp.message(PropertyStates.rooms)
+async def process_prop_rooms(message: types.Message, state: FSMContext):
+    try:
+        rooms = int(message.text)
+        await state.update_data(rooms=rooms)
+        await message.answer("🏢 Этаж и этажность (например: 5/9):")
+        await state.set_state(PropertyStates.floor)
+    except:
+        await message.answer("Введите число комнат (например: 2)")
 
 
-@dp.callback_query(F.data.startswith("pfloor_"))
-async def prop_floor(callback: types.CallbackQuery, state: FSMContext):
-    floor = int(callback.data.replace("pfloor_", ""))
-    await state.update_data(floor=floor)
-    
-    buttons = []
-    for i in range(5, 25, 4):
-        row = []
-        for j in range(4):
-            floors = i + j
-            if floors <= 24:
-                row.append(InlineKeyboardButton(text=str(floors), callback_data=f"ptotal_{floors}"))
-        buttons.append(row)
-    buttons.append([InlineKeyboardButton(text="25+", callback_data="ptotal_25")])
-    
-    await callback.message.edit_text("🏗 Этажность дома:", reply_markup=InlineKeyboardMarkup(inline_keyboard=buttons))
-    await state.set_state(PropertyStates.total_floors)
+@dp.message(PropertyStates.floor)
+async def process_prop_floor(message: types.Message, state: FSMContext):
+    try:
+        parts = message.text.split("/")
+        floor = int(parts[0])
+        total_floors = int(parts[1]) if len(parts) > 1 else floor
+        await state.update_data(floor=floor, total_floors=total_floors)
+        await message.answer("📐 Площадь в м²:")
+        await state.set_state(PropertyStates.area)
+    except:
+        await message.answer("Введите в формате: этаж/этажность (например: 5/9)")
 
 
-@dp.callback_query(F.data.startswith("ptotal_"))
-async def prop_total_floors(callback: types.CallbackQuery, state: FSMContext):
-    total = int(callback.data.replace("ptotal_", ""))
-    await state.update_data(total_floors=total)
-    
-    await callback.message.edit_text(
-        "🏗 Тип строения:",
-        reply_markup=InlineKeyboardMarkup(inline_keyboard=[
-            [InlineKeyboardButton(text="🧱 Монолит", callback_data="pbuild_monolith")],
-            [InlineKeyboardButton(text="🏢 Панель", callback_data="pbuild_panel")],
-            [InlineKeyboardButton(text="🧱 Кирпич", callback_data="pbuild_brick")],
-        ])
-    )
-    await state.set_state(PropertyStates.building_type)
+@dp.message(PropertyStates.area)
+async def process_prop_area(message: types.Message, state: FSMContext):
+    try:
+        area = float(message.text.replace(",", "."))
+        await state.update_data(area=area)
+        await message.answer("💰 Цена в USD:")
+        await state.set_state(PropertyStates.price)
+    except:
+        await message.answer("Введите число (например: 65)")
 
 
-@dp.callback_query(F.data.startswith("pbuild_"))
-async def prop_building(callback: types.CallbackQuery, state: FSMContext):
-    build = callback.data.replace("pbuild_", "")
-    await state.update_data(building_type=build)
-    
-    await callback.message.edit_text(
-        "🔨 Ремонт:",
-        reply_markup=InlineKeyboardMarkup(inline_keyboard=[
-            [InlineKeyboardButton(text="✨ Евроремонт", callback_data="preno_euro")],
-            [InlineKeyboardButton(text="🔧 Косметический", callback_data="preno_cosmetic")],
-            [InlineKeyboardButton(text="📦 Без ремонта", callback_data="preno_none")],
-            [InlineKeyboardButton(text="🏗 Черновая отделка", callback_data="preno_rough")],
-        ])
-    )
-    await state.set_state(PropertyStates.renovation)
-
-
-@dp.callback_query(F.data.startswith("preno_"))
-async def prop_renovation(callback: types.CallbackQuery, state: FSMContext):
-    reno = callback.data.replace("preno_", "")
-    await state.update_data(renovation=reno)
-    
-    await callback.message.edit_text(
-        "🛋 Мебель:",
-        reply_markup=InlineKeyboardMarkup(inline_keyboard=[
-            [InlineKeyboardButton(text="✅ С мебелью", callback_data="pfurn_yes")],
-            [InlineKeyboardButton(text="❌ Без мебели", callback_data="pfurn_no")],
-        ])
-    )
-    await state.set_state(PropertyStates.furniture)
-
-
-@dp.callback_query(F.data.startswith("pfurn_"))
-async def prop_furniture(callback: types.CallbackQuery, state: FSMContext):
-    furn = callback.data.replace("pfurn_", "")
-    await state.update_data(furniture=furn)
-    
-    await callback.message.edit_text(
-        "🚪 Планировка комнат:",
-        reply_markup=InlineKeyboardMarkup(inline_keyboard=[
-            [InlineKeyboardButton(text="📐 Раздельные", callback_data="playout_separate")],
-            [InlineKeyboardButton(text="🔗 Смежные", callback_data="playout_adjacent")],
-        ])
-    )
-    await state.set_state(PropertyStates.room_layout)
-
-
-@dp.callback_query(F.data.startswith("playout_"))
-async def prop_layout(callback: types.CallbackQuery, state: FSMContext):
-    layout = callback.data.replace("playout_", "")
-    await state.update_data(room_layout=layout)
-    
-    await callback.message.edit_text(
-        "🚿 Санузел:",
-        reply_markup=InlineKeyboardMarkup(inline_keyboard=[
-            [InlineKeyboardButton(text="📐 Раздельный", callback_data="pbath_separate")],
-            [InlineKeyboardButton(text="🔗 Совмещённый", callback_data="pbath_combined")],
-        ])
-    )
-    await state.set_state(PropertyStates.bathroom)
-
-
-@dp.callback_query(F.data.startswith("pbath_"))
-async def prop_bathroom(callback: types.CallbackQuery, state: FSMContext):
-    bath = callback.data.replace("pbath_", "")
-    await state.update_data(bathroom=bath)
-    
-    await callback.message.edit_text(
-        "💰 Цена в USD:",
-        reply_markup=InlineKeyboardMarkup(inline_keyboard=[
-            [
-                InlineKeyboardButton(text="$30,000", callback_data="pprice_30000"),
-                InlineKeyboardButton(text="$40,000", callback_data="pprice_40000"),
-            ],
-            [
-                InlineKeyboardButton(text="$50,000", callback_data="pprice_50000"),
-                InlineKeyboardButton(text="$60,000", callback_data="pprice_60000"),
-            ],
-            [
-                InlineKeyboardButton(text="$70,000", callback_data="pprice_70000"),
-                InlineKeyboardButton(text="$80,000", callback_data="pprice_80000"),
-            ],
-            [
-                InlineKeyboardButton(text="$90,000", callback_data="pprice_90000"),
-                InlineKeyboardButton(text="$100,000", callback_data="pprice_100000"),
-            ],
-            [
-                InlineKeyboardButton(text="$120,000", callback_data="pprice_120000"),
-                InlineKeyboardButton(text="$150,000", callback_data="pprice_150000"),
-            ],
-            [
-                InlineKeyboardButton(text="$200,000", callback_data="pprice_200000"),
-                InlineKeyboardButton(text="$300,000+", callback_data="pprice_300000"),
-            ],
-        ])
-    )
-    await state.set_state(PropertyStates.price)
-
-
-@dp.callback_query(F.data.startswith("pprice_"))
-async def prop_price(callback: types.CallbackQuery, state: FSMContext):
-    price = int(callback.data.replace("pprice_", ""))
-    await state.update_data(price=price)
-    
-    await callback.message.edit_text(
-        "📝 Введите описание объекта (или отправьте 'Пропустить'):\n\n"
-        "Например: Светлая квартира с видом на парк, рядом метро и школа."
-    )
-    await state.set_state(PropertyStates.description)
+@dp.message(PropertyStates.price)
+async def process_prop_price(message: types.Message, state: FSMContext):
+    try:
+        price = int(message.text.replace("$", "").replace(" ", "").replace(",", ""))
+        await state.update_data(price=price)
+        await message.answer("📝 Описание (или 'Пропустить'):")
+        await state.set_state(PropertyStates.description)
+    except:
+        await message.answer("Введите цену (например: 55000)")
 
 
 @dp.message(PropertyStates.description)
-async def prop_description(message: types.Message, state: FSMContext):
-    desc = "" if message.text.lower() == "пропустить" else message.text
-    await state.update_data(description=desc)
+async def process_prop_description(message: types.Message, state: FSMContext):
+    description = message.text if message.text.lower() != "пропустить" else ""
+    await state.update_data(description=description)
     
-    await message.answer(
-        "📷 Отправьте фотографии объекта (до 10 шт.)\n\n"
-        "Можете отправлять по одной или несколько сразу.\n"
-        "Когда закончите, нажмите кнопку '✅ Готово'",
-        reply_markup=InlineKeyboardMarkup(inline_keyboard=[
-            [InlineKeyboardButton(text="✅ Готово", callback_data="photos_done")],
-            [InlineKeyboardButton(text="⏭ Пропустить фото", callback_data="photos_skip")]
-        ])
-    )
-    await state.set_state(PropertyStates.photos)
-
-
-@dp.message(PropertyStates.photos, F.photo)
-async def prop_photo(message: types.Message, state: FSMContext):
-    data = await state.get_data()
-    photos = data.get("photos", [])
-    
-    if len(photos) >= 10:
-        await message.answer("Максимум 10 фото! Нажмите '✅ Готово'")
-        return
-    
-    photo_id = message.photo[-1].file_id
-    photos.append(photo_id)
-    await state.update_data(photos=photos)
-    
-    await message.answer(
-        f"📷 Фото добавлено ({len(photos)}/10)\n\nОтправьте ещё или нажмите '✅ Готово'",
-        reply_markup=InlineKeyboardMarkup(inline_keyboard=[
-            [InlineKeyboardButton(text="✅ Готово", callback_data="photos_done")]
-        ])
-    )
-
-
-@dp.callback_query(F.data == "photos_done")
-async def photos_done(callback: types.CallbackQuery, state: FSMContext):
-    await save_property(callback, state)
-
-
-@dp.callback_query(F.data == "photos_skip")
-async def photos_skip(callback: types.CallbackQuery, state: FSMContext):
-    await state.update_data(photos=[])
-    await save_property(callback, state)
-
-
-async def save_property(callback: types.CallbackQuery, state: FSMContext):
     data = await state.get_data()
     
     db = SessionLocal()
-    user = db.query(User).filter(User.telegram_id == callback.from_user.id).first()
+    user = db.query(User).filter(User.telegram_id == message.from_user.id).first()
     
     prop = Property(
         owner_id=user.id,
-        property_type=PropertyType.SALE if data.get("property_type") == "sale" else PropertyType.RENT,
+        property_type=data.get("property_type", PropertyType.SALE),
+        residential_complex=data.get("complex_name"),
         district=data.get("district", ""),
         rooms=data.get("rooms", 1),
         floor=data.get("floor", 1),
         total_floors=data.get("total_floors", 9),
-        building_type=data.get("building_type", ""),
-        renovation=data.get("renovation", ""),
-        furniture=data.get("furniture", ""),
-        room_layout=data.get("room_layout", ""),
-        bathroom=data.get("bathroom", ""),
+        area=data.get("area", 50),
         price=data.get("price", 0),
-        description=data.get("description", ""),
-        photos=",".join(data.get("photos", [])),
+        description=description,
         status=PropertyStatus.ACTIVE
     )
     db.add(prop)
     db.commit()
-    
-    prop_id = prop.id
     db.close()
     
     await state.clear()
     
-    type_name = "🏷 Продажа" if data.get("property_type") == "sale" else "🔑 Аренда"
-    
-    building_types = {"monolith": "Монолит", "panel": "Панель", "brick": "Кирпич"}
-    renovation_types = {"euro": "Евроремонт", "cosmetic": "Косметический", "none": "Без ремонта", "rough": "Черновая"}
-    furniture_types = {"yes": "С мебелью", "no": "Без мебели"}
-    layout_types = {"separate": "Раздельные", "adjacent": "Смежные"}
-    bathroom_types = {"separate": "Раздельный", "combined": "Совмещённый"}
-    
-    card_text = (
-        f"✅ Объявление добавлено!\n\n"
-        f"━━━━━━━━━━━━━━━━━━\n"
-        f"{type_name}\n\n"
-        f"📍 Район: {data.get('district', '-')}\n"
-        f"🚪 Комнат: {data.get('rooms', '-')}\n"
-        f"🏢 Этаж: {data.get('floor', '-')}/{data.get('total_floors', '-')}\n"
-        f"🏗 Тип: {building_types.get(data.get('building_type', ''), '-')}\n"
-        f"🔨 Ремонт: {renovation_types.get(data.get('renovation', ''), '-')}\n"
-        f"🛋 Мебель: {furniture_types.get(data.get('furniture', ''), '-')}\n"
-        f"🚪 Комнаты: {layout_types.get(data.get('room_layout', ''), '-')}\n"
-        f"🚿 Санузел: {bathroom_types.get(data.get('bathroom', ''), '-')}\n"
-        f"💰 Цена: ${data.get('price', 0):,}\n"
-        f"━━━━━━━━━━━━━━━━━━\n"
+    buyers_count = get_active_buyers_count(
+        rooms=data.get("rooms"),
+        district=data.get("district"),
+        budget_max=data.get("price")
     )
     
-    if data.get("description"):
-        card_text += f"📝 {data.get('description')}\n"
-    
-    photos = data.get("photos", [])
-    
-    try:
-        await callback.message.delete()
-    except:
-        pass
-    
-    if photos and len(photos) > 0:
-        if len(photos) == 1:
-            await callback.message.answer_photo(photo=photos[0], caption=card_text)
-        else:
-            media = [InputMediaPhoto(media=photos[0], caption=card_text)]
-            for p in photos[1:10]:
-                media.append(InputMediaPhoto(media=p))
-            await callback.message.answer_media_group(media=media)
-    else:
-        await callback.message.answer(card_text)
-    
-    buyers = get_active_buyers_count(rooms=data.get("rooms"), district=data.get("district"), budget_max=data.get("price"))
-    await callback.message.answer(f"📊 {buyers} покупателей ищут похожие квартиры!")
+    await message.answer(
+        f"✅ Объект успешно добавлен!\n\n"
+        f"📊 {buyers_count} покупателей ищут похожие квартиры.\n\n"
+        f"Ваш объект уже виден им в ленте!",
+        reply_markup=ReplyKeyboardMarkup(
+            keyboard=[
+                [KeyboardButton(text="➕ Добавить объект")],
+                [KeyboardButton(text="🏢 Мои объекты"), KeyboardButton(text="🎯 Найти покупателя")],
+                [KeyboardButton(text="❤️ Меня лайкнули"), KeyboardButton(text="💬 Сделки")],
+                [KeyboardButton(text="👤 Профиль"), KeyboardButton(text="💳 Тарифы")]
+            ],
+            resize_keyboard=True
+        )
+    )
 
 
+# My properties
 @dp.message(F.text == "🏢 Мои объекты")
 async def my_properties(message: types.Message):
     db = SessionLocal()
@@ -886,33 +704,48 @@ async def my_properties(message: types.Message):
     db.close()
     
     if not properties:
-        await message.answer("У вас пока нет объектов. Нажмите '➕ Добавить объект'!")
+        await message.answer("У вас пока нет объектов. Нажмите '➕ Добавить объект', чтобы разместить первый!")
         return
     
     text = "🏢 Ваши объекты:\n\n"
-    status_emoji = {PropertyStatus.ACTIVE: "🟢", PropertyStatus.MODERATION: "🟡", PropertyStatus.ARCHIVE: "⚫"}
+    
+    status_emoji = {
+        PropertyStatus.ACTIVE: "🟢",
+        PropertyStatus.MODERATION: "🟡",
+        PropertyStatus.ARCHIVE: "⚫"
+    }
     
     for prop in properties:
         emoji = status_emoji.get(prop.status, "⚪")
-        text += f"{emoji} {prop.district} | {prop.rooms} комн. | ${prop.price:,}\n   👁 {prop.views_count} | ❤️ {prop.likes_count}\n\n"
+        type_str = "Продажа" if prop.property_type == PropertyType.SALE else "Аренда"
+        text += (
+            f"{emoji} {prop.residential_complex or 'Объект'}\n"
+            f"   {type_str} | {prop.rooms} комн. | ${prop.price:,}\n"
+            f"   👁 {prop.views_count} | ❤️ {prop.likes_count}\n\n"
+        )
     
     await message.answer(text)
 
 
+# Likes received
 @dp.message(F.text == "❤️ Меня лайкнули")
 async def likes_received(message: types.Message):
     db = SessionLocal()
     user = db.query(User).filter(User.telegram_id == message.from_user.id).first()
-    likes = db.query(Like).filter(Like.property_owner_id == user.id, Like.is_matched == False).order_by(Like.created_at.desc()).all()
+    
+    likes = db.query(Like).filter(
+        Like.property_owner_id == user.id,
+        Like.is_matched == False
+    ).order_by(Like.created_at.desc()).all()
     db.close()
     
     if not likes:
-        await message.answer("Пока нет новых лайков.")
+        await message.answer("Пока нет новых лайков. Добавьте больше объектов, чтобы привлечь покупателей!")
         return
     
     text = "❤️ Вас лайкнули:\n\n"
-    buttons = []
     
+    keyboard_buttons = []
     for like in likes[:10]:
         db = SessionLocal()
         buyer = db.query(User).filter(User.id == like.user_id).first()
@@ -921,10 +754,16 @@ async def likes_received(message: types.Message):
         
         if buyer and prop:
             name = buyer.first_name or "Покупатель"
-            text += f"👤 {name} → {prop.district} (${prop.price:,})\n"
-            buttons.append([InlineKeyboardButton(text=f"🤝 Открыть контакт {name}", callback_data=f"match_{like.id}")])
+            text += (
+                f"👤 {name}\n"
+                f"   Интересуется: {prop.residential_complex or 'Объект'} (${prop.price:,})\n"
+                f"   Бюджет: до ${buyer.search_budget_max:,}\n\n"
+            )
+            keyboard_buttons.append([
+                InlineKeyboardButton(text=f"🤝 Открыть контакт {name}", callback_data=f"match_{like.id}")
+            ])
     
-    await message.answer(text, reply_markup=InlineKeyboardMarkup(inline_keyboard=buttons))
+    await message.answer(text, reply_markup=InlineKeyboardMarkup(inline_keyboard=keyboard_buttons))
 
 
 @dp.callback_query(F.data.startswith("match_"))
@@ -943,24 +782,42 @@ async def create_match(callback: types.CallbackQuery):
     seller = db.query(User).filter(User.id == like.property_owner_id).first()
     prop = db.query(Property).filter(Property.id == like.property_id).first()
     
-    match = Match(buyer_id=like.user_id, seller_id=like.property_owner_id, property_id=like.property_id)
+    match = Match(
+        buyer_id=like.user_id,
+        seller_id=like.property_owner_id,
+        property_id=like.property_id
+    )
     db.add(match)
     like.is_matched = True
     db.commit()
     
+    seller_phone = seller.phone or "Не указан"
+    buyer_info = f"{buyer.first_name or 'Покупатель'}"
+    
     try:
         await bot.send_message(
             buyer.telegram_id,
-            f"🎉 Мэтч!\n\nВладелец подтвердил интерес!\n📍 {prop.district}\n💰 ${prop.price:,}\n\n📞 Контакт: {seller.phone or 'Нет'}\n👤 {seller.manager_name or seller.first_name}"
+            f"🎉 Отличные новости!\n\n"
+            f"Владелец квартиры подтвердил интерес!\n\n"
+            f"🏢 {prop.residential_complex or 'Объект'}\n"
+            f"💰 ${prop.price:,}\n\n"
+            f"📞 Контакт: {seller_phone}\n"
+            f"👤 Менеджер: {seller.manager_name or seller.first_name}\n\n"
+            f"Свяжитесь для просмотра!"
         )
     except:
         pass
     
     db.close()
     
-    await callback.message.edit_text(f"✅ Мэтч создан!\n\n👤 {buyer.first_name or 'Покупатель'}\nКонтакт в разделе 'Сделки'")
+    await callback.message.edit_text(
+        f"✅ Мэтч создан!\n\n"
+        f"👤 Покупатель: {buyer_info}\n"
+        f"📞 Контакт покупателя доступен в разделе 'Сделки'"
+    )
 
 
+# Deals/Matches
 @dp.message(F.text == "💬 Сделки")
 async def deals(message: types.Message):
     db = SessionLocal()
@@ -970,13 +827,15 @@ async def deals(message: types.Message):
         matches = db.query(Match).filter(Match.seller_id == user.id).order_by(Match.created_at.desc()).all()
     else:
         matches = db.query(Match).filter(Match.buyer_id == user.id).order_by(Match.created_at.desc()).all()
+    
     db.close()
     
     if not matches:
-        await message.answer("Пока нет сделок.")
+        await message.answer("Пока нет сделок. Они появятся после мэтчей!")
         return
     
     text = "💬 Ваши сделки:\n\n"
+    
     for match in matches[:20]:
         db = SessionLocal()
         buyer = db.query(User).filter(User.id == match.buyer_id).first()
@@ -984,44 +843,71 @@ async def deals(message: types.Message):
         prop = db.query(Property).filter(Property.id == match.property_id).first()
         db.close()
         
-        contact = buyer if user.role == UserRole.SELLER else seller
-        text += f"👤 {contact.first_name or 'Контакт'}\n📞 {contact.phone or 'Нет'}\n📍 {prop.district if prop else '-'} | ${prop.price:,}\n📅 {match.created_at.strftime('%d.%m.%Y')}\n\n"
+        if user.role == UserRole.SELLER:
+            contact = buyer
+        else:
+            contact = seller
+        
+        text += (
+            f"👤 {contact.first_name or 'Контакт'}\n"
+            f"🏢 {prop.residential_complex or 'Объект'} | ${prop.price:,}\n"
+            f"📞 {contact.phone or 'Нет телефона'}\n"
+            f"📅 {match.created_at.strftime('%d.%m.%Y')}\n"
+            f"{'📝 ' + match.note if match.note else ''}\n\n"
+        )
     
     await message.answer(text)
 
 
+# Find buyers (for sellers)
 @dp.message(F.text == "🎯 Найти покупателя")
 async def find_buyers(message: types.Message):
     db = SessionLocal()
     user = db.query(User).filter(User.telegram_id == message.from_user.id).first()
     
     if user.role != UserRole.SELLER:
-        await message.answer("Только для продавцов.")
+        await message.answer("Эта функция доступна только для продавцов.")
         db.close()
         return
     
     limits = get_tariff_limits(user.tariff)
     if limits["daily_offers"] == 0:
-        await message.answer("⚠️ В бесплатном тарифе нельзя писать первым. Обновите тариф!")
+        await message.answer(
+            "⚠️ В бесплатном тарифе нельзя писать первым в базе спроса.\n\n"
+            "Перейдите на тариф 'Агентство Start' или выше, чтобы активно искать покупателей!"
+        )
         db.close()
         return
     
-    buyers = db.query(User).filter(User.role == UserRole.BUYER, User.search_budget_max > 0).order_by(User.created_at.desc()).limit(10).all()
+    buyers = db.query(User).filter(
+        User.role == UserRole.BUYER,
+        User.search_budget_max > 0
+    ).order_by(User.created_at.desc()).limit(10).all()
     db.close()
     
     if not buyers:
-        await message.answer("Пока нет активных покупателей.")
+        await message.answer("Пока нет активных покупателей в базе.")
         return
     
     text = "🎯 Активные покупатели:\n\n"
-    buttons = []
     
+    keyboard_buttons = []
     for buyer in buyers:
-        payment = {"cash": "Нал.", "mortgage": "Ипотека", "installment": "Рассрочка"}.get(buyer.search_payment_type, "")
-        text += f"👤 {buyer.first_name or 'Покупатель'}\n   🚪 {buyer.search_rooms or '?'} комн. | до ${buyer.search_budget_max:,} | {payment}\n\n"
-        buttons.append([InlineKeyboardButton(text=f"📤 Предложить {buyer.first_name or 'покупателю'}", callback_data=f"offer_{buyer.id}")])
+        rooms = buyer.search_rooms or "Любые"
+        district = buyer.search_district or "Любой район"
+        budget = buyer.search_budget_max or 0
+        payment = {"cash": "Наличные", "mortgage": "Ипотека", "installment": "Рассрочка"}.get(buyer.search_payment_type, "")
+        
+        text += (
+            f"👤 {buyer.first_name or 'Покупатель'}\n"
+            f"   🚪 {rooms} комн. | 📍 {district}\n"
+            f"   💰 до ${budget:,} | {payment}\n\n"
+        )
+        keyboard_buttons.append([
+            InlineKeyboardButton(text=f"📤 Предложить {buyer.first_name or 'покупателю'}", callback_data=f"offer_{buyer.id}")
+        ])
     
-    await message.answer(text, reply_markup=InlineKeyboardMarkup(inline_keyboard=buttons))
+    await message.answer(text, reply_markup=InlineKeyboardMarkup(inline_keyboard=keyboard_buttons))
 
 
 @dp.callback_query(F.data.startswith("offer_"))
@@ -1030,28 +916,55 @@ async def send_offer(callback: types.CallbackQuery):
     
     db = SessionLocal()
     seller = db.query(User).filter(User.telegram_id == callback.from_user.id).first()
-    properties = db.query(Property).filter(Property.owner_id == seller.id, Property.status == PropertyStatus.ACTIVE).all()
+    
+    limits = get_tariff_limits(seller.tariff)
+    
+    if seller.daily_offers_count >= limits["daily_offers"]:
+        await callback.answer("Вы достигли лимита предложений на сегодня!")
+        db.close()
+        return
+    
+    properties = db.query(Property).filter(
+        Property.owner_id == seller.id,
+        Property.status == PropertyStatus.ACTIVE
+    ).all()
     db.close()
     
     if not properties:
-        await callback.answer("Нет активных объектов!")
+        await callback.answer("У вас нет активных объектов для предложения!")
         return
     
-    buttons = [[InlineKeyboardButton(text=f"{p.district} - ${p.price:,}", callback_data=f"sendprop_{buyer_id}_{p.id}")] for p in properties[:5]]
-    await callback.message.answer("Выберите объект:", reply_markup=InlineKeyboardMarkup(inline_keyboard=buttons))
+    keyboard_buttons = []
+    for prop in properties[:5]:
+        keyboard_buttons.append([
+            InlineKeyboardButton(
+                text=f"{prop.residential_complex or 'Объект'} - ${prop.price:,}",
+                callback_data=f"sendprop_{buyer_id}_{prop.id}"
+            )
+        ])
+    
+    await callback.message.answer(
+        "Выберите объект для предложения:",
+        reply_markup=InlineKeyboardMarkup(inline_keyboard=keyboard_buttons)
+    )
 
 
 @dp.callback_query(F.data.startswith("sendprop_"))
 async def send_property_offer(callback: types.CallbackQuery):
     parts = callback.data.replace("sendprop_", "").split("_")
-    buyer_id, property_id = int(parts[0]), int(parts[1])
+    buyer_id = int(parts[0])
+    property_id = int(parts[1])
     
     db = SessionLocal()
     seller = db.query(User).filter(User.telegram_id == callback.from_user.id).first()
     buyer = db.query(User).filter(User.id == buyer_id).first()
     prop = db.query(Property).filter(Property.id == property_id).first()
     
-    offer = Offer(seller_id=seller.id, buyer_id=buyer_id, property_id=property_id)
+    offer = Offer(
+        seller_id=seller.id,
+        buyer_id=buyer_id,
+        property_id=property_id
+    )
     db.add(offer)
     seller.daily_offers_count += 1
     db.commit()
@@ -1059,16 +972,25 @@ async def send_property_offer(callback: types.CallbackQuery):
     try:
         await bot.send_message(
             buyer.telegram_id,
-            f"📬 Новое предложение!\n\n📍 {prop.district}\n🚪 {prop.rooms} комн.\n💰 ${prop.price:,}\n\nИнтересно?",
+            f"📬 Новое предложение!\n\n"
+            f"Продавец предлагает вам квартиру:\n\n"
+            f"🏢 {prop.residential_complex or 'Объект'}\n"
+            f"📍 {prop.district}\n"
+            f"🚪 {prop.rooms} комн. | {prop.area} м²\n"
+            f"💰 ${prop.price:,}\n\n"
+            f"Интересно?",
             reply_markup=InlineKeyboardMarkup(inline_keyboard=[
-                [InlineKeyboardButton(text="✅ Да", callback_data=f"accept_offer_{offer.id}"),
-                 InlineKeyboardButton(text="❌ Нет", callback_data=f"reject_offer_{offer.id}")]
+                [
+                    InlineKeyboardButton(text="✅ Интересно", callback_data=f"accept_offer_{offer.id}"),
+                    InlineKeyboardButton(text="❌ Не интересно", callback_data=f"reject_offer_{offer.id}")
+                ]
             ])
         )
     except:
         pass
     
     db.close()
+    
     await callback.message.edit_text("✅ Предложение отправлено!")
 
 
@@ -1078,40 +1000,66 @@ async def accept_offer(callback: types.CallbackQuery):
     
     db = SessionLocal()
     offer = db.query(Offer).filter(Offer.id == offer_id).first()
+    
     if not offer:
+        await callback.answer("Предложение не найдено")
         db.close()
         return
     
     offer.is_accepted = True
-    match = Match(buyer_id=offer.buyer_id, seller_id=offer.seller_id, property_id=offer.property_id)
+    
+    match = Match(
+        buyer_id=offer.buyer_id,
+        seller_id=offer.seller_id,
+        property_id=offer.property_id
+    )
     db.add(match)
     
     seller = db.query(User).filter(User.id == offer.seller_id).first()
     buyer = db.query(User).filter(User.id == offer.buyer_id).first()
     prop = db.query(Property).filter(Property.id == offer.property_id).first()
+    
     db.commit()
     
     try:
-        await bot.send_message(seller.telegram_id, f"🎉 Покупатель принял предложение!\n👤 {buyer.first_name or 'Покупатель'}")
+        await bot.send_message(
+            seller.telegram_id,
+            f"🎉 Покупатель заинтересован!\n\n"
+            f"👤 {buyer.first_name or 'Покупатель'} принял ваше предложение!\n"
+            f"🏢 {prop.residential_complex or 'Объект'}\n\n"
+            f"Контакт добавлен в раздел 'Сделки'"
+        )
     except:
         pass
     
+    seller_phone = seller.phone or "Не указан"
+    
     db.close()
-    await callback.message.edit_text(f"✅ Отлично!\n\n📞 {seller.phone or 'Нет'}\n👤 {seller.manager_name or seller.first_name}")
+    
+    await callback.message.edit_text(
+        f"✅ Отлично!\n\n"
+        f"Контакт продавца:\n"
+        f"📞 {seller_phone}\n"
+        f"👤 {seller.manager_name or seller.first_name}\n\n"
+        f"Свяжитесь для просмотра!"
+    )
 
 
 @dp.callback_query(F.data.startswith("reject_offer_"))
 async def reject_offer(callback: types.CallbackQuery):
     offer_id = int(callback.data.replace("reject_offer_", ""))
+    
     db = SessionLocal()
     offer = db.query(Offer).filter(Offer.id == offer_id).first()
     if offer:
         offer.is_accepted = False
         db.commit()
     db.close()
-    await callback.message.edit_text("Спасибо! Найдём другие варианты.")
+    
+    await callback.message.edit_text("Спасибо за ответ! Мы найдем для вас другие варианты.")
 
 
+# Profile
 @dp.message(F.text == "👤 Профиль")
 async def profile(message: types.Message):
     db = SessionLocal()
@@ -1119,30 +1067,65 @@ async def profile(message: types.Message):
     db.close()
     
     if user.role == UserRole.SELLER:
-        type_names = {SellerType.OWNER: "Собственник", SellerType.REALTOR: "Риелтор", SellerType.DEVELOPER: "Застройщик"}
-        tariff_names = {TariffType.FREE: "Бесплатный", TariffType.AGENCY_START: "Агентство Start", TariffType.DEVELOPER_PRO: "Застройщик PRO"}
-        text = f"👤 Профиль\n\n📋 Тип: {type_names.get(user.seller_type, '-')}\n🏢 Компания: {user.company_name or '-'}\n👤 Менеджер: {user.manager_name or '-'}\n📞 Телефон: {user.phone or '-'}\n💳 Тариф: {tariff_names.get(user.tariff, 'Бесплатный')}"
+        type_names = {
+            SellerType.OWNER: "Собственник",
+            SellerType.REALTOR: "Риелтор",
+            SellerType.DEVELOPER: "Застройщик"
+        }
+        tariff_names = {
+            TariffType.FREE: "Бесплатный",
+            TariffType.AGENCY_START: "Агентство Start",
+            TariffType.DEVELOPER_PRO: "Застройщик PRO"
+        }
+        
+        text = (
+            f"👤 Ваш профиль\n\n"
+            f"📋 Тип: {type_names.get(user.seller_type, 'Не указан')}\n"
+            f"🏢 Компания: {user.company_name or 'Не указана'}\n"
+            f"👤 Менеджер: {user.manager_name or 'Не указан'}\n"
+            f"📞 Телефон: {user.phone or 'Не указан'}\n"
+            f"💳 Тариф: {tariff_names.get(user.tariff, 'Бесплатный')}\n"
+        )
     else:
         payment_names = {"cash": "Наличные", "mortgage": "Ипотека", "installment": "Рассрочка"}
-        text = f"👤 Профиль\n\n🚪 Ищу: {user.search_rooms or '?'} комн.\n📍 Район: {user.search_district or 'Любой'}\n💰 Бюджет: до ${user.search_budget_max:,}\n💳 Оплата: {payment_names.get(user.search_payment_type, '-')}"
+        
+        text = (
+            f"👤 Ваш профиль\n\n"
+            f"🚪 Ищу: {user.search_rooms or 'Любые'} комн.\n"
+            f"📍 Район: {user.search_district or 'Любой'}\n"
+            f"💰 Бюджет: до ${user.search_budget_max:,}\n"
+            f"💳 Оплата: {payment_names.get(user.search_payment_type, 'Не указано')}\n"
+        )
     
     await message.answer(text)
 
 
+# Tariffs
 @dp.message(F.text == "💳 Тарифы")
 async def tariffs(message: types.Message):
     text = (
-        "💳 Тарифы\n\n"
+        "💳 Тарифные планы\n\n"
         "━━━━━━━━━━━━━━━━━━\n"
-        "🆓 Частник (Бесплатно)\n• 2 объекта\n• Нельзя писать первым\n\n"
-        "🏢 Агентство Start (500,000 сум/мес)\n• 20 объектов\n• 10 предложений в день\n\n"
-        "🏗 Застройщик PRO (2,000,000 сум/мес)\n• Безлимит объектов\n• 50 предложений в день\n\n"
+        "🆓 Частник (Бесплатно)\n"
+        "• 2 объекта\n"
+        "• Нельзя писать первым в базе спроса\n\n"
         "━━━━━━━━━━━━━━━━━━\n"
-        "Для оплаты: @InvictumMurad"
+        "🏢 Агентство Start (500,000 сум/мес)\n"
+        "• 20 объектов\n"
+        "• 10 предложений в день\n\n"
+        "━━━━━━━━━━━━━━━━━━\n"
+        "🏗 Застройщик PRO (2,000,000 сум/мес)\n"
+        "• Безлимит объектов\n"
+        "• 50 предложений в день\n"
+        "• Выделение цветом\n\n"
+        "━━━━━━━━━━━━━━━━━━\n"
+        "Для оплаты обратитесь к @InvictumMurad"
     )
+    
     await message.answer(text)
 
 
+# My likes (for buyers)
 @dp.message(F.text == "❤️ Мои лайки")
 async def my_likes(message: types.Message):
     db = SessionLocal()
@@ -1151,41 +1134,50 @@ async def my_likes(message: types.Message):
     db.close()
     
     if not likes:
-        await message.answer("Вы ещё не лайкнули ни одной квартиры.")
+        await message.answer("Вы еще не лайкнули ни одной квартиры.")
         return
     
     text = "❤️ Ваши лайки:\n\n"
+    
     for like in likes[:20]:
         db = SessionLocal()
         prop = db.query(Property).filter(Property.id == like.property_id).first()
         db.close()
+        
         if prop:
             status = "🟢 Мэтч!" if like.is_matched else "⏳ Ожидание"
-            text += f"{status} {prop.district} | {prop.rooms} комн. | ${prop.price:,}\n\n"
+            text += (
+                f"{status} {prop.residential_complex or 'Объект'}\n"
+                f"   {prop.rooms} комн. | ${prop.price:,}\n\n"
+            )
     
     await message.answer(text)
 
 
+# Settings (for buyers)
 @dp.message(F.text == "⚙️ Настройки поиска")
 async def search_settings(message: types.Message, state: FSMContext):
     await message.answer(
-        "⚙️ Изменить параметры\n\nВыберите количество комнат:",
+        "⚙️ Изменить параметры поиска\n\nВыберите количество комнат:",
         reply_markup=InlineKeyboardMarkup(inline_keyboard=[
-            [InlineKeyboardButton(text="1", callback_data="brooms_1"), InlineKeyboardButton(text="2", callback_data="brooms_2"), InlineKeyboardButton(text="3", callback_data="brooms_3")],
-            [InlineKeyboardButton(text="4", callback_data="brooms_4"), InlineKeyboardButton(text="5+", callback_data="brooms_5"), InlineKeyboardButton(text="Студия", callback_data="brooms_studio")]
+            [
+                InlineKeyboardButton(text="1", callback_data="rooms_1"),
+                InlineKeyboardButton(text="2", callback_data="rooms_2"),
+                InlineKeyboardButton(text="3", callback_data="rooms_3"),
+            ],
+            [
+                InlineKeyboardButton(text="4+", callback_data="rooms_4"),
+                InlineKeyboardButton(text="Студия", callback_data="rooms_studio"),
+            ]
         ])
     )
     await state.set_state(RegistrationStates.buyer_rooms)
 
 
-@dp.message(F.text == "💬 Мэтчи")
-async def buyer_matches(message: types.Message):
-    await deals(message)
-
-
 async def main():
     print("Initializing database...")
     init_db()
+    
     print("Starting bot...")
     await dp.start_polling(bot)
 
