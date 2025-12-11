@@ -692,6 +692,8 @@ async def process_photo(message: types.Message, state: FSMContext):
 
 @dp.callback_query(F.data.in_(["photos_done", "skip_photos"]))
 async def finish_photos(callback: types.CallbackQuery, state: FSMContext):
+    from aiogram.types import InputMediaPhoto
+    
     data = await state.get_data()
     
     db = SessionLocal()
@@ -727,9 +729,7 @@ async def finish_photos(callback: types.CallbackQuery, state: FSMContext):
     
     summary = (
         f"✅ Объявление добавлено!\n\n"
-        f"━━━━━━━━━━━━━━━━━━━━━━━━\n"
         f"📋 ХАРАКТЕРИСТИКИ:\n"
-        f"━━━━━━━━━━━━━━━━━━━━━━━━\n"
         f"🏷 Тип сделки: {type_name}\n"
         f"📍 Район: {data.get('district', '')}\n"
         f"🚪 Комнат: {data.get('rooms', '')}\n"
@@ -741,23 +741,26 @@ async def finish_photos(callback: types.CallbackQuery, state: FSMContext):
         f"🚪 Комнаты: {data.get('room_type', '')}\n"
         f"🚿 Санузел: {data.get('bathroom_type', '')}\n"
         f"💰 Цена: ${data.get('price', 0):,}\n"
-        f"━━━━━━━━━━━━━━━━━━━━━━━━\n"
     )
     
     if data.get("description"):
-        summary += f"📝 Описание:\n{data.get('description')}\n━━━━━━━━━━━━━━━━━━━━━━━━\n"
+        summary += f"\n📝 Описание:\n{data.get('description')}"
     
     photos_list = data.get("photos", [])
-    summary += f"📸 Фото: {len(photos_list)} шт.\n"
     
     await state.clear()
     
-    await callback.message.edit_text(summary)
-    
     if photos_list:
-        from aiogram.types import InputMediaPhoto
-        media_group = [InputMediaPhoto(media=photo_id) for photo_id in photos_list]
+        media_group = []
+        for i, photo_id in enumerate(photos_list):
+            if i == 0:
+                media_group.append(InputMediaPhoto(media=photo_id, caption=summary))
+            else:
+                media_group.append(InputMediaPhoto(media=photo_id))
+        await callback.message.delete()
         await callback.message.answer_media_group(media_group)
+    else:
+        await callback.message.edit_text(summary)
     
     buyers_count = get_active_buyers_count(
         rooms=data.get("rooms"),
