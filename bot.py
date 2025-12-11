@@ -391,19 +391,11 @@ async def process_seller_role(message: types.Message, state: FSMContext):
         db.commit()
     db.close()
     
-    tg_id = message.from_user.id
-    
     keyboard = ReplyKeyboardMarkup(
         keyboard=[
             [KeyboardButton(text="🏠 Собственник")],
-            [KeyboardButton(
-                text="🔑 Риелтор",
-                web_app=WebAppInfo(url=f"{WEBAPP_BASE_URL}/webapp/auth?type=realtor&tg_id={tg_id}")
-            )],
-            [KeyboardButton(
-                text="🏗 Застройщик",
-                web_app=WebAppInfo(url=f"{WEBAPP_BASE_URL}/webapp/auth?type=developer&tg_id={tg_id}")
-            )],
+            [KeyboardButton(text="🔑 Риелтор")],
+            [KeyboardButton(text="🏗 Застройщик")],
             [KeyboardButton(text="⬅️ Назад")]
         ],
         resize_keyboard=True
@@ -431,58 +423,85 @@ async def process_owner_type(message: types.Message, state: FSMContext):
     await state.update_data(seller_type=SellerType.OWNER)
     
     keyboard = ReplyKeyboardMarkup(
-        keyboard=[[KeyboardButton(text="⬅️ Назад")]],
-        resize_keyboard=True
-    )
-    
-    await message.answer("🏢 Введите название компании или ваше имя:", reply_markup=keyboard)
-    await state.set_state(RegistrationStates.seller_company)
-
-
-@dp.message(F.web_app_data)
-async def handle_webapp_data(message: types.Message, state: FSMContext):
-    import json
-    try:
-        data = json.loads(message.web_app_data.data)
-        action = data.get('action', '')
-        user_id = data.get('user_id', 0)
-        
-        if action in ['login_success', 'register_success']:
-            await state.clear()
-            
-            db = SessionLocal()
-            user = db.query(User).filter(User.id == user_id).first()
-            buyers_count = db.query(User).filter(User.role == UserRole.BUYER).count()
-            db.close()
-            
-            if user:
-                await show_seller_menu(message, message.from_user.id, buyers_count)
-            else:
-                await message.answer("Произошла ошибка. Попробуйте еще раз.")
-    except Exception as e:
-        await message.answer(f"Ошибка обработки данных: {str(e)}")
-
-
-@dp.message(F.text == "⬅️ Назад", RegistrationStates.seller_company)
-async def back_to_seller_type(message: types.Message, state: FSMContext):
-    tg_id = message.from_user.id
-    keyboard = ReplyKeyboardMarkup(
         keyboard=[
-            [KeyboardButton(text="🏠 Собственник")],
-            [KeyboardButton(
-                text="🔑 Риелтор",
-                web_app=WebAppInfo(url=f"{WEBAPP_BASE_URL}/webapp/auth?type=realtor&tg_id={tg_id}")
-            )],
-            [KeyboardButton(
-                text="🏗 Застройщик",
-                web_app=WebAppInfo(url=f"{WEBAPP_BASE_URL}/webapp/auth?type=developer&tg_id={tg_id}")
-            )],
+            [KeyboardButton(text="📱 Отправить номер", request_contact=True)],
             [KeyboardButton(text="⬅️ Назад")]
         ],
         resize_keyboard=True
     )
-    await message.answer("💼 Выберите тип аккаунта:", reply_markup=keyboard)
-    await state.set_state(RegistrationStates.seller_type)
+    
+    await message.answer(
+        "📱 Поделитесь вашим номером телефона.\n\n"
+        "Это будет ваш идентификатор аккаунта:",
+        reply_markup=keyboard
+    )
+    await state.set_state(RegistrationStates.seller_phone)
+
+
+@dp.message(F.text == "🔑 Риелтор", RegistrationStates.seller_type)
+async def process_realtor_type(message: types.Message, state: FSMContext):
+    await state.update_data(seller_type=SellerType.REALTOR)
+    
+    keyboard = ReplyKeyboardMarkup(
+        keyboard=[
+            [KeyboardButton(text="📱 Отправить номер", request_contact=True)],
+            [KeyboardButton(text="⬅️ Назад")]
+        ],
+        resize_keyboard=True
+    )
+    
+    await message.answer(
+        "📱 Поделитесь вашим номером телефона.\n\n"
+        "Это будет ваш идентификатор аккаунта:",
+        reply_markup=keyboard
+    )
+    await state.set_state(RegistrationStates.seller_phone)
+
+
+@dp.message(F.text == "🏗 Застройщик", RegistrationStates.seller_type)
+async def process_developer_type(message: types.Message, state: FSMContext):
+    await state.update_data(seller_type=SellerType.DEVELOPER)
+    
+    keyboard = ReplyKeyboardMarkup(
+        keyboard=[
+            [KeyboardButton(text="📱 Отправить номер", request_contact=True)],
+            [KeyboardButton(text="⬅️ Назад")]
+        ],
+        resize_keyboard=True
+    )
+    
+    await message.answer(
+        "📱 Поделитесь вашим номером телефона.\n\n"
+        "Это будет ваш идентификатор аккаунта:",
+        reply_markup=keyboard
+    )
+    await state.set_state(RegistrationStates.seller_phone)
+
+
+@dp.message(F.text == "⬅️ Назад", RegistrationStates.seller_company)
+async def back_to_phone(message: types.Message, state: FSMContext):
+    data = await state.get_data()
+    seller_type = data.get("seller_type", SellerType.OWNER)
+    
+    type_names = {
+        SellerType.OWNER: "🏠 Собственник",
+        SellerType.REALTOR: "🔑 Риелтор",
+        SellerType.DEVELOPER: "🏗 Застройщик"
+    }
+    
+    keyboard = ReplyKeyboardMarkup(
+        keyboard=[
+            [KeyboardButton(text="📱 Отправить номер", request_contact=True)],
+            [KeyboardButton(text="⬅️ Назад")]
+        ],
+        resize_keyboard=True
+    )
+    await message.answer(
+        f"Тип: {type_names.get(seller_type, 'Собственник')}\n\n"
+        "📱 Поделитесь вашим номером телефона:",
+        reply_markup=keyboard
+    )
+    await state.set_state(RegistrationStates.seller_phone)
 
 
 @dp.message(RegistrationStates.seller_company)
@@ -510,28 +529,36 @@ async def back_to_company(message: types.Message, state: FSMContext):
 
 @dp.message(RegistrationStates.seller_manager)
 async def process_manager_name(message: types.Message, state: FSMContext):
-    await state.update_data(manager_name=message.text)
+    data = await state.get_data()
     
+    db = SessionLocal()
+    user = db.query(User).filter(User.telegram_id == message.from_user.id).first()
+    
+    if user:
+        user.company_name = data.get("company_name", "")
+        user.manager_name = message.text
+        db.commit()
+    
+    buyers_count = db.query(User).filter(User.role == UserRole.BUYER).count()
+    db.close()
+    
+    await state.clear()
+    await show_seller_menu(message, message.from_user.id, buyers_count)
+
+
+@dp.message(F.text == "⬅️ Назад", RegistrationStates.seller_phone)
+async def back_to_seller_type_from_phone(message: types.Message, state: FSMContext):
     keyboard = ReplyKeyboardMarkup(
         keyboard=[
-            [KeyboardButton(text="📱 Отправить номер", request_contact=True)],
+            [KeyboardButton(text="🏠 Собственник")],
+            [KeyboardButton(text="🔑 Риелтор")],
+            [KeyboardButton(text="🏗 Застройщик")],
             [KeyboardButton(text="⬅️ Назад")]
         ],
         resize_keyboard=True
     )
-    
-    await message.answer("📱 Поделитесь вашим номером телефона:", reply_markup=keyboard)
-    await state.set_state(RegistrationStates.seller_phone)
-
-
-@dp.message(F.text == "⬅️ Назад", RegistrationStates.seller_phone)
-async def back_to_manager(message: types.Message, state: FSMContext):
-    keyboard = ReplyKeyboardMarkup(
-        keyboard=[[KeyboardButton(text="⬅️ Назад")]],
-        resize_keyboard=True
-    )
-    await message.answer("👤 Введите имя менеджера (кто будет отвечать на звонки):", reply_markup=keyboard)
-    await state.set_state(RegistrationStates.seller_manager)
+    await message.answer("💼 Выберите тип аккаунта:", reply_markup=keyboard)
+    await state.set_state(RegistrationStates.seller_type)
 
 
 @dp.message(RegistrationStates.seller_phone)
@@ -541,23 +568,59 @@ async def process_phone(message: types.Message, state: FSMContext):
     else:
         phone = message.text
     
+    if not phone or phone == "⬅️ Назад":
+        return
+    
     data = await state.get_data()
+    seller_type = data.get("seller_type", SellerType.OWNER)
     
     db = SessionLocal()
+    
+    existing_by_phone = db.query(User).filter(User.phone == phone).first()
+    
+    if existing_by_phone:
+        if existing_by_phone.telegram_id != message.from_user.id:
+            existing_by_phone.telegram_id = message.from_user.id
+            existing_by_phone.username = message.from_user.username
+            existing_by_phone.first_name = message.from_user.first_name
+            existing_by_phone.last_name = message.from_user.last_name
+        
+        existing_by_phone.role = UserRole.SELLER
+        db.commit()
+        
+        buyers_count = db.query(User).filter(User.role == UserRole.BUYER).count()
+        db.close()
+        
+        await state.clear()
+        await show_seller_menu(message, message.from_user.id, buyers_count)
+        return
+    
     user = db.query(User).filter(User.telegram_id == message.from_user.id).first()
+    
     if user:
-        user.seller_type = data.get("seller_type", SellerType.OWNER)
-        user.company_name = data.get("company_name", "")
-        user.manager_name = data.get("manager_name", "")
         user.phone = phone
-        user.tariff = TariffType.FREE
+        user.seller_type = seller_type
+        
+        if seller_type == SellerType.REALTOR:
+            user.tariff = TariffType.AGENCY_START
+        elif seller_type == SellerType.DEVELOPER:
+            user.tariff = TariffType.DEVELOPER_PRO
+        else:
+            user.tariff = TariffType.FREE
+        
         db.commit()
     
-    buyers_count = db.query(User).filter(User.role == UserRole.BUYER).count()
     db.close()
     
-    await state.clear()
-    await show_seller_menu(message, message.from_user.id, buyers_count)
+    await state.update_data(phone=phone)
+    
+    keyboard = ReplyKeyboardMarkup(
+        keyboard=[[KeyboardButton(text="⬅️ Назад")]],
+        resize_keyboard=True
+    )
+    
+    await message.answer("🏢 Введите название компании или ваше имя:", reply_markup=keyboard)
+    await state.set_state(RegistrationStates.seller_company)
 
 
 async def show_seller_menu(message, user_id, buyers_count=None):
