@@ -79,7 +79,6 @@
                         </div>
                     </div>
                     
-                    {% if user.role.value == 'seller' %}
                     <div class="card mt-4">
                         <div class="card-header bg-white">
                             <h5 class="mb-0">Тариф</h5>
@@ -87,17 +86,32 @@
                         <div class="card-body">
                             <form method="POST" action="{{ url_for('update_user_tariff', user_id=user.id) }}">
                                 <div class="mb-3">
+                                    <label class="form-label">Текущий тариф</label>
                                     <select name="tariff" class="form-select">
                                         <option value="free" {% if user.tariff and user.tariff.value == 'free' %}selected{% endif %}>Бесплатный</option>
                                         <option value="agency_start" {% if user.tariff and user.tariff.value == 'agency_start' %}selected{% endif %}>Агентство Start</option>
                                         <option value="developer_pro" {% if user.tariff and user.tariff.value == 'developer_pro' %}selected{% endif %}>Застройщик PRO</option>
+                                        <option value="pro" {% if user.tariff and user.tariff.value == 'pro' %}selected{% endif %}>PRO</option>
+                                        <option value="premium" {% if user.tariff and user.tariff.value == 'premium' %}selected{% endif %}>Premium</option>
                                     </select>
                                 </div>
+                                {% if user.tariff_expires %}
+                                <p class="text-muted small">Действует до: {{ user.tariff_expires.strftime('%d.%m.%Y %H:%M') }}</p>
+                                {% endif %}
+                                <p class="text-muted small mb-3">Платный тариф будет активен 30 дней с момента сохранения.</p>
                                 <button type="submit" class="btn btn-primary">Сохранить</button>
                             </form>
                         </div>
                     </div>
-                    {% endif %}
+                    
+                    <div class="card mt-4">
+                        <div class="card-header bg-white">
+                            <h5 class="mb-0">Баланс</h5>
+                        </div>
+                        <div class="card-body">
+                            <p class="h4 mb-0">{{ user.balance or 0 }} <small class="text-muted">сум</small></p>
+                        </div>
+                    </div>
                 </div>
                 
                 <div class="col-lg-8">

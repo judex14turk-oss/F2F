@@ -253,9 +253,75 @@ def admin_dashboard():
 @admin_required
 def admin_users():
     db = get_db()
-    users = db.query(User).order_by(User.created_at.desc()).all()
+    
+    role_filter = request.args.get('role', 'all')
+    tariff_filter = request.args.get('tariff', 'all')
+    sort_by = request.args.get('sort', 'created_at')
+    sort_order = request.args.get('order', 'desc')
+    search_query = request.args.get('q', '').strip()
+    
+    query = db.query(User)
+    
+    if role_filter == 'buyer':
+        query = query.filter(User.role == UserRole.BUYER)
+    elif role_filter == 'seller':
+        query = query.filter(User.role == UserRole.SELLER)
+    
+    if tariff_filter != 'all':
+        tariff_map = {
+            'free': TariffType.FREE,
+            'agency_start': TariffType.AGENCY_START,
+            'developer_pro': TariffType.DEVELOPER_PRO,
+            'pro': TariffType.PRO,
+            'premium': TariffType.PREMIUM
+        }
+        if tariff_filter in tariff_map:
+            query = query.filter(User.tariff == tariff_map[tariff_filter])
+    
+    if search_query:
+        search_pattern = f"%{search_query}%"
+        query = query.filter(
+            (User.first_name.ilike(search_pattern)) |
+            (User.last_name.ilike(search_pattern)) |
+            (User.username.ilike(search_pattern)) |
+            (User.phone.ilike(search_pattern)) |
+            (User.company_name.ilike(search_pattern))
+        )
+    
+    sort_columns = {
+        'created_at': User.created_at,
+        'telegram_id': User.telegram_id,
+        'first_name': User.first_name,
+        'tariff': User.tariff,
+        'role': User.role,
+        'balance': User.balance
+    }
+    sort_column = sort_columns.get(sort_by, User.created_at)
+    
+    if sort_order == 'asc':
+        query = query.order_by(sort_column.asc())
+    else:
+        query = query.order_by(sort_column.desc())
+    
+    users = query.all()
+    
+    total_count = db.query(User).count()
+    buyers_count = db.query(User).filter(User.role == UserRole.BUYER).count()
+    sellers_count = db.query(User).filter(User.role == UserRole.SELLER).count()
+    
     db.close()
-    return render_template('admin/users.html', users=users)
+    
+    return render_template('admin/users.html', 
+        users=users,
+        role_filter=role_filter,
+        tariff_filter=tariff_filter,
+        sort_by=sort_by,
+        sort_order=sort_order,
+        search_query=search_query,
+        total_count=total_count,
+        buyers_count=buyers_count,
+        sellers_count=sellers_count
+    )
 
 
 @app.route('/admin/users/<int:user_id>')
@@ -273,18 +339,27 @@ def admin_user_detail(user_id):
 @admin_required
 def update_user_tariff(user_id):
     tariff = request.form.get('tariff')
+    redirect_to = request.form.get('redirect', 'detail')
     db = get_db()
     user = db.query(User).filter(User.id == user_id).first()
     if user:
         tariff_map = {
             'free': TariffType.FREE,
             'agency_start': TariffType.AGENCY_START,
-            'developer_pro': TariffType.DEVELOPER_PRO
+            'developer_pro': TariffType.DEVELOPER_PRO,
+            'pro': TariffType.PRO,
+            'premium': TariffType.PREMIUM
         }
         user.tariff = tariff_map.get(tariff, TariffType.FREE)
-        user.tariff_expires = datetime.utcnow() + timedelta(days=30)
+        if tariff != 'free':
+            user.tariff_expires = datetime.utcnow() + timedelta(days=30)
+        else:
+            user.tariff_expires = None
         db.commit()
     db.close()
+    
+    if redirect_to == 'list':
+        return redirect(url_for('admin_users'))
     return redirect(url_for('admin_user_detail', user_id=user_id))
 
 

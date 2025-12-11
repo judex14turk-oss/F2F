@@ -44,7 +44,69 @@
         </nav>
         
         <main class="col-md-9 ms-sm-auto col-lg-10 px-md-4 py-4">
-            <h2 class="mb-4">Пользователи</h2>
+            <div class="d-flex justify-content-between align-items-center mb-4">
+                <h2>Пользователи</h2>
+                <div class="d-flex gap-2">
+                    <span class="badge bg-primary fs-6">Всего: {{ total_count }}</span>
+                    <span class="badge bg-info fs-6">Покупатели: {{ buyers_count }}</span>
+                    <span class="badge bg-success fs-6">Продавцы: {{ sellers_count }}</span>
+                </div>
+            </div>
+            
+            <div class="card mb-4">
+                <div class="card-body">
+                    <form method="GET" action="{{ url_for('admin_users') }}" class="row g-3">
+                        <div class="col-md-3">
+                            <label class="form-label">Поиск</label>
+                            <input type="text" name="q" class="form-control" placeholder="Имя, телефон, компания..." value="{{ search_query }}">
+                        </div>
+                        <div class="col-md-2">
+                            <label class="form-label">Роль</label>
+                            <select name="role" class="form-select">
+                                <option value="all" {% if role_filter == 'all' %}selected{% endif %}>Все</option>
+                                <option value="buyer" {% if role_filter == 'buyer' %}selected{% endif %}>Покупатели</option>
+                                <option value="seller" {% if role_filter == 'seller' %}selected{% endif %}>Продавцы</option>
+                            </select>
+                        </div>
+                        <div class="col-md-2">
+                            <label class="form-label">Тариф</label>
+                            <select name="tariff" class="form-select">
+                                <option value="all" {% if tariff_filter == 'all' %}selected{% endif %}>Все</option>
+                                <option value="free" {% if tariff_filter == 'free' %}selected{% endif %}>Бесплатный</option>
+                                <option value="agency_start" {% if tariff_filter == 'agency_start' %}selected{% endif %}>Агентство</option>
+                                <option value="developer_pro" {% if tariff_filter == 'developer_pro' %}selected{% endif %}>Застройщик</option>
+                                <option value="pro" {% if tariff_filter == 'pro' %}selected{% endif %}>PRO</option>
+                                <option value="premium" {% if tariff_filter == 'premium' %}selected{% endif %}>Premium</option>
+                            </select>
+                        </div>
+                        <div class="col-md-2">
+                            <label class="form-label">Сортировка</label>
+                            <select name="sort" class="form-select">
+                                <option value="created_at" {% if sort_by == 'created_at' %}selected{% endif %}>Дата рег.</option>
+                                <option value="first_name" {% if sort_by == 'first_name' %}selected{% endif %}>Имя</option>
+                                <option value="tariff" {% if sort_by == 'tariff' %}selected{% endif %}>Тариф</option>
+                                <option value="balance" {% if sort_by == 'balance' %}selected{% endif %}>Баланс</option>
+                                <option value="role" {% if sort_by == 'role' %}selected{% endif %}>Роль</option>
+                            </select>
+                        </div>
+                        <div class="col-md-1">
+                            <label class="form-label">Порядок</label>
+                            <select name="order" class="form-select">
+                                <option value="desc" {% if sort_order == 'desc' %}selected{% endif %}>По убыв.</option>
+                                <option value="asc" {% if sort_order == 'asc' %}selected{% endif %}>По возр.</option>
+                            </select>
+                        </div>
+                        <div class="col-md-2 d-flex align-items-end gap-2">
+                            <button type="submit" class="btn btn-primary">
+                                <i class="bi bi-search"></i> Найти
+                            </button>
+                            <a href="{{ url_for('admin_users') }}" class="btn btn-outline-secondary">
+                                <i class="bi bi-x-lg"></i>
+                            </a>
+                        </div>
+                    </form>
+                </div>
+            </div>
             
             <div class="card">
                 <div class="card-body">
@@ -52,13 +114,38 @@
                         <table class="table table-hover">
                             <thead>
                                 <tr>
-                                    <th>ID</th>
-                                    <th>Имя</th>
+                                    <th>
+                                        <a href="{{ url_for('admin_users', role=role_filter, tariff=tariff_filter, q=search_query, sort='telegram_id', order='desc' if sort_by != 'telegram_id' or sort_order == 'asc' else 'asc') }}" class="text-decoration-none text-dark">
+                                            ID {% if sort_by == 'telegram_id' %}<i class="bi bi-arrow-{{ 'up' if sort_order == 'asc' else 'down' }}"></i>{% endif %}
+                                        </a>
+                                    </th>
+                                    <th>
+                                        <a href="{{ url_for('admin_users', role=role_filter, tariff=tariff_filter, q=search_query, sort='first_name', order='desc' if sort_by != 'first_name' or sort_order == 'asc' else 'asc') }}" class="text-decoration-none text-dark">
+                                            Имя {% if sort_by == 'first_name' %}<i class="bi bi-arrow-{{ 'up' if sort_order == 'asc' else 'down' }}"></i>{% endif %}
+                                        </a>
+                                    </th>
                                     <th>Username</th>
-                                    <th>Роль</th>
-                                    <th>Тариф</th>
+                                    <th>
+                                        <a href="{{ url_for('admin_users', role=role_filter, tariff=tariff_filter, q=search_query, sort='role', order='desc' if sort_by != 'role' or sort_order == 'asc' else 'asc') }}" class="text-decoration-none text-dark">
+                                            Роль {% if sort_by == 'role' %}<i class="bi bi-arrow-{{ 'up' if sort_order == 'asc' else 'down' }}"></i>{% endif %}
+                                        </a>
+                                    </th>
+                                    <th>
+                                        <a href="{{ url_for('admin_users', role=role_filter, tariff=tariff_filter, q=search_query, sort='tariff', order='desc' if sort_by != 'tariff' or sort_order == 'asc' else 'asc') }}" class="text-decoration-none text-dark">
+                                            Тариф {% if sort_by == 'tariff' %}<i class="bi bi-arrow-{{ 'up' if sort_order == 'asc' else 'down' }}"></i>{% endif %}
+                                        </a>
+                                    </th>
                                     <th>Телефон</th>
-                                    <th>Дата рег.</th>
+                                    <th>
+                                        <a href="{{ url_for('admin_users', role=role_filter, tariff=tariff_filter, q=search_query, sort='balance', order='desc' if sort_by != 'balance' or sort_order == 'asc' else 'asc') }}" class="text-decoration-none text-dark">
+                                            Баланс {% if sort_by == 'balance' %}<i class="bi bi-arrow-{{ 'up' if sort_order == 'asc' else 'down' }}"></i>{% endif %}
+                                        </a>
+                                    </th>
+                                    <th>
+                                        <a href="{{ url_for('admin_users', role=role_filter, tariff=tariff_filter, q=search_query, sort='created_at', order='desc' if sort_by != 'created_at' or sort_order == 'asc' else 'asc') }}" class="text-decoration-none text-dark">
+                                            Дата рег. {% if sort_by == 'created_at' %}<i class="bi bi-arrow-{{ 'up' if sort_order == 'asc' else 'down' }}"></i>{% endif %}
+                                        </a>
+                                    </th>
                                     <th>Действия</th>
                                 </tr>
                             </thead>
@@ -66,34 +153,105 @@
                                 {% for user in users %}
                                 <tr>
                                     <td>{{ user.telegram_id }}</td>
-                                    <td>{{ user.first_name or '-' }} {{ user.last_name or '' }}</td>
+                                    <td>
+                                        <strong>{{ user.first_name or '-' }} {{ user.last_name or '' }}</strong>
+                                        {% if user.company_name %}
+                                        <br><small class="text-muted">{{ user.company_name }}</small>
+                                        {% endif %}
+                                    </td>
                                     <td>{{ '@' + user.username if user.username else '-' }}</td>
                                     <td>
                                         {% if user.role.value == 'buyer' %}
                                         <span class="badge bg-info">Покупатель</span>
                                         {% else %}
                                         <span class="badge bg-success">Продавец</span>
+                                        {% if user.seller_type %}
+                                            {% if user.seller_type.value == 'realtor' %}
+                                            <br><small class="text-muted">Риелтор</small>
+                                            {% elif user.seller_type.value == 'developer' %}
+                                            <br><small class="text-muted">Застройщик</small>
+                                            {% elif user.seller_type.value == 'owner' %}
+                                            <br><small class="text-muted">Собственник</small>
+                                            {% endif %}
+                                        {% endif %}
                                         {% endif %}
                                     </td>
                                     <td>
                                         {% if user.tariff %}
-                                            {% if user.tariff.value == 'free' %}Бесплатный
-                                            {% elif user.tariff.value == 'agency_start' %}Агентство
-                                            {% else %}PRO
+                                            {% if user.tariff.value == 'free' %}
+                                            <span class="badge bg-secondary">Бесплатный</span>
+                                            {% elif user.tariff.value == 'agency_start' %}
+                                            <span class="badge bg-primary">Агентство</span>
+                                            {% elif user.tariff.value == 'developer_pro' %}
+                                            <span class="badge bg-warning text-dark">Застройщик</span>
+                                            {% elif user.tariff.value == 'pro' %}
+                                            <span class="badge bg-success">PRO</span>
+                                            {% elif user.tariff.value == 'premium' %}
+                                            <span class="badge bg-danger">Premium</span>
+                                            {% endif %}
+                                            {% if user.tariff_expires %}
+                                            <br><small class="text-muted">до {{ user.tariff_expires.strftime('%d.%m.%Y') }}</small>
                                             {% endif %}
                                         {% else %}-{% endif %}
                                     </td>
                                     <td>{{ user.phone or '-' }}</td>
+                                    <td>{{ user.balance or 0 }}</td>
                                     <td>{{ user.created_at.strftime('%d.%m.%Y') }}</td>
                                     <td>
-                                        <a href="{{ url_for('admin_user_detail', user_id=user.id) }}" class="btn btn-sm btn-outline-primary">
-                                            <i class="bi bi-eye"></i>
-                                        </a>
+                                        <div class="btn-group">
+                                            <a href="{{ url_for('admin_user_detail', user_id=user.id) }}" class="btn btn-sm btn-outline-primary" title="Просмотр">
+                                                <i class="bi bi-eye"></i>
+                                            </a>
+                                            <button type="button" class="btn btn-sm btn-outline-success" data-bs-toggle="modal" data-bs-target="#editTariffModal{{ user.id }}" title="Изменить тариф">
+                                                <i class="bi bi-pencil"></i>
+                                            </button>
+                                        </div>
                                     </td>
                                 </tr>
+                                
+                                <div class="modal fade" id="editTariffModal{{ user.id }}" tabindex="-1">
+                                    <div class="modal-dialog">
+                                        <div class="modal-content">
+                                            <div class="modal-header">
+                                                <h5 class="modal-title">Изменить тариф - {{ user.first_name or 'Пользователь' }}</h5>
+                                                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                                            </div>
+                                            <form method="POST" action="{{ url_for('update_user_tariff', user_id=user.id) }}">
+                                                <div class="modal-body">
+                                                    <div class="mb-3">
+                                                        <label class="form-label">Тариф</label>
+                                                        <select name="tariff" class="form-select">
+                                                            <option value="free" {% if user.tariff and user.tariff.value == 'free' %}selected{% endif %}>Бесплатный</option>
+                                                            <option value="agency_start" {% if user.tariff and user.tariff.value == 'agency_start' %}selected{% endif %}>Агентство Start</option>
+                                                            <option value="developer_pro" {% if user.tariff and user.tariff.value == 'developer_pro' %}selected{% endif %}>Застройщик PRO</option>
+                                                            <option value="pro" {% if user.tariff and user.tariff.value == 'pro' %}selected{% endif %}>PRO</option>
+                                                            <option value="premium" {% if user.tariff and user.tariff.value == 'premium' %}selected{% endif %}>Premium</option>
+                                                        </select>
+                                                    </div>
+                                                    <p class="text-muted small">Тариф будет активен 30 дней с момента сохранения.</p>
+                                                </div>
+                                                <div class="modal-footer">
+                                                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Отмена</button>
+                                                    <button type="submit" class="btn btn-primary">Сохранить</button>
+                                                </div>
+                                            </form>
+                                        </div>
+                                    </div>
+                                </div>
                                 {% endfor %}
                             </tbody>
                         </table>
+                    </div>
+                    
+                    {% if not users %}
+                    <div class="text-center py-5 text-muted">
+                        <i class="bi bi-people display-4"></i>
+                        <p class="mt-3">Пользователи не найдены</p>
+                    </div>
+                    {% endif %}
+                    
+                    <div class="mt-3 text-muted">
+                        Показано: {{ users|length }} пользователей
                     </div>
                 </div>
             </div>
