@@ -1,0 +1,305 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Админ-панель</title>
+    <script src="https://telegram.org/js/telegram-web-app.js"></script>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.0/font/bootstrap-icons.css" rel="stylesheet">
+    <style>
+        :root {
+            --tg-theme-bg-color: #ffffff;
+            --tg-theme-text-color: #000000;
+            --tg-theme-hint-color: #999999;
+            --tg-theme-link-color: #2481cc;
+            --tg-theme-button-color: #5288c1;
+            --tg-theme-button-text-color: #ffffff;
+        }
+        
+        body {
+            background-color: var(--tg-theme-bg-color);
+            color: var(--tg-theme-text-color);
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            padding-bottom: 100px;
+        }
+        
+        .header {
+            background: linear-gradient(135deg, #4f46e5 0%, #7c3aed 100%);
+            color: white;
+            padding: 20px 15px;
+            margin-bottom: 15px;
+        }
+        
+        .header h1 {
+            font-size: 1.3rem;
+            margin: 0;
+        }
+        
+        .stats-row {
+            display: flex;
+            gap: 8px;
+            margin-top: 12px;
+        }
+        
+        .stat-badge {
+            background: rgba(255,255,255,0.2);
+            padding: 6px 12px;
+            border-radius: 20px;
+            font-size: 0.85rem;
+        }
+        
+        .filter-section {
+            background: #f8f9fa;
+            padding: 12px;
+            margin: 0 10px 15px;
+            border-radius: 12px;
+        }
+        
+        .filter-row {
+            display: flex;
+            gap: 8px;
+            flex-wrap: wrap;
+        }
+        
+        .filter-row select, .filter-row input {
+            flex: 1;
+            min-width: 100px;
+            padding: 8px 12px;
+            border: 1px solid #e2e8f0;
+            border-radius: 8px;
+            font-size: 0.9rem;
+        }
+        
+        .btn-filter {
+            background: var(--tg-theme-button-color);
+            color: white;
+            border: none;
+            padding: 8px 16px;
+            border-radius: 8px;
+            font-size: 0.9rem;
+        }
+        
+        .user-card {
+            background: white;
+            margin: 10px;
+            padding: 15px;
+            border-radius: 12px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+        }
+        
+        .user-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            margin-bottom: 10px;
+        }
+        
+        .user-name {
+            font-weight: 600;
+            font-size: 1rem;
+        }
+        
+        .user-company {
+            color: #666;
+            font-size: 0.85rem;
+        }
+        
+        .user-id {
+            color: #999;
+            font-size: 0.8rem;
+        }
+        
+        .user-info {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+            margin-top: 10px;
+        }
+        
+        .badge {
+            padding: 4px 10px;
+            border-radius: 20px;
+            font-size: 0.75rem;
+            font-weight: 500;
+        }
+        
+        .badge-buyer { background: #e0f2fe; color: #0369a1; }
+        .badge-seller { background: #dcfce7; color: #15803d; }
+        .badge-free { background: #f1f5f9; color: #475569; }
+        .badge-agency { background: #dbeafe; color: #1d4ed8; }
+        .badge-developer { background: #fef3c7; color: #92400e; }
+        .badge-pro { background: #dcfce7; color: #15803d; }
+        .badge-premium { background: #fce7f3; color: #be185d; }
+        
+        .tariff-form {
+            margin-top: 12px;
+            padding-top: 12px;
+            border-top: 1px solid #eee;
+        }
+        
+        .tariff-select {
+            display: flex;
+            gap: 8px;
+        }
+        
+        .tariff-select select {
+            flex: 1;
+            padding: 8px 12px;
+            border: 1px solid #e2e8f0;
+            border-radius: 8px;
+            font-size: 0.9rem;
+        }
+        
+        .btn-save {
+            background: #10b981;
+            color: white;
+            border: none;
+            padding: 8px 16px;
+            border-radius: 8px;
+            font-size: 0.9rem;
+        }
+        
+        .empty-state {
+            text-align: center;
+            padding: 40px 20px;
+            color: #999;
+        }
+        
+        .empty-state i {
+            font-size: 3rem;
+            margin-bottom: 15px;
+        }
+        
+        .user-count {
+            text-align: center;
+            color: #666;
+            font-size: 0.85rem;
+            padding: 10px;
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <h1><i class="bi bi-shield-lock"></i> Админ-панель</h1>
+        <div class="stats-row">
+            <span class="stat-badge">Всего: {{ total_count }}</span>
+            <span class="stat-badge">Покупатели: {{ buyers_count }}</span>
+            <span class="stat-badge">Продавцы: {{ sellers_count }}</span>
+        </div>
+    </div>
+    
+    <div class="filter-section">
+        <form method="GET" action="{{ url_for('webapp_admin') }}">
+            <input type="hidden" name="tg_id" value="{{ tg_id }}">
+            <div class="filter-row mb-2">
+                <input type="text" name="q" placeholder="Поиск..." value="{{ search_query }}">
+            </div>
+            <div class="filter-row mb-2">
+                <select name="role">
+                    <option value="all" {% if role_filter == 'all' %}selected{% endif %}>Все роли</option>
+                    <option value="buyer" {% if role_filter == 'buyer' %}selected{% endif %}>Покупатели</option>
+                    <option value="seller" {% if role_filter == 'seller' %}selected{% endif %}>Продавцы</option>
+                </select>
+                <select name="tariff">
+                    <option value="all" {% if tariff_filter == 'all' %}selected{% endif %}>Все тарифы</option>
+                    <option value="free" {% if tariff_filter == 'free' %}selected{% endif %}>Бесплатный</option>
+                    <option value="agency_start" {% if tariff_filter == 'agency_start' %}selected{% endif %}>Агентство</option>
+                    <option value="developer_pro" {% if tariff_filter == 'developer_pro' %}selected{% endif %}>Застройщик</option>
+                    <option value="pro" {% if tariff_filter == 'pro' %}selected{% endif %}>PRO</option>
+                    <option value="premium" {% if tariff_filter == 'premium' %}selected{% endif %}>Premium</option>
+                </select>
+            </div>
+            <div class="filter-row">
+                <select name="sort">
+                    <option value="created_at" {% if sort_by == 'created_at' %}selected{% endif %}>По дате</option>
+                    <option value="first_name" {% if sort_by == 'first_name' %}selected{% endif %}>По имени</option>
+                    <option value="tariff" {% if sort_by == 'tariff' %}selected{% endif %}>По тарифу</option>
+                    <option value="balance" {% if sort_by == 'balance' %}selected{% endif %}>По балансу</option>
+                </select>
+                <select name="order">
+                    <option value="desc" {% if sort_order == 'desc' %}selected{% endif %}>Убыв.</option>
+                    <option value="asc" {% if sort_order == 'asc' %}selected{% endif %}>Возр.</option>
+                </select>
+                <button type="submit" class="btn-filter"><i class="bi bi-search"></i></button>
+            </div>
+        </form>
+    </div>
+    
+    {% if users %}
+        {% for user in users %}
+        <div class="user-card">
+            <div class="user-header">
+                <div>
+                    <div class="user-name">{{ user.first_name or '-' }} {{ user.last_name or '' }}</div>
+                    {% if user.company_name %}
+                    <div class="user-company">{{ user.company_name }}</div>
+                    {% endif %}
+                    <div class="user-id">ID: {{ user.telegram_id }} {% if user.username %}@{{ user.username }}{% endif %}</div>
+                </div>
+            </div>
+            
+            <div class="user-info">
+                {% if user.role.value == 'buyer' %}
+                <span class="badge badge-buyer">Покупатель</span>
+                {% else %}
+                <span class="badge badge-seller">Продавец</span>
+                {% endif %}
+                
+                {% if user.tariff %}
+                    {% if user.tariff.value == 'free' %}
+                    <span class="badge badge-free">Бесплатный</span>
+                    {% elif user.tariff.value == 'agency_start' %}
+                    <span class="badge badge-agency">Агентство</span>
+                    {% elif user.tariff.value == 'developer_pro' %}
+                    <span class="badge badge-developer">Застройщик</span>
+                    {% elif user.tariff.value == 'pro' %}
+                    <span class="badge badge-pro">PRO</span>
+                    {% elif user.tariff.value == 'premium' %}
+                    <span class="badge badge-premium">Premium</span>
+                    {% endif %}
+                {% endif %}
+                
+                {% if user.phone %}
+                <span class="badge" style="background:#f1f5f9;color:#475569;">{{ user.phone }}</span>
+                {% endif %}
+            </div>
+            
+            <form class="tariff-form" method="POST" action="{{ url_for('webapp_update_tariff', user_id=user.id) }}">
+                <input type="hidden" name="tg_id" value="{{ tg_id }}">
+                <div class="tariff-select">
+                    <select name="tariff">
+                        <option value="free" {% if user.tariff and user.tariff.value == 'free' %}selected{% endif %}>Бесплатный</option>
+                        <option value="agency_start" {% if user.tariff and user.tariff.value == 'agency_start' %}selected{% endif %}>Агентство</option>
+                        <option value="developer_pro" {% if user.tariff and user.tariff.value == 'developer_pro' %}selected{% endif %}>Застройщик</option>
+                        <option value="pro" {% if user.tariff and user.tariff.value == 'pro' %}selected{% endif %}>PRO</option>
+                        <option value="premium" {% if user.tariff and user.tariff.value == 'premium' %}selected{% endif %}>Premium</option>
+                    </select>
+                    <button type="submit" class="btn-save"><i class="bi bi-check-lg"></i></button>
+                </div>
+            </form>
+        </div>
+        {% endfor %}
+        
+        <div class="user-count">
+            Показано: {{ users|length }} пользователей
+        </div>
+    {% else %}
+        <div class="empty-state">
+            <i class="bi bi-people"></i>
+            <p>Пользователи не найдены</p>
+        </div>
+    {% endif %}
+    
+    <script>
+        const tg = window.Telegram.WebApp;
+        tg.ready();
+        tg.expand();
+        
+        document.body.style.setProperty('--tg-theme-bg-color', tg.themeParams.bg_color || '#ffffff');
+        document.body.style.setProperty('--tg-theme-text-color', tg.themeParams.text_color || '#000000');
+        document.body.style.setProperty('--tg-theme-button-color', tg.themeParams.button_color || '#5288c1');
+    </script>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+</body>
+</html>

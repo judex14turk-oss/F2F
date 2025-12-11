@@ -529,6 +529,125 @@ def webapp_tariffs():
     return render_template('tariffs.html')
 
 
+@app.route('/webapp/admin')
+def webapp_admin():
+    tg_id = request.args.get('tg_id')
+    if not tg_id:
+        return "Telegram ID не указан", 400
+    
+    db = get_db()
+    user = db.query(User).filter(User.telegram_id == int(tg_id)).first()
+    
+    if not user or not user.is_admin:
+        db.close()
+        return "Доступ запрещён", 403
+    
+    session['user_id'] = user.id
+    session['is_admin'] = True
+    
+    role_filter = request.args.get('role', 'all')
+    tariff_filter = request.args.get('tariff', 'all')
+    sort_by = request.args.get('sort', 'created_at')
+    sort_order = request.args.get('order', 'desc')
+    search_query = request.args.get('q', '').strip()
+    
+    query = db.query(User)
+    
+    if role_filter == 'buyer':
+        query = query.filter(User.role == UserRole.BUYER)
+    elif role_filter == 'seller':
+        query = query.filter(User.role == UserRole.SELLER)
+    
+    if tariff_filter != 'all':
+        tariff_map = {
+            'free': TariffType.FREE,
+            'agency_start': TariffType.AGENCY_START,
+            'developer_pro': TariffType.DEVELOPER_PRO,
+            'pro': TariffType.PRO,
+            'premium': TariffType.PREMIUM
+        }
+        if tariff_filter in tariff_map:
+            query = query.filter(User.tariff == tariff_map[tariff_filter])
+    
+    if search_query:
+        search_pattern = f"%{search_query}%"
+        query = query.filter(
+            (User.first_name.ilike(search_pattern)) |
+            (User.last_name.ilike(search_pattern)) |
+            (User.username.ilike(search_pattern)) |
+            (User.phone.ilike(search_pattern)) |
+            (User.company_name.ilike(search_pattern))
+        )
+    
+    sort_columns = {
+        'created_at': User.created_at,
+        'telegram_id': User.telegram_id,
+        'first_name': User.first_name,
+        'tariff': User.tariff,
+        'role': User.role,
+        'balance': User.balance
+    }
+    sort_column = sort_columns.get(sort_by, User.created_at)
+    
+    if sort_order == 'asc':
+        query = query.order_by(sort_column.asc())
+    else:
+        query = query.order_by(sort_column.desc())
+    
+    users = query.all()
+    
+    total_count = db.query(User).count()
+    buyers_count = db.query(User).filter(User.role == UserRole.BUYER).count()
+    sellers_count = db.query(User).filter(User.role == UserRole.SELLER).count()
+    
+    db.close()
+    
+    return render_template('webapp_admin.html',
+        users=users,
+        role_filter=role_filter,
+        tariff_filter=tariff_filter,
+        sort_by=sort_by,
+        sort_order=sort_order,
+        search_query=search_query,
+        total_count=total_count,
+        buyers_count=buyers_count,
+        sellers_count=sellers_count,
+        tg_id=tg_id
+    )
+
+
+@app.route('/webapp/admin/user/<int:user_id>/tariff', methods=['POST'])
+def webapp_update_tariff(user_id):
+    tg_id = request.form.get('tg_id')
+    tariff = request.form.get('tariff')
+    
+    db = get_db()
+    admin = db.query(User).filter(User.telegram_id == int(tg_id)).first() if tg_id else None
+    
+    if not admin or not admin.is_admin:
+        db.close()
+        return "Доступ запрещён", 403
+    
+    user = db.query(User).filter(User.id == user_id).first()
+    if user:
+        tariff_map = {
+            'free': TariffType.FREE,
+            'agency_start': TariffType.AGENCY_START,
+            'developer_pro': TariffType.DEVELOPER_PRO,
+            'pro': TariffType.PRO,
+            'premium': TariffType.PREMIUM
+        }
+        user.tariff = tariff_map.get(tariff, TariffType.FREE)
+        if tariff != 'free':
+            user.tariff_expires = datetime.utcnow() + timedelta(days=30)
+        else:
+            user.tariff_expires = None
+        db.commit()
+    db.close()
+    
+    return redirect(url_for('webapp_admin', tg_id=tg_id))
+
+
 @app.route('/api/districts')
 def api_districts():
     db = get_db()

@@ -2101,6 +2101,10 @@ async def profile(message: types.Message):
     user = db.query(User).filter(User.telegram_id == message.from_user.id).first()
     db.close()
     
+    webapp_url = os.environ.get('REPLIT_DEV_DOMAIN', '')
+    if not webapp_url:
+        webapp_url = os.environ.get('REPLIT_DOMAINS', '').split(',')[0] if os.environ.get('REPLIT_DOMAINS') else ''
+    
     if user.role == UserRole.SELLER:
         type_names = {
             SellerType.OWNER: "Собственник",
@@ -2125,9 +2129,15 @@ async def profile(message: types.Message):
             f"💳 Тариф: {tariff_names.get(user.tariff, 'Бесплатный')}\n"
         )
         
-        keyboard = InlineKeyboardMarkup(inline_keyboard=[
-            [InlineKeyboardButton(text="🏠 Перейти в режим покупателя", callback_data="switch_to_buyer")]
-        ])
+        buttons = [[InlineKeyboardButton(text="🏠 Перейти в режим покупателя", callback_data="switch_to_buyer")]]
+        
+        if user.is_admin and webapp_url:
+            buttons.append([InlineKeyboardButton(
+                text="🔐 Админ-панель",
+                web_app=types.WebAppInfo(url=f"https://{webapp_url}/webapp/admin?tg_id={user.telegram_id}")
+            )])
+        
+        keyboard = InlineKeyboardMarkup(inline_keyboard=buttons)
     else:
         payment_names = {"cash": "Наличные", "mortgage": "Ипотека", "installment": "Рассрочка"}
         budget = f"${user.search_budget_max:,}" if user.search_budget_max else "Не указан"
@@ -2141,9 +2151,15 @@ async def profile(message: types.Message):
             f"💳 Оплата: {payment_names.get(user.search_payment_type, 'Не указано')}\n"
         )
         
-        keyboard = InlineKeyboardMarkup(inline_keyboard=[
-            [InlineKeyboardButton(text="💼 Перейти в режим продавца", callback_data="switch_to_seller")]
-        ])
+        buttons = [[InlineKeyboardButton(text="💼 Перейти в режим продавца", callback_data="switch_to_seller")]]
+        
+        if user.is_admin and webapp_url:
+            buttons.append([InlineKeyboardButton(
+                text="🔐 Админ-панель",
+                web_app=types.WebAppInfo(url=f"https://{webapp_url}/webapp/admin?tg_id={user.telegram_id}")
+            )])
+        
+        keyboard = InlineKeyboardMarkup(inline_keyboard=buttons)
     
     await message.answer(text, reply_markup=keyboard)
 
