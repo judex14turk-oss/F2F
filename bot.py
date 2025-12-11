@@ -2019,17 +2019,87 @@ async def search_settings(message: types.Message, state: FSMContext):
         "⚙️ Изменить параметры поиска\n\nВыберите количество комнат:",
         reply_markup=InlineKeyboardMarkup(inline_keyboard=[
             [
-                InlineKeyboardButton(text="1", callback_data="rooms_1"),
-                InlineKeyboardButton(text="2", callback_data="rooms_2"),
-                InlineKeyboardButton(text="3", callback_data="rooms_3"),
+                InlineKeyboardButton(text="1", callback_data="settings_rooms_1"),
+                InlineKeyboardButton(text="2", callback_data="settings_rooms_2"),
+                InlineKeyboardButton(text="3", callback_data="settings_rooms_3"),
             ],
             [
-                InlineKeyboardButton(text="4+", callback_data="rooms_4"),
-                InlineKeyboardButton(text="Студия", callback_data="rooms_studio"),
+                InlineKeyboardButton(text="4+", callback_data="settings_rooms_4"),
+                InlineKeyboardButton(text="Студия", callback_data="settings_rooms_studio"),
             ]
         ])
     )
-    await state.set_state(RegistrationStates.buyer_rooms)
+
+
+@dp.callback_query(F.data.startswith("settings_rooms_"))
+async def settings_rooms_selected(callback: types.CallbackQuery):
+    rooms = callback.data.replace("settings_rooms_", "")
+    
+    db = SessionLocal()
+    user = db.query(User).filter(User.telegram_id == callback.from_user.id).first()
+    if user:
+        user.search_rooms = rooms
+        db.commit()
+    
+    districts = db.query(District).all()
+    db.close()
+    
+    keyboard_buttons = []
+    row = []
+    for district in districts:
+        row.append(InlineKeyboardButton(text=district.name, callback_data=f"settings_district_{district.name[:20]}"))
+        if len(row) == 2:
+            keyboard_buttons.append(row)
+            row = []
+    if row:
+        keyboard_buttons.append(row)
+    keyboard_buttons.append([InlineKeyboardButton(text="Любой район", callback_data="settings_district_any")])
+    
+    await callback.message.edit_text(
+        "📍 Выберите район:",
+        reply_markup=InlineKeyboardMarkup(inline_keyboard=keyboard_buttons)
+    )
+
+
+@dp.callback_query(F.data.startswith("settings_district_"))
+async def settings_district_selected(callback: types.CallbackQuery):
+    district = callback.data.replace("settings_district_", "")
+    if district == "any":
+        district = "Любой"
+    
+    db = SessionLocal()
+    user = db.query(User).filter(User.telegram_id == callback.from_user.id).first()
+    if user:
+        user.search_district = district
+        db.commit()
+    db.close()
+    
+    await callback.message.edit_text(
+        "💰 Введите максимальный бюджет в долларах:\n\n(например: 50000)"
+    )
+    await callback.answer()
+
+
+@dp.message(F.text.regexp(r'^\d+$'))
+async def settings_budget_entered(message: types.Message):
+    db = SessionLocal()
+    user = db.query(User).filter(User.telegram_id == message.from_user.id).first()
+    
+    if not user or user.role != UserRole.BUYER:
+        db.close()
+        return
+    
+    budget = int(message.text)
+    user.search_budget_max = budget
+    db.commit()
+    db.close()
+    
+    await message.answer(
+        f"✅ Настройки обновлены!\n\n"
+        f"🚪 Комнаты: {user.search_rooms}\n"
+        f"📍 Район: {user.search_district}\n"
+        f"💰 Бюджет: до ${budget:,}"
+    )
 
 
 PROPERTY_LIFETIME_DAYS = 30
