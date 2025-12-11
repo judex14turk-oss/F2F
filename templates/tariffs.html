@@ -164,6 +164,82 @@
             50% { opacity: 0.8; }
         }
         
+        .promo-code-section {
+            max-width: 400px;
+            margin: 32px auto 0;
+            background: var(--bg-card);
+            border-radius: 16px;
+            padding: 20px;
+            border: 1px solid var(--border-color);
+            text-align: center;
+        }
+        
+        .promo-code-section h3 {
+            font-size: 16px;
+            margin-bottom: 16px;
+            color: var(--text-primary);
+        }
+        
+        .promo-input-wrapper {
+            display: flex;
+            gap: 8px;
+        }
+        
+        .promo-input {
+            flex: 1;
+            background: var(--bg-secondary);
+            border: 1px solid var(--border-color);
+            border-radius: 10px;
+            padding: 12px 16px;
+            color: var(--text-primary);
+            font-size: 15px;
+            outline: none;
+            transition: border-color 0.2s;
+        }
+        
+        .promo-input:focus {
+            border-color: var(--accent-pro);
+        }
+        
+        .promo-input::placeholder {
+            color: var(--text-secondary);
+        }
+        
+        .promo-btn {
+            background: linear-gradient(135deg, var(--accent-pro) 0%, #3b82f6 100%);
+            color: white;
+            border: none;
+            border-radius: 10px;
+            padding: 12px 20px;
+            font-size: 14px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: transform 0.2s, box-shadow 0.2s;
+        }
+        
+        .promo-btn:hover {
+            transform: translateY(-1px);
+            box-shadow: 0 4px 12px rgba(96, 165, 250, 0.3);
+        }
+        
+        .promo-btn:active {
+            transform: translateY(0);
+        }
+        
+        .promo-result {
+            margin-top: 12px;
+            font-size: 14px;
+            min-height: 20px;
+        }
+        
+        .promo-result.success {
+            color: var(--accent-free);
+        }
+        
+        .promo-result.error {
+            color: #ef4444;
+        }
+        
         .features-list {
             list-style: none;
             margin-top: 20px;
@@ -451,6 +527,16 @@
         </p>
     </div>
     
+    <!-- Промокод -->
+    <div class="promo-code-section">
+        <h3>🎁 Есть промокод?</h3>
+        <div class="promo-input-wrapper">
+            <input type="text" id="promoCode" placeholder="Введите промокод" class="promo-input">
+            <button onclick="applyPromo()" class="promo-btn">Применить</button>
+        </div>
+        <div id="promoResult" class="promo-result"></div>
+    </div>
+    
     <!-- Контакт -->
     <div class="contact-section">
         <h3>Готовы начать?</h3>
@@ -466,10 +552,51 @@
         tg.ready();
         tg.expand();
         
-        // Установить цвет фона
         if (tg.themeParams.bg_color) {
             document.body.style.background = tg.themeParams.bg_color;
         }
+        
+        async function applyPromo() {
+            const code = document.getElementById('promoCode').value.trim().toUpperCase();
+            const resultEl = document.getElementById('promoResult');
+            
+            if (!code) {
+                resultEl.className = 'promo-result error';
+                resultEl.textContent = 'Введите промокод';
+                return;
+            }
+            
+            try {
+                const response = await fetch('/api/promo/check', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ code: code, tg_id: tg.initDataUnsafe?.user?.id })
+                });
+                
+                const data = await response.json();
+                
+                if (data.valid) {
+                    resultEl.className = 'promo-result success';
+                    resultEl.textContent = '✓ ' + data.message;
+                    
+                    if (data.action === 'contact_admin') {
+                        setTimeout(() => {
+                            tg.openTelegramLink('https://t.me/InvictumMurad?text=' + encodeURIComponent('Промокод: ' + code));
+                        }, 1500);
+                    }
+                } else {
+                    resultEl.className = 'promo-result error';
+                    resultEl.textContent = data.message || 'Промокод не найден';
+                }
+            } catch (e) {
+                resultEl.className = 'promo-result error';
+                resultEl.textContent = 'Ошибка проверки. Попробуйте позже.';
+            }
+        }
+        
+        document.getElementById('promoCode').addEventListener('keypress', function(e) {
+            if (e.key === 'Enter') applyPromo();
+        });
     </script>
 </body>
 </html>

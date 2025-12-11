@@ -3,7 +3,7 @@ from datetime import datetime, timedelta
 from functools import wraps
 
 from flask import Flask, render_template, request, jsonify, redirect, url_for, session
-from models import SessionLocal, User, Property, Like, Match, Offer, District, ResidentialComplex
+from models import SessionLocal, User, Property, Like, Match, Offer, District, ResidentialComplex, PromoCode
 from models import UserRole, SellerType, TariffType, PropertyType, PropertyStatus, init_db
 
 app = Flask(__name__)
@@ -466,6 +466,50 @@ def api_complexes():
     complexes = db.query(ResidentialComplex).all()
     db.close()
     return jsonify([{'id': c.id, 'name': c.name, 'district': c.district} for c in complexes])
+
+
+@app.route('/api/promo/check', methods=['POST'])
+def check_promo():
+    data = request.get_json()
+    code = data.get('code', '').strip().upper()
+    tg_id = data.get('tg_id')
+    
+    if not code:
+        return jsonify({'valid': False, 'message': 'Введите промокод'})
+    
+    db = get_db()
+    promo = db.query(PromoCode).filter(
+        PromoCode.code == code,
+        PromoCode.is_active == True
+    ).first()
+    
+    if not promo:
+        db.close()
+        return jsonify({'valid': False, 'message': 'Промокод не найден или истёк'})
+    
+    if promo.expires_at and promo.expires_at < datetime.utcnow():
+        db.close()
+        return jsonify({'valid': False, 'message': 'Срок действия промокода истёк'})
+    
+    if promo.max_uses > 0 and promo.current_uses >= promo.max_uses:
+        db.close()
+        return jsonify({'valid': False, 'message': 'Промокод уже использован максимальное количество раз'})
+    
+    message = promo.description or 'Промокод принят!'
+    if promo.discount_percent > 0:
+        message = f'Скидка {promo.discount_percent}%! Напишите администратору для активации.'
+    elif promo.bonus_days > 0:
+        message = f'+{promo.bonus_days} дней бесплатно! Напишите администратору.'
+    
+    db.close()
+    
+    return jsonify({
+        'valid': True,
+        'message': message,
+        'action': 'contact_admin',
+        'discount': promo.discount_percent,
+        'bonus_days': promo.bonus_days
+    })
 
 
 if __name__ == '__main__':

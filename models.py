@@ -175,6 +175,22 @@ class District(Base):
     city = Column(String(100), default='Ташкент')
 
 
+class PromoCode(Base):
+    __tablename__ = 'promo_codes'
+    
+    id = Column(Integer, primary_key=True)
+    code = Column(String(50), unique=True, nullable=False)
+    discount_percent = Column(Integer, default=0)
+    bonus_days = Column(Integer, default=0)
+    tariff = Column(String(50))
+    max_uses = Column(Integer, default=1)
+    current_uses = Column(Integer, default=0)
+    is_active = Column(Boolean, default=True)
+    expires_at = Column(DateTime)
+    created_at = Column(DateTime, default=datetime.utcnow)
+    description = Column(String(200))
+
+
 def init_db():
     Base.metadata.create_all(engine)
     
