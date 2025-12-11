@@ -2016,7 +2016,36 @@ async def my_likes(message: types.Message):
 @dp.message(F.text == "⚙️ Настройки поиска")
 async def search_settings(message: types.Message, state: FSMContext):
     await message.answer(
-        "⚙️ Изменить параметры поиска\n\nВыберите количество комнат:",
+        "⚙️ Изменить параметры поиска\n\n🏷 Что вас интересует?",
+        reply_markup=InlineKeyboardMarkup(inline_keyboard=[
+            [InlineKeyboardButton(text="🏠 Купить", callback_data="settings_deal_buy")],
+            [InlineKeyboardButton(text="🔑 Снять в аренду", callback_data="settings_deal_rent")]
+        ])
+    )
+
+
+@dp.callback_query(F.data.startswith("settings_deal_"))
+async def settings_deal_selected(callback: types.CallbackQuery, state: FSMContext):
+    deal_type = callback.data.replace("settings_deal_", "")
+    await state.update_data(search_deal_type=deal_type)
+    
+    await callback.message.edit_text(
+        "🏢 Выберите тип недвижимости:",
+        reply_markup=InlineKeyboardMarkup(inline_keyboard=[
+            [InlineKeyboardButton(text="🏢 Квартира", callback_data="settings_proptype_apartment")],
+            [InlineKeyboardButton(text="🏡 Дом / Участок", callback_data="settings_proptype_house")],
+            [InlineKeyboardButton(text="🏪 Коммерческая", callback_data="settings_proptype_commercial")]
+        ])
+    )
+
+
+@dp.callback_query(F.data.startswith("settings_proptype_"))
+async def settings_proptype_selected(callback: types.CallbackQuery, state: FSMContext):
+    prop_type = callback.data.replace("settings_proptype_", "")
+    await state.update_data(search_prop_type=prop_type)
+    
+    await callback.message.edit_text(
+        "🚪 Выберите количество комнат:",
         reply_markup=InlineKeyboardMarkup(inline_keyboard=[
             [
                 InlineKeyboardButton(text="1", callback_data="settings_rooms_1"),
@@ -2026,21 +2055,18 @@ async def search_settings(message: types.Message, state: FSMContext):
             [
                 InlineKeyboardButton(text="4+", callback_data="settings_rooms_4"),
                 InlineKeyboardButton(text="Студия", callback_data="settings_rooms_studio"),
-            ]
+            ],
+            [InlineKeyboardButton(text="Любое", callback_data="settings_rooms_any")]
         ])
     )
 
 
 @dp.callback_query(F.data.startswith("settings_rooms_"))
-async def settings_rooms_selected(callback: types.CallbackQuery):
+async def settings_rooms_selected(callback: types.CallbackQuery, state: FSMContext):
     rooms = callback.data.replace("settings_rooms_", "")
+    await state.update_data(search_rooms=rooms)
     
     db = SessionLocal()
-    user = db.query(User).filter(User.telegram_id == callback.from_user.id).first()
-    if user:
-        user.search_rooms = rooms
-        db.commit()
-    
     districts = db.query(District).all()
     db.close()
     
@@ -2062,17 +2088,11 @@ async def settings_rooms_selected(callback: types.CallbackQuery):
 
 
 @dp.callback_query(F.data.startswith("settings_district_"))
-async def settings_district_selected(callback: types.CallbackQuery):
+async def settings_district_selected(callback: types.CallbackQuery, state: FSMContext):
     district = callback.data.replace("settings_district_", "")
     if district == "any":
         district = "Любой"
-    
-    db = SessionLocal()
-    user = db.query(User).filter(User.telegram_id == callback.from_user.id).first()
-    if user:
-        user.search_district = district
-        db.commit()
-    db.close()
+    await state.update_data(search_district=district)
     
     await callback.message.edit_text(
         "💰 Введите максимальный бюджет в долларах:\n\n(например: 50000)"
@@ -2081,7 +2101,7 @@ async def settings_district_selected(callback: types.CallbackQuery):
 
 
 @dp.message(F.text.regexp(r'^\d+$'))
-async def settings_budget_entered(message: types.Message):
+async def settings_budget_entered(message: types.Message, state: FSMContext):
     db = SessionLocal()
     user = db.query(User).filter(User.telegram_id == message.from_user.id).first()
     
@@ -2089,15 +2109,31 @@ async def settings_budget_entered(message: types.Message):
         db.close()
         return
     
+    data = await state.get_data()
     budget = int(message.text)
+    
+    deal_type = data.get("search_deal_type", "buy")
+    prop_type = data.get("search_prop_type", "apartment")
+    rooms = data.get("search_rooms", "any")
+    district = data.get("search_district", "Любой")
+    
     user.search_budget_max = budget
+    user.search_rooms = rooms
+    user.search_district = district
+    user.search_payment_type = f"{deal_type}_{prop_type}"
     db.commit()
     db.close()
     
+    await state.clear()
+    
+    deal_names = {"buy": "Покупка", "rent": "Аренда"}
+    prop_names = {"apartment": "Квартира", "house": "Дом/Участок", "commercial": "Коммерческая"}
+    
     await message.answer(
         f"✅ Настройки обновлены!\n\n"
-        f"🚪 Комнаты: {user.search_rooms}\n"
-        f"📍 Район: {user.search_district}\n"
+        f"🏷 Тип: {deal_names.get(deal_type, deal_type)} — {prop_names.get(prop_type, prop_type)}\n"
+        f"🚪 Комнаты: {rooms if rooms != 'any' else 'Любые'}\n"
+        f"📍 Район: {district}\n"
         f"💰 Бюджет: до ${budget:,}"
     )
 
