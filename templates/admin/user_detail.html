@@ -1,0 +1,180 @@
+{% extends 'base.html' %}
+
+{% block title %}Пользователь - Admin{% endblock %}
+
+{% block body %}
+<div class="container-fluid">
+    <div class="row">
+        <nav class="col-md-3 col-lg-2 d-md-block sidebar collapse py-4">
+            <div class="text-center text-white mb-4">
+                <h5><i class="bi bi-house-heart-fill"></i> Admin Panel</h5>
+            </div>
+            <ul class="nav flex-column">
+                <li class="nav-item">
+                    <a class="nav-link" href="{{ url_for('admin_dashboard') }}">
+                        <i class="bi bi-speedometer2"></i> Дашборд
+                    </a>
+                </li>
+                <li class="nav-item">
+                    <a class="nav-link active" href="{{ url_for('admin_users') }}">
+                        <i class="bi bi-people"></i> Пользователи
+                    </a>
+                </li>
+                <li class="nav-item">
+                    <a class="nav-link" href="{{ url_for('admin_properties') }}">
+                        <i class="bi bi-building"></i> Объекты
+                    </a>
+                </li>
+                <li class="nav-item">
+                    <a class="nav-link" href="{{ url_for('admin_matches') }}">
+                        <i class="bi bi-heart"></i> Мэтчи
+                    </a>
+                </li>
+                <li class="nav-item">
+                    <a class="nav-link" href="{{ url_for('admin_stats') }}">
+                        <i class="bi bi-graph-up"></i> Статистика
+                    </a>
+                </li>
+                <li class="nav-item mt-4">
+                    <a class="nav-link" href="{{ url_for('logout') }}">
+                        <i class="bi bi-box-arrow-left"></i> Выход
+                    </a>
+                </li>
+            </ul>
+        </nav>
+        
+        <main class="col-md-9 ms-sm-auto col-lg-10 px-md-4 py-4">
+            <div class="d-flex justify-content-between align-items-center mb-4">
+                <h2>{{ user.first_name or 'Пользователь' }} {{ user.last_name or '' }}</h2>
+                <a href="{{ url_for('admin_users') }}" class="btn btn-outline-secondary">
+                    <i class="bi bi-arrow-left"></i> Назад
+                </a>
+            </div>
+            
+            <div class="row">
+                <div class="col-lg-4 mb-4">
+                    <div class="card">
+                        <div class="card-header bg-white">
+                            <h5 class="mb-0">Профиль</h5>
+                        </div>
+                        <div class="card-body">
+                            <p><strong>Telegram ID:</strong> {{ user.telegram_id }}</p>
+                            <p><strong>Username:</strong> {{ '@' + user.username if user.username else '-' }}</p>
+                            <p><strong>Телефон:</strong> {{ user.phone or '-' }}</p>
+                            <p><strong>Роль:</strong> 
+                                {% if user.role.value == 'buyer' %}Покупатель{% else %}Продавец{% endif %}
+                            </p>
+                            {% if user.role.value == 'seller' %}
+                            <p><strong>Тип:</strong> 
+                                {% if user.seller_type %}
+                                    {% if user.seller_type.value == 'owner' %}Собственник
+                                    {% elif user.seller_type.value == 'realtor' %}Риелтор
+                                    {% else %}Застройщик{% endif %}
+                                {% else %}-{% endif %}
+                            </p>
+                            <p><strong>Компания:</strong> {{ user.company_name or '-' }}</p>
+                            <p><strong>Менеджер:</strong> {{ user.manager_name or '-' }}</p>
+                            {% endif %}
+                            <p><strong>Регистрация:</strong> {{ user.created_at.strftime('%d.%m.%Y %H:%M') }}</p>
+                        </div>
+                    </div>
+                    
+                    {% if user.role.value == 'seller' %}
+                    <div class="card mt-4">
+                        <div class="card-header bg-white">
+                            <h5 class="mb-0">Тариф</h5>
+                        </div>
+                        <div class="card-body">
+                            <form method="POST" action="{{ url_for('update_user_tariff', user_id=user.id) }}">
+                                <div class="mb-3">
+                                    <select name="tariff" class="form-select">
+                                        <option value="free" {% if user.tariff and user.tariff.value == 'free' %}selected{% endif %}>Бесплатный</option>
+                                        <option value="agency_start" {% if user.tariff and user.tariff.value == 'agency_start' %}selected{% endif %}>Агентство Start</option>
+                                        <option value="developer_pro" {% if user.tariff and user.tariff.value == 'developer_pro' %}selected{% endif %}>Застройщик PRO</option>
+                                    </select>
+                                </div>
+                                <button type="submit" class="btn btn-primary">Сохранить</button>
+                            </form>
+                        </div>
+                    </div>
+                    {% endif %}
+                </div>
+                
+                <div class="col-lg-8">
+                    {% if properties %}
+                    <div class="card mb-4">
+                        <div class="card-header bg-white">
+                            <h5 class="mb-0">Объекты ({{ properties|length }})</h5>
+                        </div>
+                        <div class="card-body">
+                            <div class="table-responsive">
+                                <table class="table">
+                                    <thead>
+                                        <tr>
+                                            <th>Название</th>
+                                            <th>Цена</th>
+                                            <th>Статус</th>
+                                            <th>Просмотры</th>
+                                            <th>Лайки</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        {% for prop in properties %}
+                                        <tr>
+                                            <td>{{ prop.residential_complex or 'Объект' }}</td>
+                                            <td>${{ "{:,}".format(prop.price) }}</td>
+                                            <td>
+                                                {% if prop.status.value == 'active' %}
+                                                <span class="badge badge-active">Активен</span>
+                                                {% elif prop.status.value == 'moderation' %}
+                                                <span class="badge badge-moderation">Модерация</span>
+                                                {% else %}
+                                                <span class="badge badge-archive">Архив</span>
+                                                {% endif %}
+                                            </td>
+                                            <td>{{ prop.views_count }}</td>
+                                            <td>{{ prop.likes_count }}</td>
+                                        </tr>
+                                        {% endfor %}
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+                    {% endif %}
+                    
+                    {% if matches %}
+                    <div class="card">
+                        <div class="card-header bg-white">
+                            <h5 class="mb-0">Мэтчи ({{ matches|length }})</h5>
+                        </div>
+                        <div class="card-body">
+                            <div class="table-responsive">
+                                <table class="table">
+                                    <thead>
+                                        <tr>
+                                            <th>Дата</th>
+                                            <th>Статус</th>
+                                            <th>Заметка</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        {% for match in matches %}
+                                        <tr>
+                                            <td>{{ match.created_at.strftime('%d.%m.%Y') }}</td>
+                                            <td>{{ match.status }}</td>
+                                            <td>{{ match.note or '-' }}</td>
+                                        </tr>
+                                        {% endfor %}
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+        </main>
+    </div>
+</div>
+{% endblock %}

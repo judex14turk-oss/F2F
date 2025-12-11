@@ -1,0 +1,122 @@
+{% extends 'base.html' %}
+
+{% block title %}Объекты - Admin{% endblock %}
+
+{% block body %}
+<div class="container-fluid">
+    <div class="row">
+        <nav class="col-md-3 col-lg-2 d-md-block sidebar collapse py-4">
+            <div class="text-center text-white mb-4">
+                <h5><i class="bi bi-house-heart-fill"></i> Admin Panel</h5>
+            </div>
+            <ul class="nav flex-column">
+                <li class="nav-item">
+                    <a class="nav-link" href="{{ url_for('admin_dashboard') }}">
+                        <i class="bi bi-speedometer2"></i> Дашборд
+                    </a>
+                </li>
+                <li class="nav-item">
+                    <a class="nav-link" href="{{ url_for('admin_users') }}">
+                        <i class="bi bi-people"></i> Пользователи
+                    </a>
+                </li>
+                <li class="nav-item">
+                    <a class="nav-link active" href="{{ url_for('admin_properties') }}">
+                        <i class="bi bi-building"></i> Объекты
+                    </a>
+                </li>
+                <li class="nav-item">
+                    <a class="nav-link" href="{{ url_for('admin_matches') }}">
+                        <i class="bi bi-heart"></i> Мэтчи
+                    </a>
+                </li>
+                <li class="nav-item">
+                    <a class="nav-link" href="{{ url_for('admin_stats') }}">
+                        <i class="bi bi-graph-up"></i> Статистика
+                    </a>
+                </li>
+                <li class="nav-item mt-4">
+                    <a class="nav-link" href="{{ url_for('logout') }}">
+                        <i class="bi bi-box-arrow-left"></i> Выход
+                    </a>
+                </li>
+            </ul>
+        </nav>
+        
+        <main class="col-md-9 ms-sm-auto col-lg-10 px-md-4 py-4">
+            <h2 class="mb-4">Объекты недвижимости</h2>
+            
+            <div class="card mb-4">
+                <div class="card-body">
+                    <div class="btn-group">
+                        <a href="{{ url_for('admin_properties') }}" class="btn {% if status_filter == 'all' %}btn-primary{% else %}btn-outline-primary{% endif %}">Все</a>
+                        <a href="{{ url_for('admin_properties', status='active') }}" class="btn {% if status_filter == 'active' %}btn-primary{% else %}btn-outline-primary{% endif %}">Активные</a>
+                        <a href="{{ url_for('admin_properties', status='moderation') }}" class="btn {% if status_filter == 'moderation' %}btn-primary{% else %}btn-outline-primary{% endif %}">На модерации</a>
+                        <a href="{{ url_for('admin_properties', status='archive') }}" class="btn {% if status_filter == 'archive' %}btn-primary{% else %}btn-outline-primary{% endif %}">Архив</a>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="card">
+                <div class="card-body">
+                    <div class="table-responsive">
+                        <table class="table table-hover">
+                            <thead>
+                                <tr>
+                                    <th>ID</th>
+                                    <th>Название</th>
+                                    <th>Район</th>
+                                    <th>Комнаты</th>
+                                    <th>Площадь</th>
+                                    <th>Цена</th>
+                                    <th>Статус</th>
+                                    <th>Просмотры</th>
+                                    <th>Лайки</th>
+                                    <th>Действия</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for prop in properties %}
+                                <tr>
+                                    <td>{{ prop.id }}</td>
+                                    <td>{{ prop.residential_complex or 'Объект' }}</td>
+                                    <td>{{ prop.district or '-' }}</td>
+                                    <td>{{ prop.rooms }}</td>
+                                    <td>{{ prop.area }} м²</td>
+                                    <td>${{ "{:,}".format(prop.price) }}</td>
+                                    <td>
+                                        {% if prop.status.value == 'active' %}
+                                        <span class="badge badge-active">Активен</span>
+                                        {% elif prop.status.value == 'moderation' %}
+                                        <span class="badge badge-moderation">Модерация</span>
+                                        {% else %}
+                                        <span class="badge badge-archive">Архив</span>
+                                        {% endif %}
+                                    </td>
+                                    <td>{{ prop.views_count }}</td>
+                                    <td>{{ prop.likes_count }}</td>
+                                    <td>
+                                        {% if prop.status.value == 'moderation' %}
+                                        <form method="POST" action="{{ url_for('approve_property', property_id=prop.id) }}" style="display:inline">
+                                            <button type="submit" class="btn btn-sm btn-success" title="Одобрить">
+                                                <i class="bi bi-check"></i>
+                                            </button>
+                                        </form>
+                                        <form method="POST" action="{{ url_for('reject_property', property_id=prop.id) }}" style="display:inline">
+                                            <button type="submit" class="btn btn-sm btn-danger" title="Отклонить">
+                                                <i class="bi bi-x"></i>
+                                            </button>
+                                        </form>
+                                        {% endif %}
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </main>
+    </div>
+</div>
+{% endblock %}

@@ -1,0 +1,316 @@
+import os
+from datetime import datetime, timedelta
+from functools import wraps
+
+from flask import Flask, render_template, request, jsonify, redirect, url_for, session
+from models import SessionLocal, User, Property, Like, Match, Offer, District, ResidentialComplex
+from models import UserRole, SellerType, TariffType, PropertyType, PropertyStatus, init_db
+
+app = Flask(__name__)
+app.secret_key = os.environ.get('SESSION_SECRET', 'real-estate-bot-secret-key')
+
+ADMIN_USERNAME = os.environ.get('ADMIN_USERNAME', 'InvictumMurad')
+
+
+def get_db():
+    return SessionLocal()
+
+
+def login_required(f):
+    @wraps(f)
+    def decorated_function(*args, **kwargs):
+        if 'user_id' not in session:
+            return redirect(url_for('login'))
+        return f(*args, **kwargs)
+    return decorated_function
+
+
+def admin_required(f):
+    @wraps(f)
+    def decorated_function(*args, **kwargs):
+        if 'user_id' not in session:
+            return redirect(url_for('login'))
+        db = get_db()
+        user = db.query(User).filter(User.id == session['user_id']).first()
+        db.close()
+        if not user or not user.is_admin:
+            return "Access denied", 403
+        return f(*args, **kwargs)
+    return decorated_function
+
+
+@app.route('/')
+def index():
+    return render_template('index.html')
+
+
+@app.route('/login', methods=['GET', 'POST'])
+def login():
+    if request.method == 'POST':
+        telegram_id = request.form.get('telegram_id')
+        db = get_db()
+        user = db.query(User).filter(User.telegram_id == int(telegram_id)).first()
+        if user:
+            session['user_id'] = user.id
+            session['is_admin'] = user.is_admin
+            db.close()
+            if user.is_admin:
+                return redirect(url_for('admin_dashboard'))
+            return redirect(url_for('seller_dashboard'))
+        db.close()
+        return render_template('login.html', error="User not found")
+    return render_template('login.html')
+
+
+@app.route('/logout')
+def logout():
+    session.clear()
+    return redirect(url_for('index'))
+
+
+@app.route('/admin')
+@admin_required
+def admin_dashboard():
+    db = get_db()
+    
+    total_users = db.query(User).count()
+    buyers = db.query(User).filter(User.role == UserRole.BUYER).count()
+    sellers = db.query(User).filter(User.role == UserRole.SELLER).count()
+    properties = db.query(Property).count()
+    active_properties = db.query(Property).filter(Property.status == PropertyStatus.ACTIVE).count()
+    matches = db.query(Match).count()
+    
+    recent_users = db.query(User).order_by(User.created_at.desc()).limit(10).all()
+    recent_properties = db.query(Property).order_by(Property.created_at.desc()).limit(10).all()
+    
+    db.close()
+    
+    return render_template('admin/dashboard.html',
+        total_users=total_users,
+        buyers=buyers,
+        sellers=sellers,
+        properties=properties,
+        active_properties=active_properties,
+        matches=matches,
+        recent_users=recent_users,
+        recent_properties=recent_properties
+    )
+
+
+@app.route('/admin/users')
+@admin_required
+def admin_users():
+    db = get_db()
+    users = db.query(User).order_by(User.created_at.desc()).all()
+    db.close()
+    return render_template('admin/users.html', users=users)
+
+
+@app.route('/admin/users/<int:user_id>')
+@admin_required
+def admin_user_detail(user_id):
+    db = get_db()
+    user = db.query(User).filter(User.id == user_id).first()
+    properties = db.query(Property).filter(Property.owner_id == user_id).all() if user else []
+    matches = db.query(Match).filter((Match.buyer_id == user_id) | (Match.seller_id == user_id)).all() if user else []
+    db.close()
+    return render_template('admin/user_detail.html', user=user, properties=properties, matches=matches)
+
+
+@app.route('/admin/users/<int:user_id>/update_tariff', methods=['POST'])
+@admin_required
+def update_user_tariff(user_id):
+    tariff = request.form.get('tariff')
+    db = get_db()
+    user = db.query(User).filter(User.id == user_id).first()
+    if user:
+        tariff_map = {
+            'free': TariffType.FREE,
+            'agency_start': TariffType.AGENCY_START,
+            'developer_pro': TariffType.DEVELOPER_PRO
+        }
+        user.tariff = tariff_map.get(tariff, TariffType.FREE)
+        user.tariff_expires = datetime.utcnow() + timedelta(days=30)
+        db.commit()
+    db.close()
+    return redirect(url_for('admin_user_detail', user_id=user_id))
+
+
+@app.route('/admin/properties')
+@admin_required
+def admin_properties():
+    db = get_db()
+    status_filter = request.args.get('status', 'all')
+    
+    query = db.query(Property)
+    if status_filter == 'active':
+        query = query.filter(Property.status == PropertyStatus.ACTIVE)
+    elif status_filter == 'moderation':
+        query = query.filter(Property.status == PropertyStatus.MODERATION)
+    elif status_filter == 'archive':
+        query = query.filter(Property.status == PropertyStatus.ARCHIVE)
+    
+    properties = query.order_by(Property.created_at.desc()).all()
+    db.close()
+    return render_template('admin/properties.html', properties=properties, status_filter=status_filter)
+
+
+@app.route('/admin/properties/<int:property_id>/approve', methods=['POST'])
+@admin_required
+def approve_property(property_id):
+    db = get_db()
+    prop = db.query(Property).filter(Property.id == property_id).first()
+    if prop:
+        prop.status = PropertyStatus.ACTIVE
+        db.commit()
+    db.close()
+    return redirect(url_for('admin_properties'))
+
+
+@app.route('/admin/properties/<int:property_id>/reject', methods=['POST'])
+@admin_required
+def reject_property(property_id):
+    db = get_db()
+    prop = db.query(Property).filter(Property.id == property_id).first()
+    if prop:
+        prop.status = PropertyStatus.ARCHIVE
+        db.commit()
+    db.close()
+    return redirect(url_for('admin_properties'))
+
+
+@app.route('/admin/matches')
+@admin_required
+def admin_matches():
+    db = get_db()
+    matches = db.query(Match).order_by(Match.created_at.desc()).all()
+    db.close()
+    return render_template('admin/matches.html', matches=matches)
+
+
+@app.route('/admin/stats')
+@admin_required
+def admin_stats():
+    db = get_db()
+    
+    today = datetime.utcnow().date()
+    week_ago = today - timedelta(days=7)
+    month_ago = today - timedelta(days=30)
+    
+    daily_users = db.query(User).filter(User.created_at >= today).count()
+    weekly_users = db.query(User).filter(User.created_at >= week_ago).count()
+    monthly_users = db.query(User).filter(User.created_at >= month_ago).count()
+    
+    daily_properties = db.query(Property).filter(Property.created_at >= today).count()
+    weekly_properties = db.query(Property).filter(Property.created_at >= week_ago).count()
+    
+    daily_matches = db.query(Match).filter(Match.created_at >= today).count()
+    weekly_matches = db.query(Match).filter(Match.created_at >= week_ago).count()
+    
+    db.close()
+    
+    return render_template('admin/stats.html',
+        daily_users=daily_users,
+        weekly_users=weekly_users,
+        monthly_users=monthly_users,
+        daily_properties=daily_properties,
+        weekly_properties=weekly_properties,
+        daily_matches=daily_matches,
+        weekly_matches=weekly_matches
+    )
+
+
+@app.route('/seller')
+@login_required
+def seller_dashboard():
+    db = get_db()
+    user = db.query(User).filter(User.id == session['user_id']).first()
+    
+    properties = db.query(Property).filter(Property.owner_id == user.id).all()
+    total_views = sum(p.views_count for p in properties)
+    total_likes = sum(p.likes_count for p in properties)
+    
+    matches = db.query(Match).filter(Match.seller_id == user.id).order_by(Match.created_at.desc()).all()
+    
+    pending_likes = db.query(Like).filter(
+        Like.property_owner_id == user.id,
+        Like.is_matched == False
+    ).count()
+    
+    db.close()
+    
+    return render_template('seller/dashboard.html',
+        user=user,
+        properties=properties,
+        total_views=total_views,
+        total_likes=total_likes,
+        matches_count=len(matches),
+        pending_likes=pending_likes,
+        matches=matches[:5]
+    )
+
+
+@app.route('/seller/properties')
+@login_required
+def seller_properties():
+    db = get_db()
+    user = db.query(User).filter(User.id == session['user_id']).first()
+    properties = db.query(Property).filter(Property.owner_id == user.id).order_by(Property.created_at.desc()).all()
+    db.close()
+    return render_template('seller/properties.html', properties=properties)
+
+
+@app.route('/seller/crm')
+@login_required
+def seller_crm():
+    db = get_db()
+    user = db.query(User).filter(User.id == session['user_id']).first()
+    
+    matches = db.query(Match).filter(Match.seller_id == user.id).order_by(Match.created_at.desc()).all()
+    
+    crm_data = []
+    for match in matches:
+        buyer = db.query(User).filter(User.id == match.buyer_id).first()
+        prop = db.query(Property).filter(Property.id == match.property_id).first()
+        crm_data.append({
+            'match': match,
+            'buyer': buyer,
+            'property': prop
+        })
+    
+    db.close()
+    return render_template('seller/crm.html', crm_data=crm_data)
+
+
+@app.route('/seller/crm/<int:match_id>/note', methods=['POST'])
+@login_required
+def update_match_note(match_id):
+    note = request.form.get('note', '')
+    db = get_db()
+    match = db.query(Match).filter(Match.id == match_id).first()
+    if match and match.seller_id == session['user_id']:
+        match.note = note
+        db.commit()
+    db.close()
+    return redirect(url_for('seller_crm'))
+
+
+@app.route('/api/districts')
+def api_districts():
+    db = get_db()
+    districts = db.query(District).all()
+    db.close()
+    return jsonify([{'id': d.id, 'name': d.name} for d in districts])
+
+
+@app.route('/api/complexes')
+def api_complexes():
+    db = get_db()
+    complexes = db.query(ResidentialComplex).all()
+    db.close()
+    return jsonify([{'id': c.id, 'name': c.name, 'district': c.district} for c in complexes])
+
+
+if __name__ == '__main__':
+    init_db()
+    app.run(host='0.0.0.0', port=5000, debug=True)

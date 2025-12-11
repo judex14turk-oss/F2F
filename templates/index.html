@@ -1,0 +1,44 @@
+{% extends 'base.html' %}
+
+{% block title %}Real Estate Bot - Tinder для недвижимости{% endblock %}
+
+{% block body %}
+<div class="min-vh-100 d-flex align-items-center justify-content-center" style="background: linear-gradient(135deg, #4f46e5 0%, #7c3aed 100%);">
+    <div class="container">
+        <div class="row justify-content-center">
+            <div class="col-md-8 col-lg-6 text-center text-white">
+                <h1 class="display-4 fw-bold mb-4">
+                    <i class="bi bi-house-heart-fill"></i> Real Estate Bot
+                </h1>
+                <p class="lead mb-5">
+                    Tinder для недвижимости Ташкента.<br>
+                    Находите покупателей и квартиры одним свайпом!
+                </p>
+                <div class="d-grid gap-3 d-md-flex justify-content-md-center">
+                    <a href="https://t.me/YourBotUsername" class="btn btn-light btn-lg px-4">
+                        <i class="bi bi-telegram"></i> Открыть бота
+                    </a>
+                    <a href="{{ url_for('login') }}" class="btn btn-outline-light btn-lg px-4">
+                        <i class="bi bi-box-arrow-in-right"></i> Войти в CRM
+                    </a>
+                </div>
+                
+                <div class="row mt-5 pt-4">
+                    <div class="col-4">
+                        <div class="h2 fw-bold">1000+</div>
+                        <div class="small opacity-75">Активных пользователей</div>
+                    </div>
+                    <div class="col-4">
+                        <div class="h2 fw-bold">500+</div>
+                        <div class="small opacity-75">Объектов</div>
+                    </div>
+                    <div class="col-4">
+                        <div class="h2 fw-bold">200+</div>
+                        <div class="small opacity-75">Мэтчей в день</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

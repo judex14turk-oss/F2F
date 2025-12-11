@@ -1,0 +1,159 @@
+{% extends 'base.html' %}
+
+{% block title %}Личный кабинет - Real Estate Bot{% endblock %}
+
+{% block body %}
+<div class="container-fluid">
+    <div class="row">
+        <nav class="col-md-3 col-lg-2 d-md-block sidebar collapse py-4">
+            <div class="text-center text-white mb-4">
+                <h5><i class="bi bi-house-heart-fill"></i> CRM</h5>
+            </div>
+            <ul class="nav flex-column">
+                <li class="nav-item">
+                    <a class="nav-link active" href="{{ url_for('seller_dashboard') }}">
+                        <i class="bi bi-speedometer2"></i> Дашборд
+                    </a>
+                </li>
+                <li class="nav-item">
+                    <a class="nav-link" href="{{ url_for('seller_properties') }}">
+                        <i class="bi bi-building"></i> Мои объекты
+                    </a>
+                </li>
+                <li class="nav-item">
+                    <a class="nav-link" href="{{ url_for('seller_crm') }}">
+                        <i class="bi bi-people"></i> Сделки
+                    </a>
+                </li>
+                <li class="nav-item mt-4">
+                    <a class="nav-link" href="{{ url_for('logout') }}">
+                        <i class="bi bi-box-arrow-left"></i> Выход
+                    </a>
+                </li>
+            </ul>
+        </nav>
+        
+        <main class="col-md-9 ms-sm-auto col-lg-10 px-md-4 py-4">
+            <div class="d-flex justify-content-between align-items-center mb-4">
+                <h2>Добро пожаловать, {{ user.first_name or user.company_name or 'Пользователь' }}!</h2>
+                <span class="badge bg-primary fs-6">
+                    {% if user.tariff %}
+                        {% if user.tariff.value == 'free' %}Бесплатный
+                        {% elif user.tariff.value == 'agency_start' %}Агентство Start
+                        {% else %}Застройщик PRO{% endif %}
+                    {% else %}Бесплатный{% endif %}
+                </span>
+            </div>
+            
+            <div class="row g-4 mb-4">
+                <div class="col-md-3">
+                    <div class="stat-card text-center">
+                        <div class="stat-value">{{ properties|length }}</div>
+                        <div class="stat-label">Объектов</div>
+                    </div>
+                </div>
+                <div class="col-md-3">
+                    <div class="stat-card text-center">
+                        <div class="stat-value">{{ total_views }}</div>
+                        <div class="stat-label">Просмотров</div>
+                    </div>
+                </div>
+                <div class="col-md-3">
+                    <div class="stat-card text-center">
+                        <div class="stat-value">{{ total_likes }}</div>
+                        <div class="stat-label">Лайков</div>
+                    </div>
+                </div>
+                <div class="col-md-3">
+                    <div class="stat-card text-center">
+                        <div class="stat-value">{{ matches_count }}</div>
+                        <div class="stat-label">Мэтчей</div>
+                    </div>
+                </div>
+            </div>
+            
+            {% if pending_likes > 0 %}
+            <div class="alert alert-warning">
+                <i class="bi bi-heart-fill"></i> У вас {{ pending_likes }} непросмотренных лайков! Откройте бота, чтобы посмотреть.
+            </div>
+            {% endif %}
+            
+            <div class="row">
+                <div class="col-lg-6 mb-4">
+                    <div class="card">
+                        <div class="card-header bg-white d-flex justify-content-between align-items-center">
+                            <h5 class="mb-0">Мои объекты</h5>
+                            <a href="{{ url_for('seller_properties') }}" class="btn btn-sm btn-outline-primary">Все</a>
+                        </div>
+                        <div class="card-body">
+                            {% if properties %}
+                            <div class="table-responsive">
+                                <table class="table">
+                                    <thead>
+                                        <tr>
+                                            <th>Название</th>
+                                            <th>Цена</th>
+                                            <th>Статус</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        {% for prop in properties[:5] %}
+                                        <tr>
+                                            <td>{{ prop.residential_complex or 'Объект' }}</td>
+                                            <td>${{ "{:,}".format(prop.price) }}</td>
+                                            <td>
+                                                {% if prop.status.value == 'active' %}
+                                                <span class="badge badge-active">Активен</span>
+                                                {% elif prop.status.value == 'moderation' %}
+                                                <span class="badge badge-moderation">Модерация</span>
+                                                {% else %}
+                                                <span class="badge badge-archive">Архив</span>
+                                                {% endif %}
+                                            </td>
+                                        </tr>
+                                        {% endfor %}
+                                    </tbody>
+                                </table>
+                            </div>
+                            {% else %}
+                            <p class="text-muted text-center py-4">
+                                Нет объектов. Добавьте первый через бота!
+                            </p>
+                            {% endif %}
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="col-lg-6 mb-4">
+                    <div class="card">
+                        <div class="card-header bg-white d-flex justify-content-between align-items-center">
+                            <h5 class="mb-0">Последние сделки</h5>
+                            <a href="{{ url_for('seller_crm') }}" class="btn btn-sm btn-outline-primary">Все</a>
+                        </div>
+                        <div class="card-body">
+                            {% if matches %}
+                            <div class="list-group list-group-flush">
+                                {% for match in matches %}
+                                <div class="list-group-item d-flex justify-content-between align-items-center">
+                                    <div>
+                                        <strong>{{ match.buyer.first_name or 'Покупатель' }}</strong>
+                                        <br>
+                                        <small class="text-muted">{{ match.property.residential_complex or 'Объект' if match.property else '' }}</small>
+                                    </div>
+                                    <small class="text-muted">{{ match.created_at.strftime('%d.%m') }}</small>
+                                </div>
+                                {% endfor %}
+                            </div>
+                            {% else %}
+                            <p class="text-muted text-center py-4">
+                                Нет сделок. Они появятся после мэтчей!
+                            </p>
+                            {% endif %}
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </main>
+    </div>
+</div>
+{% endblock %}

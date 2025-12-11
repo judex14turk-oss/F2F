@@ -1,0 +1,86 @@
+{% extends 'base.html' %}
+
+{% block title %}Мои объекты - Real Estate Bot{% endblock %}
+
+{% block body %}
+<div class="container-fluid">
+    <div class="row">
+        <nav class="col-md-3 col-lg-2 d-md-block sidebar collapse py-4">
+            <div class="text-center text-white mb-4">
+                <h5><i class="bi bi-house-heart-fill"></i> CRM</h5>
+            </div>
+            <ul class="nav flex-column">
+                <li class="nav-item">
+                    <a class="nav-link" href="{{ url_for('seller_dashboard') }}">
+                        <i class="bi bi-speedometer2"></i> Дашборд
+                    </a>
+                </li>
+                <li class="nav-item">
+                    <a class="nav-link active" href="{{ url_for('seller_properties') }}">
+                        <i class="bi bi-building"></i> Мои объекты
+                    </a>
+                </li>
+                <li class="nav-item">
+                    <a class="nav-link" href="{{ url_for('seller_crm') }}">
+                        <i class="bi bi-people"></i> Сделки
+                    </a>
+                </li>
+                <li class="nav-item mt-4">
+                    <a class="nav-link" href="{{ url_for('logout') }}">
+                        <i class="bi bi-box-arrow-left"></i> Выход
+                    </a>
+                </li>
+            </ul>
+        </nav>
+        
+        <main class="col-md-9 ms-sm-auto col-lg-10 px-md-4 py-4">
+            <h2 class="mb-4">Мои объекты</h2>
+            
+            {% if properties %}
+            <div class="row g-4">
+                {% for prop in properties %}
+                <div class="col-md-6 col-lg-4">
+                    <div class="card h-100">
+                        <div class="card-body">
+                            <div class="d-flex justify-content-between align-items-start mb-3">
+                                <h5 class="card-title mb-0">{{ prop.residential_complex or 'Объект' }}</h5>
+                                {% if prop.status.value == 'active' %}
+                                <span class="badge badge-active">Активен</span>
+                                {% elif prop.status.value == 'moderation' %}
+                                <span class="badge badge-moderation">Модерация</span>
+                                {% else %}
+                                <span class="badge badge-archive">Архив</span>
+                                {% endif %}
+                            </div>
+                            <p class="text-muted mb-2">
+                                <i class="bi bi-geo-alt"></i> {{ prop.district or 'Не указан' }}
+                            </p>
+                            <p class="mb-2">
+                                <i class="bi bi-door-open"></i> {{ prop.rooms }} комн. | 
+                                <i class="bi bi-arrows-fullscreen"></i> {{ prop.area }} м² |
+                                <i class="bi bi-building"></i> {{ prop.floor }}/{{ prop.total_floors }} эт.
+                            </p>
+                            <h4 class="text-primary mb-3">${{ "{:,}".format(prop.price) }}</h4>
+                            <div class="d-flex justify-content-between text-muted">
+                                <span><i class="bi bi-eye"></i> {{ prop.views_count }}</span>
+                                <span><i class="bi bi-heart"></i> {{ prop.likes_count }}</span>
+                                <span><i class="bi bi-calendar"></i> {{ prop.created_at.strftime('%d.%m.%Y') }}</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                {% endfor %}
+            </div>
+            {% else %}
+            <div class="card">
+                <div class="card-body text-center py-5">
+                    <i class="bi bi-building display-1 text-muted"></i>
+                    <h4 class="mt-3">Нет объектов</h4>
+                    <p class="text-muted">Добавьте первый объект через Telegram бота</p>
+                </div>
+            </div>
+            {% endif %}
+        </main>
+    </div>
+</div>
+{% endblock %}
