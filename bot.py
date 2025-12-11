@@ -1075,11 +1075,11 @@ async def view_properties(message: types.Message, state: FSMContext):
         return
     
     await state.update_data(properties=[p.id for p in properties], current_index=0)
-    await show_property_card(message, properties[0].id)
+    await show_property_card(message, properties[0].id, state)
     await state.set_state(SearchStates.viewing_properties)
 
 
-async def show_property_card(message, property_id):
+async def show_property_card(message, property_id, state=None):
     db = SessionLocal()
     prop = db.query(Property).filter(Property.id == property_id).first()
     
@@ -1111,32 +1111,48 @@ async def show_property_card(message, property_id):
     if prop.description:
         text += f"\n📝 {prop.description}"
     
-    keyboard = InlineKeyboardMarkup(inline_keyboard=[
-        [
-            InlineKeyboardButton(text="❌ Пропустить", callback_data=f"skip_{prop.id}"),
-            InlineKeyboardButton(text="❤️ Нравится", callback_data=f"like_{prop.id}")
-        ]
-    ])
+    search_keyboard = ReplyKeyboardMarkup(
+        keyboard=[
+            [KeyboardButton(text="❌ Не нравится"), KeyboardButton(text="❤️ Нравится")],
+            [KeyboardButton(text="🔙 Назад")]
+        ],
+        resize_keyboard=True
+    )
     
-    photos = prop.photos.split(",") if prop.photos else []
+    if state:
+        await state.update_data(current_property_id=prop.id)
+    
+    photos = [p for p in (prop.photos.split(",") if prop.photos else []) if p]
     
     db.close()
     
-    if photos and photos[0]:
+    if photos:
         from aiogram.types import InputMediaPhoto
-        media_group = [InputMediaPhoto(media=photo_id) for photo_id in photos if photo_id]
-        if media_group:
+        if len(photos) > 1:
+            media_group = []
+            for i, photo_id in enumerate(photos[:10]):
+                if i == 0:
+                    media_group.append(InputMediaPhoto(media=photo_id, caption=text))
+                else:
+                    media_group.append(InputMediaPhoto(media=photo_id))
             await message.answer_media_group(media_group)
+            await message.answer("👆 Выберите действие:", reply_markup=search_keyboard)
+        else:
+            await message.answer_photo(photo=photos[0], caption=text, reply_markup=search_keyboard)
+    else:
+        await message.answer(text, reply_markup=search_keyboard)
+
+
+@dp.message(F.text == "❤️ Нравится", SearchStates.viewing_properties)
+async def process_like_reply(message: types.Message, state: FSMContext):
+    data = await state.get_data()
+    property_id = data.get("current_property_id")
     
-    await message.answer(text, reply_markup=keyboard)
-
-
-@dp.callback_query(F.data.startswith("like_"))
-async def process_like(callback: types.CallbackQuery, state: FSMContext):
-    property_id = int(callback.data.replace("like_", ""))
+    if not property_id:
+        return
     
     db = SessionLocal()
-    user = db.query(User).filter(User.telegram_id == callback.from_user.id).first()
+    user = db.query(User).filter(User.telegram_id == message.from_user.id).first()
     prop = db.query(Property).filter(Property.id == property_id).first()
     
     if user and prop:
@@ -1171,32 +1187,75 @@ async def process_like(callback: types.CallbackQuery, state: FSMContext):
     
     db.close()
     
-    await callback.answer("❤️ Лайк отправлен!")
-    await show_next_property(callback, state)
+    await message.answer("❤️ Лайк отправлен!")
+    await show_next_property_reply(message, state)
 
 
-@dp.callback_query(F.data.startswith("skip_"))
-async def process_skip(callback: types.CallbackQuery, state: FSMContext):
-    await callback.answer()
-    await show_next_property(callback, state)
+@dp.message(F.text == "❌ Не нравится", SearchStates.viewing_properties)
+async def process_skip_reply(message: types.Message, state: FSMContext):
+    await show_next_property_reply(message, state)
 
 
-async def show_next_property(callback, state):
+@dp.message(F.text == "🔙 Назад", SearchStates.viewing_properties)
+async def process_back_reply(message: types.Message, state: FSMContext):
+    await state.clear()
+    
+    db = SessionLocal()
+    user = db.query(User).filter(User.telegram_id == message.from_user.id).first()
+    db.close()
+    
+    if user and user.role == UserRole.BUYER:
+        keyboard = ReplyKeyboardMarkup(
+            keyboard=[
+                [KeyboardButton(text="🏠 Смотреть квартиры")],
+                [KeyboardButton(text="❤️ Мои лайки"), KeyboardButton(text="💬 Мэтчи")],
+                [KeyboardButton(text="👤 Профиль"), KeyboardButton(text="⚙️ Настройки поиска")]
+            ],
+            resize_keyboard=True
+        )
+    else:
+        keyboard = ReplyKeyboardMarkup(
+            keyboard=[
+                [KeyboardButton(text="➕ Добавить объект")],
+                [KeyboardButton(text="🏢 Мои объекты"), KeyboardButton(text="🎯 Найти покупателя")],
+                [KeyboardButton(text="❤️ Меня лайкнули"), KeyboardButton(text="💬 Сделки")],
+                [KeyboardButton(text="👤 Профиль"), KeyboardButton(text="💳 Тарифы")]
+            ],
+            resize_keyboard=True
+        )
+    
+    await message.answer("Вы вернулись в меню", reply_markup=keyboard)
+
+
+async def show_next_property_reply(message, state):
     data = await state.get_data()
     properties = data.get("properties", [])
     current_index = data.get("current_index", 0) + 1
     
     if current_index >= len(properties):
-        await callback.message.edit_text(
+        db = SessionLocal()
+        user = db.query(User).filter(User.telegram_id == message.from_user.id).first()
+        db.close()
+        
+        keyboard = ReplyKeyboardMarkup(
+            keyboard=[
+                [KeyboardButton(text="🏠 Смотреть квартиры")],
+                [KeyboardButton(text="❤️ Мои лайки"), KeyboardButton(text="💬 Мэтчи")],
+                [KeyboardButton(text="👤 Профиль"), KeyboardButton(text="⚙️ Настройки поиска")]
+            ],
+            resize_keyboard=True
+        )
+        
+        await message.answer(
             "🎉 Вы просмотрели все доступные квартиры!\n\n"
-            "Новые объекты появляются каждый день. Заходите позже!"
+            "Новые объекты появляются каждый день. Заходите позже!",
+            reply_markup=keyboard
         )
         await state.clear()
         return
     
     await state.update_data(current_index=current_index)
-    await callback.message.delete()
-    await show_property_card(callback.message, properties[current_index])
+    await show_property_card(message, properties[current_index], state)
 
 
 @dp.message(F.text == "🏢 Мои объекты")
