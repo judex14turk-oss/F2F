@@ -784,6 +784,67 @@ def webapp_delete_user(user_id):
     return redirect(url_for('webapp_admin', tg_id=tg_id))
 
 
+@app.route('/webapp/admin/stats')
+def webapp_stats():
+    tg_id = request.args.get('tg_id')
+    period = request.args.get('period', 'all')
+    
+    if not tg_id:
+        return "Telegram ID не указан", 400
+    
+    db = get_db()
+    admin_user = db.query(User).filter(User.telegram_id == int(tg_id)).first()
+    
+    if not admin_user or not admin_user.is_admin:
+        db.close()
+        return "Доступ запрещён", 403
+    
+    permissions = get_admin_permissions(admin_user.admin_role)
+    
+    now = datetime.utcnow()
+    period_map = {
+        '1h': timedelta(hours=1),
+        '24h': timedelta(hours=24),
+        '7d': timedelta(days=7),
+        '30d': timedelta(days=30),
+        'all': None
+    }
+    
+    time_filter = period_map.get(period)
+    
+    if time_filter:
+        since = now - time_filter
+        total_users = db.query(User).filter(User.created_at >= since).count()
+        total_properties = db.query(Property).filter(Property.created_at >= since).count()
+        total_likes = db.query(Like).filter(Like.created_at >= since).count()
+        total_matches = db.query(Match).filter(Match.created_at >= since).count()
+    else:
+        total_users = db.query(User).count()
+        total_properties = db.query(Property).count()
+        total_likes = db.query(Like).count()
+        total_matches = db.query(Match).count()
+    
+    buyers_count = db.query(User).filter(User.role == UserRole.BUYER).count()
+    sellers_count = db.query(User).filter(User.role == UserRole.SELLER).count()
+    active_properties = db.query(Property).filter(Property.status == PropertyStatus.ACTIVE).count()
+    
+    db.close()
+    
+    return render_template('webapp_stats.html',
+        tg_id=tg_id,
+        permissions=permissions,
+        admin_user=admin_user,
+        period=period,
+        total_users=total_users,
+        total_properties=total_properties,
+        total_likes=total_likes,
+        total_matches=total_matches,
+        buyers_count=buyers_count,
+        sellers_count=sellers_count,
+        active_properties=active_properties
+    )
+
+
 @app.route('/webapp/admin/check_user/<int:telegram_id>')
 def webapp_check_user(telegram_id):
     tg_id = request.args.get('tg_id')

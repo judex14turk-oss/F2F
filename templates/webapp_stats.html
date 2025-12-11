@@ -1,0 +1,248 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Статистика</title>
+    <script src="https://telegram.org/js/telegram-web-app.js"></script>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.0/font/bootstrap-icons.css" rel="stylesheet">
+    <style>
+        :root {
+            --tg-theme-bg-color: #ffffff;
+            --tg-theme-text-color: #000000;
+            --tg-theme-button-color: #5288c1;
+        }
+        
+        body {
+            background-color: var(--tg-theme-bg-color);
+            color: var(--tg-theme-text-color);
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            padding-bottom: 100px;
+        }
+        
+        .header {
+            background: linear-gradient(135deg, #4f46e5 0%, #7c3aed 100%);
+            color: white;
+            padding: 20px 15px;
+            margin-bottom: 15px;
+        }
+        
+        .header h1 {
+            font-size: 1.3rem;
+            margin: 0;
+        }
+        
+        .header-role {
+            font-size: 0.85rem;
+            opacity: 0.9;
+            margin-top: 4px;
+        }
+        
+        .nav-tabs {
+            display: flex;
+            gap: 8px;
+            padding: 0 10px;
+            margin-bottom: 15px;
+            overflow-x: auto;
+        }
+        
+        .nav-tab {
+            flex: 1;
+            text-align: center;
+            padding: 10px 12px;
+            background: #f1f5f9;
+            border-radius: 10px;
+            text-decoration: none;
+            color: #475569;
+            font-size: 0.85rem;
+            white-space: nowrap;
+        }
+        
+        .nav-tab.active {
+            background: var(--tg-theme-button-color);
+            color: white;
+        }
+        
+        .period-filter {
+            display: flex;
+            gap: 6px;
+            padding: 0 10px;
+            margin-bottom: 15px;
+            flex-wrap: wrap;
+        }
+        
+        .period-btn {
+            padding: 8px 14px;
+            background: #f1f5f9;
+            border: none;
+            border-radius: 20px;
+            font-size: 0.85rem;
+            color: #475569;
+            text-decoration: none;
+        }
+        
+        .period-btn.active {
+            background: #10b981;
+            color: white;
+        }
+        
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 10px;
+            padding: 0 10px;
+            margin-bottom: 20px;
+        }
+        
+        .stat-card {
+            background: white;
+            padding: 15px;
+            border-radius: 12px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+            text-align: center;
+        }
+        
+        .stat-card.full-width {
+            grid-column: span 2;
+        }
+        
+        .stat-icon {
+            font-size: 1.8rem;
+            margin-bottom: 8px;
+        }
+        
+        .stat-value {
+            font-size: 1.8rem;
+            font-weight: 700;
+            color: #1e293b;
+        }
+        
+        .stat-label {
+            font-size: 0.85rem;
+            color: #64748b;
+            margin-top: 4px;
+        }
+        
+        .stat-card.users .stat-icon { color: #3b82f6; }
+        .stat-card.properties .stat-icon { color: #10b981; }
+        .stat-card.likes .stat-icon { color: #ef4444; }
+        .stat-card.matches .stat-icon { color: #f59e0b; }
+        
+        .info-section {
+            background: #f8f9fa;
+            margin: 10px;
+            padding: 15px;
+            border-radius: 12px;
+        }
+        
+        .info-section h3 {
+            font-size: 1rem;
+            margin-bottom: 12px;
+            color: #333;
+        }
+        
+        .info-row {
+            display: flex;
+            justify-content: space-between;
+            padding: 8px 0;
+            border-bottom: 1px solid #e2e8f0;
+        }
+        
+        .info-row:last-child {
+            border-bottom: none;
+        }
+        
+        .info-label {
+            color: #64748b;
+            font-size: 0.9rem;
+        }
+        
+        .info-value {
+            font-weight: 600;
+            font-size: 0.9rem;
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <h1><i class="bi bi-graph-up"></i> Статистика</h1>
+        <div class="header-role">{{ permissions.role_name }}</div>
+    </div>
+    
+    <div class="nav-tabs">
+        <a href="{{ url_for('webapp_admin', tg_id=tg_id) }}" class="nav-tab">
+            <i class="bi bi-people"></i> Пользователи
+        </a>
+        {% if permissions.can_view_admins %}
+        <a href="{{ url_for('webapp_admins', tg_id=tg_id) }}" class="nav-tab">
+            <i class="bi bi-shield"></i> Админы
+        </a>
+        {% endif %}
+        <a href="{{ url_for('webapp_stats', tg_id=tg_id) }}" class="nav-tab active">
+            <i class="bi bi-graph-up"></i> Статистика
+        </a>
+    </div>
+    
+    <div class="period-filter">
+        <a href="{{ url_for('webapp_stats', tg_id=tg_id, period='1h') }}" class="period-btn {% if period == '1h' %}active{% endif %}">1 час</a>
+        <a href="{{ url_for('webapp_stats', tg_id=tg_id, period='24h') }}" class="period-btn {% if period == '24h' %}active{% endif %}">24 часа</a>
+        <a href="{{ url_for('webapp_stats', tg_id=tg_id, period='7d') }}" class="period-btn {% if period == '7d' %}active{% endif %}">7 дней</a>
+        <a href="{{ url_for('webapp_stats', tg_id=tg_id, period='30d') }}" class="period-btn {% if period == '30d' %}active{% endif %}">30 дней</a>
+        <a href="{{ url_for('webapp_stats', tg_id=tg_id, period='all') }}" class="period-btn {% if period == 'all' %}active{% endif %}">Всё время</a>
+    </div>
+    
+    <div class="stats-grid">
+        <div class="stat-card users">
+            <div class="stat-icon"><i class="bi bi-people-fill"></i></div>
+            <div class="stat-value">{{ total_users }}</div>
+            <div class="stat-label">Пользователей</div>
+        </div>
+        
+        <div class="stat-card properties">
+            <div class="stat-icon"><i class="bi bi-house-fill"></i></div>
+            <div class="stat-value">{{ total_properties }}</div>
+            <div class="stat-label">Объявлений</div>
+        </div>
+        
+        <div class="stat-card likes">
+            <div class="stat-icon"><i class="bi bi-heart-fill"></i></div>
+            <div class="stat-value">{{ total_likes }}</div>
+            <div class="stat-label">Лайков</div>
+        </div>
+        
+        <div class="stat-card matches">
+            <div class="stat-icon"><i class="bi bi-arrow-through-heart-fill"></i></div>
+            <div class="stat-value">{{ total_matches }}</div>
+            <div class="stat-label">Взаимных лайков</div>
+        </div>
+    </div>
+    
+    <div class="info-section">
+        <h3><i class="bi bi-info-circle"></i> Общая информация</h3>
+        <div class="info-row">
+            <span class="info-label">Покупателей всего</span>
+            <span class="info-value">{{ buyers_count }}</span>
+        </div>
+        <div class="info-row">
+            <span class="info-label">Продавцов всего</span>
+            <span class="info-value">{{ sellers_count }}</span>
+        </div>
+        <div class="info-row">
+            <span class="info-label">Активных объявлений</span>
+            <span class="info-value">{{ active_properties }}</span>
+        </div>
+    </div>
+    
+    <script>
+        const tg = window.Telegram.WebApp;
+        tg.ready();
+        tg.expand();
+        
+        document.body.style.setProperty('--tg-theme-bg-color', tg.themeParams.bg_color || '#ffffff');
+        document.body.style.setProperty('--tg-theme-text-color', tg.themeParams.text_color || '#000000');
+        document.body.style.setProperty('--tg-theme-button-color', tg.themeParams.button_color || '#5288c1');
+    </script>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+</body>
+</html>
