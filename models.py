@@ -90,6 +90,7 @@ class Property(Base):
     __tablename__ = 'properties'
     
     id = Column(Integer, primary_key=True)
+    unique_id = Column(String(20), unique=True, nullable=True)
     owner_id = Column(Integer, ForeignKey('users.id'), nullable=False)
     property_type = Column(Enum(PropertyType), nullable=False)
     residential_complex = Column(String(200))

@@ -954,6 +954,10 @@ async def finish_photos(callback: types.CallbackQuery, state: FSMContext):
     
     photos_str = ",".join(data.get("photos", []))
     
+    import random
+    import string
+    unique_code = ''.join(random.choices(string.ascii_uppercase + string.digits, k=6))
+    
     prop = Property(
         owner_id=user.id,
         property_type=data.get("property_type", PropertyType.SALE),
@@ -974,6 +978,9 @@ async def finish_photos(callback: types.CallbackQuery, state: FSMContext):
     )
     db.add(prop)
     db.commit()
+    
+    prop.unique_id = f"F2F-{prop.id:05d}"
+    db.commit()
     prop_id = prop.id
     db.close()
     
@@ -982,6 +989,7 @@ async def finish_photos(callback: types.CallbackQuery, state: FSMContext):
     
     summary = (
         f"✅ Объявление добавлено!\n\n"
+        f"🆔 <b>ID: {prop.unique_id}</b>\n\n"
         f"📋 ХАРАКТЕРИСТИКИ:\n"
         f"🏷 Тип сделки: {type_name}\n"
         f"📍 Район: {data.get('district', '')}\n"
@@ -1247,8 +1255,11 @@ async def my_properties(message: types.Message):
         
         furniture_info = "🛋 С мебелью\n" if prop.has_furniture else ""
         
+        prop_unique_id = prop.unique_id or f"F2F-{prop.id:05d}"
+        
         text = (
             f"{emoji} <b>{prop.district or 'Объект'}</b> — {status_name}\n"
+            f"🆔 <code>{prop_unique_id}</code>\n"
             f"━━━━━━━━━━━━━━━━━━━━\n"
             f"📋 {type_str} | {prop.rooms} комн. | <b>${prop.price:,}</b>\n"
             f"{area_info}"
