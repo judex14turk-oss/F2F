@@ -3,87 +3,93 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Управление тарифами</title>
+    <title>Тарифы</title>
     <script src="https://telegram.org/js/telegram-web-app.js"></script>
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.0/font/bootstrap-icons.css" rel="stylesheet">
     <style>
-        * { box-sizing: border-box; }
+        * { margin: 0; padding: 0; box-sizing: border-box; }
         
         body {
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            min-height: 100vh;
+            background: #0a0a0a;
+            color: #e5e5e5;
             font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-            padding-bottom: 50px;
+            padding-bottom: 80px;
         }
         
         .header {
-            background: rgba(255,255,255,0.15);
-            backdrop-filter: blur(10px);
-            color: white;
-            padding: 20px 15px;
-            margin-bottom: 20px;
+            background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
+            padding: 20px 16px;
+            border-bottom: 1px solid #2a2a2a;
         }
         
-        .header h1 { font-size: 1.4rem; margin: 0; font-weight: 600; }
-        .header-sub { font-size: 0.85rem; opacity: 0.9; margin-top: 5px; }
+        .header h1 {
+            font-size: 1.2rem;
+            font-weight: 600;
+            color: #fff;
+        }
+        
+        .header-sub {
+            font-size: 0.8rem;
+            color: #888;
+            margin-top: 4px;
+        }
         
         .nav-tabs {
             display: flex;
-            gap: 6px;
-            padding: 0 10px;
-            margin-bottom: 20px;
+            gap: 4px;
+            padding: 12px;
+            background: #111;
             overflow-x: auto;
-            -webkit-overflow-scrolling: touch;
         }
         
         .nav-tab {
-            flex-shrink: 0;
-            padding: 10px 14px;
-            background: rgba(255,255,255,0.2);
-            border-radius: 25px;
+            flex: 1;
+            text-align: center;
+            padding: 10px 8px;
+            background: #1a1a1a;
+            border-radius: 8px;
             text-decoration: none;
-            color: white;
-            font-size: 0.85rem;
+            color: #888;
+            font-size: 0.75rem;
             white-space: nowrap;
-            transition: all 0.2s;
+            border: 1px solid #2a2a2a;
         }
         
         .nav-tab.active {
-            background: white;
-            color: #764ba2;
-            font-weight: 600;
+            background: #3b82f6;
+            color: white;
+            border-color: #3b82f6;
         }
         
         .sub-tabs {
             display: flex;
-            gap: 10px;
-            padding: 0 10px;
-            margin-bottom: 20px;
+            gap: 8px;
+            padding: 12px;
         }
         
         .sub-tab {
             flex: 1;
             padding: 14px;
-            background: rgba(255,255,255,0.2);
-            border-radius: 15px;
+            background: #151515;
+            border: 1px solid #252525;
+            border-radius: 10px;
             text-align: center;
-            color: white;
+            color: #888;
             font-weight: 600;
             cursor: pointer;
-            transition: all 0.3s;
-            border: 2px solid transparent;
+            font-size: 0.85rem;
         }
         
         .sub-tab.active {
-            background: white;
-            color: #764ba2;
+            background: #3b82f6;
+            color: white;
+            border-color: #3b82f6;
         }
         
         .sub-tab i {
             display: block;
-            font-size: 1.5rem;
-            margin-bottom: 5px;
+            font-size: 1.3rem;
+            margin-bottom: 4px;
         }
         
         .content-section {
@@ -95,228 +101,211 @@
         }
         
         .tariff-card {
-            background: white;
-            margin: 0 10px 15px;
-            border-radius: 20px;
+            background: #151515;
+            border: 1px solid #252525;
+            margin: 0 12px 12px;
+            border-radius: 12px;
             overflow: hidden;
-            box-shadow: 0 10px 40px rgba(0,0,0,0.15);
         }
         
         .tariff-header {
-            padding: 20px;
-            background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
-            border-bottom: 1px solid #eee;
+            padding: 16px;
+            border-bottom: 1px solid #252525;
         }
         
-        .tariff-header.free { background: linear-gradient(135deg, #e0e7ff 0%, #c7d2fe 100%); }
-        .tariff-header.pro { background: linear-gradient(135deg, #d1fae5 0%, #a7f3d0 100%); }
-        .tariff-header.premium { background: linear-gradient(135deg, #fce7f3 0%, #fbcfe8 100%); }
+        .tariff-header.free { background: linear-gradient(135deg, #1e3a5f 0%, #1e293b 100%); }
+        .tariff-header.pro { background: linear-gradient(135deg, #166534 0%, #14532d 100%); }
+        .tariff-header.premium { background: linear-gradient(135deg, #831843 0%, #701a3c 100%); }
         
         .tariff-name {
-            font-size: 1.2rem;
+            font-size: 1rem;
             font-weight: 700;
-            color: #1e293b;
+            color: #fff;
         }
         
         .tariff-price {
-            font-size: 1.5rem;
+            font-size: 1.2rem;
             font-weight: 800;
-            color: #059669;
-            margin-top: 5px;
+            color: #4ade80;
+            margin-top: 4px;
         }
         
         .tariff-body {
-            padding: 20px;
+            padding: 16px;
         }
         
         .input-group-custom {
             display: grid;
             grid-template-columns: repeat(3, 1fr);
-            gap: 12px;
-            margin-bottom: 15px;
+            gap: 10px;
+            margin-bottom: 12px;
         }
         
         .input-item {
-            background: #f8fafc;
-            border-radius: 12px;
-            padding: 12px;
+            background: #1a1a1a;
+            border: 1px solid #2a2a2a;
+            border-radius: 8px;
+            padding: 10px;
             text-align: center;
         }
         
         .input-item label {
             display: block;
-            font-size: 0.7rem;
-            color: #64748b;
+            font-size: 0.65rem;
+            color: #888;
             margin-bottom: 6px;
             text-transform: uppercase;
-            letter-spacing: 0.5px;
         }
         
         .input-item input {
             width: 100%;
-            padding: 10px;
-            border: 2px solid #e2e8f0;
-            border-radius: 10px;
-            font-size: 1rem;
+            padding: 8px;
+            border: 1px solid #2a2a2a;
+            border-radius: 6px;
+            font-size: 0.9rem;
             font-weight: 600;
             text-align: center;
-            transition: border-color 0.2s;
-        }
-        
-        .input-item input:focus {
-            outline: none;
-            border-color: #8b5cf6;
+            background: #0a0a0a;
+            color: #e5e5e5;
         }
         
         .priority-toggle {
             display: flex;
             align-items: center;
             justify-content: space-between;
-            background: #f8fafc;
-            padding: 12px 15px;
-            border-radius: 12px;
-            margin-bottom: 15px;
+            background: #1a1a1a;
+            border: 1px solid #2a2a2a;
+            padding: 12px;
+            border-radius: 8px;
+            margin-bottom: 12px;
         }
         
         .priority-toggle label {
-            font-size: 0.9rem;
-            color: #475569;
+            font-size: 0.85rem;
+            color: #ccc;
         }
         
         .toggle-switch {
             position: relative;
-            width: 50px;
-            height: 26px;
+            width: 44px;
+            height: 24px;
         }
         
-        .toggle-switch input {
-            opacity: 0;
-            width: 0;
-            height: 0;
-        }
+        .toggle-switch input { opacity: 0; width: 0; height: 0; }
         
         .toggle-slider {
             position: absolute;
             cursor: pointer;
             top: 0; left: 0; right: 0; bottom: 0;
-            background-color: #cbd5e1;
+            background: #3f3f46;
+            border-radius: 24px;
             transition: .3s;
-            border-radius: 26px;
         }
         
         .toggle-slider:before {
             position: absolute;
             content: "";
-            height: 20px;
-            width: 20px;
+            height: 18px;
+            width: 18px;
             left: 3px;
             bottom: 3px;
-            background-color: white;
-            transition: .3s;
+            background: white;
             border-radius: 50%;
+            transition: .3s;
         }
         
-        .toggle-switch input:checked + .toggle-slider {
-            background: linear-gradient(135deg, #8b5cf6 0%, #a855f7 100%);
-        }
-        
-        .toggle-switch input:checked + .toggle-slider:before {
-            transform: translateX(24px);
-        }
+        .toggle-switch input:checked + .toggle-slider { background: #3b82f6; }
+        .toggle-switch input:checked + .toggle-slider:before { transform: translateX(20px); }
         
         .btn-save-tariff {
             width: 100%;
-            padding: 14px;
-            background: linear-gradient(135deg, #8b5cf6 0%, #a855f7 100%);
+            padding: 12px;
+            background: #2563eb;
             color: white;
             border: none;
-            border-radius: 12px;
-            font-size: 1rem;
+            border-radius: 8px;
+            font-size: 0.9rem;
             font-weight: 600;
             cursor: pointer;
-            transition: transform 0.2s, box-shadow 0.2s;
-        }
-        
-        .btn-save-tariff:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 5px 20px rgba(139, 92, 246, 0.4);
         }
         
         .promo-create-card {
-            background: white;
-            margin: 0 10px 15px;
-            border-radius: 20px;
-            padding: 20px;
-            box-shadow: 0 10px 40px rgba(0,0,0,0.15);
+            background: #151515;
+            border: 1px solid #252525;
+            margin: 0 12px 12px;
+            border-radius: 12px;
+            padding: 16px;
         }
         
         .promo-create-card h3 {
-            font-size: 1rem;
+            font-size: 0.95rem;
             font-weight: 600;
-            margin-bottom: 15px;
-            color: #1e293b;
+            margin-bottom: 14px;
+            color: #fff;
         }
         
         .form-grid {
             display: grid;
             grid-template-columns: repeat(2, 1fr);
-            gap: 12px;
+            gap: 10px;
         }
         
         .form-field {
-            background: #f8fafc;
-            border-radius: 12px;
-            padding: 10px 12px;
+            background: #1a1a1a;
+            border: 1px solid #2a2a2a;
+            border-radius: 8px;
+            padding: 10px;
         }
         
         .form-field label {
             display: block;
-            font-size: 0.7rem;
-            color: #64748b;
+            font-size: 0.65rem;
+            color: #888;
             margin-bottom: 4px;
             text-transform: uppercase;
         }
         
         .form-field input, .form-field select {
             width: 100%;
-            padding: 8px 0;
+            padding: 6px 0;
             border: none;
             background: transparent;
-            font-size: 0.95rem;
+            font-size: 0.9rem;
             font-weight: 500;
+            color: #e5e5e5;
         }
         
-        .form-field input:focus, .form-field select:focus {
-            outline: none;
+        .form-field select option {
+            background: #1a1a1a;
         }
         
         .btn-create-promo {
             width: 100%;
-            padding: 14px;
-            background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+            padding: 12px;
+            background: #10b981;
             color: white;
             border: none;
-            border-radius: 12px;
-            font-size: 1rem;
+            border-radius: 8px;
+            font-size: 0.9rem;
             font-weight: 600;
-            margin-top: 15px;
+            margin-top: 12px;
             cursor: pointer;
         }
         
         .section-title {
-            color: white;
-            font-size: 1rem;
+            color: #888;
+            font-size: 0.85rem;
             font-weight: 600;
-            padding: 0 15px;
-            margin: 20px 0 15px;
+            padding: 0 12px;
+            margin: 16px 0 10px;
         }
         
         .promo-card {
-            background: white;
-            margin: 0 10px 12px;
-            border-radius: 16px;
-            padding: 15px;
-            box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+            background: #151515;
+            border: 1px solid #252525;
+            margin: 0 12px 10px;
+            border-radius: 10px;
+            padding: 14px;
         }
         
         .promo-top {
@@ -327,42 +316,41 @@
         }
         
         .promo-code {
-            font-size: 1.1rem;
+            font-size: 1rem;
             font-weight: 700;
-            color: #8b5cf6;
-            letter-spacing: 1px;
+            color: #60a5fa;
         }
         
         .promo-badges {
             display: flex;
             flex-wrap: wrap;
-            gap: 6px;
+            gap: 5px;
             margin-bottom: 10px;
         }
         
         .badge {
-            padding: 5px 10px;
-            border-radius: 20px;
-            font-size: 0.75rem;
-            font-weight: 600;
+            padding: 4px 8px;
+            border-radius: 4px;
+            font-size: 0.7rem;
+            font-weight: 500;
         }
         
-        .badge-discount { background: #dcfce7; color: #15803d; }
-        .badge-tariff { background: #e0f2fe; color: #0369a1; }
-        .badge-uses { background: #f1f5f9; color: #475569; }
-        .badge-active { background: #dcfce7; color: #15803d; }
-        .badge-inactive { background: #fee2e2; color: #dc2626; }
-        .badge-date { background: #fef3c7; color: #92400e; }
+        .badge-discount { background: rgba(34,197,94,0.2); color: #4ade80; }
+        .badge-tariff { background: rgba(59,130,246,0.2); color: #60a5fa; }
+        .badge-uses { background: rgba(255,255,255,0.1); color: #888; }
+        .badge-active { background: rgba(34,197,94,0.2); color: #4ade80; }
+        .badge-inactive { background: rgba(239,68,68,0.2); color: #f87171; }
+        .badge-date { background: rgba(245,158,11,0.2); color: #fbbf24; }
         
         .promo-desc {
-            font-size: 0.85rem;
-            color: #64748b;
-            margin-bottom: 12px;
+            font-size: 0.8rem;
+            color: #888;
+            margin-bottom: 10px;
         }
         
         .promo-actions {
             display: flex;
-            gap: 10px;
+            gap: 8px;
         }
         
         .btn-toggle {
@@ -371,33 +359,33 @@
             background: #f59e0b;
             color: white;
             border: none;
-            border-radius: 10px;
-            font-size: 0.85rem;
+            border-radius: 8px;
+            font-size: 0.8rem;
             font-weight: 600;
+            cursor: pointer;
         }
         
-        .btn-toggle.off {
-            background: #10b981;
-        }
+        .btn-toggle.off { background: #10b981; }
         
         .btn-delete {
-            padding: 10px 15px;
-            background: #ef4444;
+            padding: 10px 14px;
+            background: #dc2626;
             color: white;
             border: none;
-            border-radius: 10px;
+            border-radius: 8px;
+            cursor: pointer;
         }
         
         .empty-state {
             text-align: center;
             padding: 40px 20px;
-            color: rgba(255,255,255,0.8);
+            color: #666;
         }
         
         .empty-state i {
-            font-size: 3rem;
+            font-size: 2.5rem;
             margin-bottom: 10px;
-            opacity: 0.6;
+            color: #333;
         }
     </style>
 </head>
@@ -409,7 +397,7 @@
     
     <div class="nav-tabs">
         <a href="{{ url_for('webapp_admin', tg_id=tg_id) }}" class="nav-tab">
-            <i class="bi bi-people"></i> Пользователи
+            <i class="bi bi-people"></i> Юзеры
         </a>
         {% if permissions.can_view_admins %}
         <a href="{{ url_for('webapp_admins', tg_id=tg_id) }}" class="nav-tab">
@@ -417,7 +405,7 @@
         </a>
         {% endif %}
         <a href="{{ url_for('webapp_stats', tg_id=tg_id) }}" class="nav-tab">
-            <i class="bi bi-graph-up"></i> Статистика
+            <i class="bi bi-graph-up"></i> Стат.
         </a>
         <a href="{{ url_for('webapp_tariff_settings', tg_id=tg_id) }}" class="nav-tab active">
             <i class="bi bi-tag"></i> Тарифы
@@ -456,7 +444,7 @@
                     
                     <div class="input-group-custom">
                         <div class="input-item">
-                            <label>Цена (сум)</label>
+                            <label>Цена</label>
                             <input type="number" name="price" value="{{ tariff.price }}" min="0" step="1000">
                         </div>
                         <div class="input-item">
@@ -464,13 +452,13 @@
                             <input type="number" name="properties_limit" value="{{ tariff.properties_limit }}" min="0">
                         </div>
                         <div class="input-item">
-                            <label>Лайков/день</label>
+                            <label>Лайков</label>
                             <input type="number" name="likes_per_day" value="{{ tariff.likes_per_day }}" min="0">
                         </div>
                     </div>
                     
                     <div class="priority-toggle">
-                        <label><i class="bi bi-lightning"></i> Приоритетный показ</label>
+                        <label><i class="bi bi-lightning"></i> Приоритет</label>
                         <label class="toggle-switch">
                             <input type="checkbox" name="priority_display" {% if tariff.priority_display %}checked{% endif %}>
                             <span class="toggle-slider"></span>
@@ -536,20 +524,20 @@
             <div class="promo-top">
                 <span class="promo-code">{{ promo.code }}</span>
                 {% if promo.is_active %}
-                <span class="badge badge-active"><i class="bi bi-check-circle"></i> Активен</span>
+                <span class="badge badge-active">Активен</span>
                 {% else %}
-                <span class="badge badge-inactive"><i class="bi bi-x-circle"></i> Отключён</span>
+                <span class="badge badge-inactive">Отключён</span>
                 {% endif %}
             </div>
             
             <div class="promo-badges">
-                <span class="badge badge-discount"><i class="bi bi-percent"></i> -{{ promo.discount_percent }}%</span>
+                <span class="badge badge-discount">-{{ promo.discount_percent }}%</span>
                 <span class="badge badge-tariff">
                     {% if promo.tariff == 'pro' %}PRO{% elif promo.tariff == 'premium' %}Премиум{% else %}{{ promo.tariff }}{% endif %}
                 </span>
-                <span class="badge badge-uses"><i class="bi bi-people"></i> {{ promo.current_uses }}/{{ promo.max_uses }}</span>
+                <span class="badge badge-uses">{{ promo.current_uses }}/{{ promo.max_uses }}</span>
                 {% if promo.expires_at %}
-                <span class="badge badge-date"><i class="bi bi-calendar"></i> до {{ promo.expires_at.strftime('%d.%m.%Y') }}</span>
+                <span class="badge badge-date">до {{ promo.expires_at.strftime('%d.%m') }}</span>
                 {% endif %}
             </div>
             
@@ -561,7 +549,7 @@
                 <form method="POST" action="{{ url_for('webapp_toggle_promo', promo_id=promo.id) }}" style="flex:1;">
                     <input type="hidden" name="tg_id" value="{{ tg_id }}">
                     <button type="submit" class="btn-toggle {% if not promo.is_active %}off{% endif %}" style="width:100%;">
-                        {% if promo.is_active %}<i class="bi bi-pause-fill"></i> Отключить{% else %}<i class="bi bi-play-fill"></i> Включить{% endif %}
+                        {% if promo.is_active %}Отключить{% else %}Включить{% endif %}
                     </button>
                 </form>
                 <form method="POST" action="{{ url_for('webapp_delete_promo', promo_id=promo.id) }}" onsubmit="return confirm('Удалить?')">
@@ -574,7 +562,7 @@
         {% else %}
         <div class="empty-state">
             <i class="bi bi-tag"></i>
-            <p>Промокодов пока нет</p>
+            <p>Промокодов нет</p>
         </div>
         {% endif %}
     </div>

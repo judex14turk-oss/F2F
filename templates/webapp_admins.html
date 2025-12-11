@@ -5,104 +5,132 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>Администраторы</title>
     <script src="https://telegram.org/js/telegram-web-app.js"></script>
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.0/font/bootstrap-icons.css" rel="stylesheet">
     <style>
-        :root {
-            --tg-theme-bg-color: #ffffff;
-            --tg-theme-text-color: #000000;
-            --tg-theme-button-color: #5288c1;
-        }
+        * { margin: 0; padding: 0; box-sizing: border-box; }
         
         body {
-            background-color: var(--tg-theme-bg-color);
-            color: var(--tg-theme-text-color);
+            background: #0a0a0a;
+            color: #e5e5e5;
             font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-            padding-bottom: 100px;
+            padding-bottom: 80px;
         }
         
         .header {
-            background: linear-gradient(135deg, #4f46e5 0%, #7c3aed 100%);
-            color: white;
-            padding: 20px 15px;
-            margin-bottom: 15px;
+            background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
+            padding: 20px 16px;
+            border-bottom: 1px solid #2a2a2a;
         }
         
         .header h1 {
-            font-size: 1.3rem;
-            margin: 0;
+            font-size: 1.2rem;
+            font-weight: 600;
+            color: #fff;
+            display: flex;
+            align-items: center;
+            gap: 8px;
         }
         
         .header-role {
-            font-size: 0.85rem;
-            opacity: 0.9;
+            font-size: 0.8rem;
+            color: #888;
             margin-top: 4px;
         }
         
         .nav-tabs {
             display: flex;
-            gap: 8px;
-            padding: 0 10px;
-            margin-bottom: 15px;
+            gap: 4px;
+            padding: 12px;
+            background: #111;
+            overflow-x: auto;
         }
         
         .nav-tab {
             flex: 1;
             text-align: center;
-            padding: 10px 15px;
-            background: #f1f5f9;
-            border-radius: 10px;
+            padding: 10px 8px;
+            background: #1a1a1a;
+            border-radius: 8px;
             text-decoration: none;
-            color: #475569;
-            font-size: 0.9rem;
+            color: #888;
+            font-size: 0.75rem;
+            white-space: nowrap;
+            border: 1px solid #2a2a2a;
         }
         
         .nav-tab.active {
-            background: var(--tg-theme-button-color);
+            background: #3b82f6;
             color: white;
+            border-color: #3b82f6;
+        }
+        
+        .info-box {
+            background: #151515;
+            border: 1px solid #252525;
+            padding: 14px;
+            margin: 12px;
+            border-radius: 10px;
+            font-size: 0.8rem;
+            color: #888;
+        }
+        
+        .info-box h3 {
+            font-size: 0.9rem;
+            margin-bottom: 10px;
+            color: #ccc;
+        }
+        
+        .info-box ul {
+            margin: 0;
+            padding-left: 18px;
+        }
+        
+        .info-box li {
+            margin-bottom: 4px;
         }
         
         .admin-card {
-            background: white;
-            margin: 10px;
-            padding: 15px;
+            background: #151515;
+            border: 1px solid #252525;
+            margin: 0 12px 10px;
+            padding: 14px;
             border-radius: 12px;
-            box-shadow: 0 2px 8px rgba(0,0,0,0.08);
         }
         
         .admin-name {
             font-weight: 600;
-            font-size: 1rem;
+            font-size: 0.95rem;
+            color: #fff;
         }
         
         .admin-id {
-            color: #999;
-            font-size: 0.8rem;
+            color: #666;
+            font-size: 0.75rem;
             margin-top: 4px;
         }
         
         .admin-info {
             display: flex;
             flex-wrap: wrap;
-            gap: 8px;
+            gap: 6px;
             margin-top: 10px;
         }
         
         .badge {
-            padding: 4px 10px;
-            border-radius: 20px;
-            font-size: 0.75rem;
+            padding: 3px 8px;
+            border-radius: 4px;
+            font-size: 0.7rem;
             font-weight: 500;
         }
         
-        .badge-super { background: #fce7f3; color: #be185d; }
-        .badge-admin { background: #fef3c7; color: #92400e; }
-        .badge-operator { background: #e0f2fe; color: #0369a1; }
+        .badge-super { background: rgba(236,72,153,0.2); color: #f472b6; }
+        .badge-admin { background: rgba(245,158,11,0.2); color: #fbbf24; }
+        .badge-operator { background: rgba(59,130,246,0.2); color: #60a5fa; }
         
         .role-form {
             margin-top: 12px;
             padding-top: 12px;
-            border-top: 1px solid #eee;
+            border-top: 1px solid #252525;
         }
         
         .role-select {
@@ -110,69 +138,73 @@
             gap: 8px;
         }
         
-        .role-select select {
+        .role-select select, .role-select input {
             flex: 1;
-            padding: 8px 12px;
-            border: 1px solid #e2e8f0;
+            padding: 10px 12px;
+            border: 1px solid #2a2a2a;
             border-radius: 8px;
-            font-size: 0.9rem;
+            font-size: 0.85rem;
+            background: #1a1a1a;
+            color: #e5e5e5;
         }
         
         .btn-save {
             background: #10b981;
             color: white;
             border: none;
-            padding: 8px 16px;
+            padding: 10px 16px;
             border-radius: 8px;
-            font-size: 0.9rem;
-        }
-        
-        .info-box {
-            background: #f8f9fa;
-            padding: 15px;
-            margin: 10px;
-            border-radius: 12px;
             font-size: 0.85rem;
-            color: #666;
+            cursor: pointer;
         }
         
-        .info-box h3 {
-            font-size: 1rem;
-            margin-bottom: 10px;
-            color: #333;
-        }
-        
-        .info-box ul {
-            margin: 0;
-            padding-left: 20px;
-        }
-        
-        .info-box li {
-            margin-bottom: 5px;
+        .btn-cancel {
+            background: #3f3f46;
+            color: white;
+            border: none;
+            padding: 10px 14px;
+            border-radius: 8px;
+            cursor: pointer;
         }
         
         .empty-state {
             text-align: center;
             padding: 40px 20px;
-            color: #999;
+            color: #666;
+        }
+        
+        .empty-state i {
+            font-size: 2.5rem;
+            margin-bottom: 10px;
+            color: #333;
+        }
+        
+        #user-preview {
+            background: #1a1a1a !important;
+            border: 1px solid #2a2a2a;
+            color: #e5e5e5 !important;
+        }
+        
+        #error-msg {
+            color: #f87171 !important;
         }
     </style>
 </head>
 <body>
     <div class="header">
-        <h1><i class="bi bi-shield-lock"></i> Администраторы</h1>
+        <h1><i class="bi bi-shield-check"></i> Администраторы</h1>
         <div class="header-role">{{ permissions.role_name }}</div>
     </div>
     
     <div class="nav-tabs">
         <a href="{{ url_for('webapp_admin', tg_id=tg_id) }}" class="nav-tab">
-            <i class="bi bi-people"></i> Пользователи
+            <i class="bi bi-people"></i> Юзеры
         </a>
         <a href="{{ url_for('webapp_admins', tg_id=tg_id) }}" class="nav-tab active">
             <i class="bi bi-shield"></i> Админы
         </a>
         <a href="{{ url_for('webapp_stats', tg_id=tg_id) }}" class="nav-tab">
-            <i class="bi bi-graph-up"></i> Статистика
+            <i class="bi bi-graph-up"></i> Стат.
         </a>
         {% if permissions.can_edit_tariff %}
         <a href="{{ url_for('webapp_tariff_settings', tg_id=tg_id) }}" class="nav-tab">
@@ -182,43 +214,40 @@
     </div>
     
     <div class="info-box">
-        <h3>Уровни доступа:</h3>
+        <h3>Уровни доступа</h3>
         <ul>
-            <li><strong>Старший админ</strong> - полный доступ, управление ролями</li>
-            <li><strong>Администратор</strong> - редактирование тарифов, просмотр админов</li>
-            <li><strong>Оператор</strong> - только просмотр пользователей</li>
+            <li><strong>Старший админ</strong> - полный доступ</li>
+            <li><strong>Администратор</strong> - редактирование тарифов</li>
+            <li><strong>Оператор</strong> - только просмотр</li>
         </ul>
     </div>
     
     {% if permissions.can_manage_admins %}
-    <div class="admin-card" id="add-admin-section">
+    <div class="admin-card">
         <div class="admin-name"><i class="bi bi-person-plus"></i> Добавить администратора</div>
         
-        <div id="step1" class="mt-3">
+        <div id="step1" class="mt-3" style="margin-top:12px;">
             <div class="role-select">
-                <input type="text" id="new-admin-id" placeholder="Введите Telegram ID" 
-                       style="flex:1; padding:8px 12px; border:1px solid #e2e8f0; border-radius:8px; font-size:0.9rem;">
+                <input type="text" id="new-admin-id" placeholder="Telegram ID">
                 <button type="button" class="btn-save" onclick="showRoleSelect()">
                     <i class="bi bi-arrow-right"></i>
                 </button>
             </div>
-            <div id="error-msg" style="color:#ef4444; font-size:0.8rem; margin-top:8px; display:none;"></div>
+            <div id="error-msg" style="font-size:0.8rem; margin-top:8px; display:none;"></div>
         </div>
         
-        <form id="step2" method="POST" action="{{ url_for('webapp_add_admin') }}" style="display:none;" class="mt-3">
+        <form id="step2" method="POST" action="{{ url_for('webapp_add_admin') }}" style="display:none; margin-top:12px;">
             <input type="hidden" name="tg_id" value="{{ tg_id }}">
             <input type="hidden" name="new_admin_id" id="new_admin_id_hidden">
-            <div id="user-preview" style="background:#f1f5f9; padding:10px; border-radius:8px; margin-bottom:10px; font-size:0.9rem;"></div>
+            <div id="user-preview" style="padding:10px; border-radius:8px; margin-bottom:10px; font-size:0.9rem;"></div>
             <div class="role-select">
-                <select name="admin_role" style="flex:1; padding:8px 12px; border:1px solid #e2e8f0; border-radius:8px; font-size:0.9rem;">
+                <select name="admin_role">
                     <option value="operator">Оператор</option>
                     <option value="admin">Администратор</option>
                     <option value="super_admin">Старший админ</option>
                 </select>
-                <button type="submit" class="btn-save"><i class="bi bi-check-lg"></i> Добавить</button>
-                <button type="button" class="btn-cancel" onclick="resetForm()" style="background:#6b7280; color:white; border:none; padding:8px 12px; border-radius:8px;">
-                    <i class="bi bi-x"></i>
-                </button>
+                <button type="submit" class="btn-save"><i class="bi bi-check-lg"></i></button>
+                <button type="button" class="btn-cancel" onclick="resetForm()"><i class="bi bi-x"></i></button>
             </div>
         </form>
     </div>
@@ -229,26 +258,20 @@
         <div class="admin-card">
             <div class="admin-name">{{ admin.first_name or '-' }} {{ admin.last_name or '' }}</div>
             <div class="admin-id">
-                ID: {{ admin.telegram_id }} 
+                {{ admin.telegram_id }} 
                 {% if admin.username %}@{{ admin.username }}{% endif %}
-                {% if admin.id == admin_user.id %}<span style="color:#10b981">(это вы)</span>{% endif %}
+                {% if admin.id == admin_user.id %}<span style="color:#4ade80"> (вы)</span>{% endif %}
             </div>
             
             <div class="admin-info">
                 {% if admin.admin_role %}
                     {% if admin.admin_role.value == 'super_admin' %}
-                    <span class="badge badge-super">Старший администратор</span>
+                    <span class="badge badge-super">Старший админ</span>
                     {% elif admin.admin_role.value == 'admin' %}
                     <span class="badge badge-admin">Администратор</span>
                     {% else %}
                     <span class="badge badge-operator">Оператор</span>
                     {% endif %}
-                {% else %}
-                <span class="badge badge-operator">Роль не назначена</span>
-                {% endif %}
-                
-                {% if admin.phone %}
-                <span class="badge" style="background:#f1f5f9;color:#475569;">{{ admin.phone }}</span>
                 {% endif %}
             </div>
             
@@ -280,16 +303,12 @@
         tg.ready();
         tg.expand();
         
-        document.body.style.setProperty('--tg-theme-bg-color', tg.themeParams.bg_color || '#ffffff');
-        document.body.style.setProperty('--tg-theme-text-color', tg.themeParams.text_color || '#000000');
-        document.body.style.setProperty('--tg-theme-button-color', tg.themeParams.button_color || '#5288c1');
-        
         async function showRoleSelect() {
             const telegramId = document.getElementById('new-admin-id').value.trim();
             const errorMsg = document.getElementById('error-msg');
             
             if (!telegramId || isNaN(telegramId)) {
-                errorMsg.textContent = 'Введите корректный Telegram ID (только цифры)';
+                errorMsg.textContent = 'Введите корректный Telegram ID';
                 errorMsg.style.display = 'block';
                 return;
             }
@@ -305,7 +324,7 @@
                 }
                 
                 if (data.is_admin) {
-                    errorMsg.textContent = 'Этот пользователь уже является администратором';
+                    errorMsg.textContent = 'Уже является администратором';
                     errorMsg.style.display = 'block';
                     return;
                 }
@@ -316,9 +335,9 @@
                 document.getElementById('new_admin_id_hidden').value = telegramId;
                 document.getElementById('user-preview').innerHTML = 
                     `<strong>${data.first_name || ''} ${data.last_name || ''}</strong><br>` +
-                    `<span style="color:#666;">ID: ${telegramId}${data.username ? ' @' + data.username : ''}</span>`;
+                    `<span style="color:#888;">ID: ${telegramId}${data.username ? ' @' + data.username : ''}</span>`;
             } catch (e) {
-                errorMsg.textContent = 'Ошибка проверки пользователя';
+                errorMsg.textContent = 'Ошибка проверки';
                 errorMsg.style.display = 'block';
             }
         }
@@ -330,6 +349,5 @@
             document.getElementById('error-msg').style.display = 'none';
         }
     </script>
-    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
 </body>
 </html>
