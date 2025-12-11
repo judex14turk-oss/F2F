@@ -101,11 +101,11 @@ def get_active_buyers_count(rooms=None, district=None, budget_max=None):
 
 def get_tariff_limits(tariff: TariffType):
     limits = {
-        TariffType.FREE: {"properties": 2, "daily_likes": 1, "priority": False},
-        TariffType.PRO: {"properties": 50, "daily_likes": 10, "priority": False},
-        TariffType.PREMIUM: {"properties": 100, "daily_likes": 30, "priority": True},
-        TariffType.AGENCY_START: {"properties": 50, "daily_likes": 10, "priority": False},
-        TariffType.DEVELOPER_PRO: {"properties": 100, "daily_likes": 30, "priority": True},
+        TariffType.FREE: {"properties": 2, "daily_likes": 1, "daily_offers": 1, "priority": False},
+        TariffType.PRO: {"properties": 50, "daily_likes": 10, "daily_offers": 10, "priority": False},
+        TariffType.PREMIUM: {"properties": 100, "daily_likes": 30, "daily_offers": 30, "priority": True},
+        TariffType.AGENCY_START: {"properties": 50, "daily_likes": 10, "daily_offers": 10, "priority": False},
+        TariffType.DEVELOPER_PRO: {"properties": 100, "daily_likes": 30, "daily_offers": 30, "priority": True},
     }
     return limits.get(tariff, limits[TariffType.FREE])
 
