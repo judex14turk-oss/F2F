@@ -40,10 +40,10 @@ The platform has two main user interfaces:
 - **Sellers**: Three types - Owner, Realtor, Developer - each with tariff-based feature limits
 - **Admins**: Full platform management through web interface
 
-### Tariff System
+### Tariff System (Promo pricing)
 - **Бесплатный**: 2 properties, 1 like per day
-- **Про** (500,000 sum/month): 50 properties, 10 likes per day
-- **Премиум** (1,500,000 sum/month): 100 properties, 30 likes per day, priority display
+- **Про** (300,000 sum/month - promo): 50 properties, 10 likes per day
+- **Премиум** (500,000 sum/month - promo): 100 properties, 30 likes per day, priority display
 
 ### Key Features
 - Property listing with moderation workflow (Active/Moderation/Archive statuses)

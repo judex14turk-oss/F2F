@@ -130,6 +130,40 @@
             font-weight: 600;
         }
         
+        .old-price {
+            text-decoration: line-through;
+            color: var(--text-secondary);
+            font-size: 14px;
+            font-weight: 400;
+            margin-right: 4px;
+        }
+        
+        .promo-banner {
+            max-width: 400px;
+            margin: 0 auto 20px;
+            background: linear-gradient(135deg, rgba(245, 158, 11, 0.2) 0%, rgba(239, 68, 68, 0.2) 100%);
+            border: 1px solid rgba(245, 158, 11, 0.4);
+            border-radius: 12px;
+            padding: 12px 16px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+            font-size: 14px;
+            font-weight: 600;
+            color: var(--accent-premium);
+            animation: pulse 2s infinite;
+        }
+        
+        .promo-icon {
+            font-size: 18px;
+        }
+        
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.8; }
+        }
+        
         .features-list {
             list-style: none;
             margin-top: 20px;
@@ -280,6 +314,11 @@
     </style>
 </head>
 <body>
+    <div class="promo-banner">
+        <span class="promo-icon">🔥</span>
+        <span>Акция! Специальные цены на время запуска</span>
+    </div>
+    
     <div class="header">
         <h1>Тарифные планы</h1>
         <p>Выберите подходящий тариф для вашего бизнеса</p>
@@ -317,7 +356,7 @@
                 <div class="tariff-icon pro">⭐</div>
                 <div class="tariff-info">
                     <h2>Про</h2>
-                    <div class="price"><span>500 000</span> сум/мес</div>
+                    <div class="price"><span class="old-price">500 000</span> <span>300 000</span> сум/мес</div>
                 </div>
             </div>
             <ul class="features-list">
@@ -346,7 +385,7 @@
                 <div class="tariff-icon premium">👑</div>
                 <div class="tariff-info">
                     <h2>Премиум</h2>
-                    <div class="price"><span>1 500 000</span> сум/мес</div>
+                    <div class="price"><span class="old-price">1 000 000</span> <span>500 000</span> сум/мес</div>
                 </div>
             </div>
             <ul class="features-list">
