@@ -5,7 +5,7 @@ from datetime import datetime, timedelta
 
 from aiogram import Bot, Dispatcher, types, F
 from aiogram.filters import Command, CommandStart
-from aiogram.types import InlineKeyboardMarkup, InlineKeyboardButton, ReplyKeyboardMarkup, KeyboardButton
+from aiogram.types import InlineKeyboardMarkup, InlineKeyboardButton, ReplyKeyboardMarkup, KeyboardButton, ReplyKeyboardRemove
 from aiogram.fsm.context import FSMContext
 from aiogram.fsm.state import State, StatesGroup
 from aiogram.fsm.storage.memory import MemoryStorage
@@ -447,6 +447,10 @@ async def add_property_start(message: types.Message, state: FSMContext):
     
     await message.answer(
         "📝 Добавление нового объекта\n\nВыберите тип сделки:",
+        reply_markup=ReplyKeyboardRemove()
+    )
+    await message.answer(
+        "Выберите тип сделки:",
         reply_markup=InlineKeyboardMarkup(inline_keyboard=[
             [InlineKeyboardButton(text="🏷 Продажа", callback_data="newprop_sale")],
             [InlineKeyboardButton(text="🔑 Аренда", callback_data="newprop_rent")],
