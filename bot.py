@@ -347,14 +347,14 @@ async def process_payment(message: types.Message, state: FSMContext):
     keyboard = ReplyKeyboardMarkup(
         keyboard=[
             [KeyboardButton(text="📱 Отправить номер", request_contact=True)],
-            [KeyboardButton(text="⏭ Пропустить")],
             [KeyboardButton(text="⬅️ Назад")]
         ],
         resize_keyboard=True
     )
     
     await message.answer(
-        "📞 Поделитесь номером телефона, чтобы продавцы могли с вами связаться:",
+        "📞 Поделитесь номером телефона, чтобы продавцы могли с вами связаться:\n\n"
+        "Это обязательно для связи с продавцами.",
         reply_markup=keyboard
     )
     await state.set_state(RegistrationStates.buyer_phone)
@@ -373,24 +373,6 @@ async def back_to_payment(message: types.Message, state: FSMContext):
     )
     await message.answer("💳 Способ оплаты:", reply_markup=keyboard)
     await state.set_state(RegistrationStates.buyer_payment)
-
-
-@dp.message(F.text == "⏭ Пропустить", RegistrationStates.buyer_phone)
-async def skip_buyer_phone(message: types.Message, state: FSMContext):
-    data = await state.get_data()
-    
-    db = SessionLocal()
-    user = db.query(User).filter(User.telegram_id == message.from_user.id).first()
-    if user:
-        user.search_rooms = data.get("rooms", "")
-        user.search_district = data.get("district", "")
-        user.search_budget_max = data.get("budget", 0)
-        user.search_payment_type = data.get("payment", "cash")
-        db.commit()
-    db.close()
-    
-    await state.clear()
-    await show_buyer_menu(message, message.from_user.id)
 
 
 @dp.message(F.contact, RegistrationStates.buyer_phone)
