@@ -137,6 +137,8 @@ BATHROOM_TYPES = {
 
 @dp.message(CommandStart())
 async def cmd_start(message: types.Message, state: FSMContext):
+    await state.clear()
+    
     db = SessionLocal()
     user = db.query(User).filter(User.telegram_id == message.from_user.id).first()
     
@@ -152,10 +154,13 @@ async def cmd_start(message: types.Message, state: FSMContext):
         db.commit()
     db.close()
     
-    keyboard = InlineKeyboardMarkup(inline_keyboard=[
-        [InlineKeyboardButton(text="🏠 Я ищу недвижимость", callback_data="role_buyer")],
-        [InlineKeyboardButton(text="💼 Я хочу продать/сдать", callback_data="role_seller")]
-    ])
+    keyboard = ReplyKeyboardMarkup(
+        keyboard=[
+            [KeyboardButton(text="🏠 Я ищу недвижимость")],
+            [KeyboardButton(text="💼 Я хочу продать/сдать")]
+        ],
+        resize_keyboard=True
+    )
     
     await message.answer(
         "👋 Добро пожаловать в Real Estate Bot!\n\n"
@@ -166,36 +171,49 @@ async def cmd_start(message: types.Message, state: FSMContext):
     await state.set_state(RegistrationStates.choosing_role)
 
 
-@dp.callback_query(F.data == "role_buyer")
-async def process_buyer_role(callback: types.CallbackQuery, state: FSMContext):
+@dp.message(F.text == "🏠 Я ищу недвижимость", RegistrationStates.choosing_role)
+async def process_buyer_role(message: types.Message, state: FSMContext):
     db = SessionLocal()
-    user = db.query(User).filter(User.telegram_id == callback.from_user.id).first()
+    user = db.query(User).filter(User.telegram_id == message.from_user.id).first()
     if user:
         user.role = UserRole.BUYER
         db.commit()
     db.close()
     
-    await callback.message.edit_text(
+    keyboard = ReplyKeyboardMarkup(
+        keyboard=[
+            [KeyboardButton(text="1"), KeyboardButton(text="2"), KeyboardButton(text="3")],
+            [KeyboardButton(text="4+"), KeyboardButton(text="Студия")],
+            [KeyboardButton(text="⬅️ Назад")]
+        ],
+        resize_keyboard=True
+    )
+    
+    await message.answer(
         "🏠 Отлично! Давайте настроим ваши параметры поиска.\n\n"
         "Сколько комнат вам нужно?",
-        reply_markup=InlineKeyboardMarkup(inline_keyboard=[
-            [
-                InlineKeyboardButton(text="1", callback_data="rooms_1"),
-                InlineKeyboardButton(text="2", callback_data="rooms_2"),
-                InlineKeyboardButton(text="3", callback_data="rooms_3"),
-            ],
-            [
-                InlineKeyboardButton(text="4+", callback_data="rooms_4"),
-                InlineKeyboardButton(text="Студия", callback_data="rooms_studio"),
-            ]
-        ])
+        reply_markup=keyboard
     )
     await state.set_state(RegistrationStates.buyer_rooms)
 
 
-@dp.callback_query(F.data.startswith("rooms_"))
-async def process_rooms(callback: types.CallbackQuery, state: FSMContext):
-    rooms = callback.data.replace("rooms_", "")
+@dp.message(F.text == "⬅️ Назад", RegistrationStates.buyer_rooms)
+async def back_to_role(message: types.Message, state: FSMContext):
+    keyboard = ReplyKeyboardMarkup(
+        keyboard=[
+            [KeyboardButton(text="🏠 Я ищу недвижимость")],
+            [KeyboardButton(text="💼 Я хочу продать/сдать")]
+        ],
+        resize_keyboard=True
+    )
+    await message.answer("Выберите вашу роль:", reply_markup=keyboard)
+    await state.set_state(RegistrationStates.choosing_role)
+
+
+@dp.message(RegistrationStates.buyer_rooms)
+async def process_rooms(message: types.Message, state: FSMContext):
+    rooms_map = {"1": "1", "2": "2", "3": "3", "4+": "4", "студия": "studio"}
+    rooms = rooms_map.get(message.text.lower(), message.text)
     await state.update_data(rooms=rooms)
     
     db = SessionLocal()
@@ -205,39 +223,76 @@ async def process_rooms(callback: types.CallbackQuery, state: FSMContext):
     keyboard_buttons = []
     row = []
     for district in districts:
-        row.append(InlineKeyboardButton(text=district.name, callback_data=f"district_{district.id}"))
+        row.append(KeyboardButton(text=district.name))
         if len(row) == 2:
             keyboard_buttons.append(row)
             row = []
     if row:
         keyboard_buttons.append(row)
-    keyboard_buttons.append([InlineKeyboardButton(text="Любой район", callback_data="district_any")])
+    keyboard_buttons.append([KeyboardButton(text="Любой район")])
+    keyboard_buttons.append([KeyboardButton(text="⬅️ Назад")])
     
-    await callback.message.edit_text(
+    await message.answer(
         "📍 Выберите район:",
-        reply_markup=InlineKeyboardMarkup(inline_keyboard=keyboard_buttons)
+        reply_markup=ReplyKeyboardMarkup(keyboard=keyboard_buttons, resize_keyboard=True)
     )
     await state.set_state(RegistrationStates.buyer_district)
 
 
-@dp.callback_query(F.data.startswith("district_"), RegistrationStates.buyer_district)
-async def process_district(callback: types.CallbackQuery, state: FSMContext):
-    district_id = callback.data.replace("district_", "")
-    
-    if district_id == "any":
-        district_name = "Любой"
-    else:
-        db = SessionLocal()
-        district = db.query(District).filter(District.id == int(district_id)).first()
-        district_name = district.name if district else "Любой"
-        db.close()
-    
+@dp.message(F.text == "⬅️ Назад", RegistrationStates.buyer_district)
+async def back_to_rooms(message: types.Message, state: FSMContext):
+    keyboard = ReplyKeyboardMarkup(
+        keyboard=[
+            [KeyboardButton(text="1"), KeyboardButton(text="2"), KeyboardButton(text="3")],
+            [KeyboardButton(text="4+"), KeyboardButton(text="Студия")],
+            [KeyboardButton(text="⬅️ Назад")]
+        ],
+        resize_keyboard=True
+    )
+    await message.answer("🚪 Сколько комнат вам нужно?", reply_markup=keyboard)
+    await state.set_state(RegistrationStates.buyer_rooms)
+
+
+@dp.message(RegistrationStates.buyer_district)
+async def process_district(message: types.Message, state: FSMContext):
+    district_name = message.text if message.text != "Любой район" else "Любой"
     await state.update_data(district=district_name)
     
-    await callback.message.edit_text(
+    keyboard = ReplyKeyboardMarkup(
+        keyboard=[[KeyboardButton(text="⬅️ Назад")]],
+        resize_keyboard=True
+    )
+    
+    await message.answer(
         "💰 Какой у вас бюджет (в USD)?\n\nВведите максимальную сумму цифрами:",
+        reply_markup=keyboard
     )
     await state.set_state(RegistrationStates.buyer_budget)
+
+
+@dp.message(F.text == "⬅️ Назад", RegistrationStates.buyer_budget)
+async def back_to_district(message: types.Message, state: FSMContext):
+    db = SessionLocal()
+    districts = db.query(District).all()
+    db.close()
+    
+    keyboard_buttons = []
+    row = []
+    for district in districts:
+        row.append(KeyboardButton(text=district.name))
+        if len(row) == 2:
+            keyboard_buttons.append(row)
+            row = []
+    if row:
+        keyboard_buttons.append(row)
+    keyboard_buttons.append([KeyboardButton(text="Любой район")])
+    keyboard_buttons.append([KeyboardButton(text="⬅️ Назад")])
+    
+    await message.answer(
+        "📍 Выберите район:",
+        reply_markup=ReplyKeyboardMarkup(keyboard=keyboard_buttons, resize_keyboard=True)
+    )
+    await state.set_state(RegistrationStates.buyer_district)
 
 
 @dp.message(RegistrationStates.buyer_budget)
@@ -249,24 +304,45 @@ async def process_budget(message: types.Message, state: FSMContext):
     
     await state.update_data(budget=int(budget))
     
-    await message.answer(
-        "💳 Способ оплаты:",
-        reply_markup=InlineKeyboardMarkup(inline_keyboard=[
-            [InlineKeyboardButton(text="💵 Наличные", callback_data="payment_cash")],
-            [InlineKeyboardButton(text="🏦 Ипотека", callback_data="payment_mortgage")],
-            [InlineKeyboardButton(text="📄 Рассрочка", callback_data="payment_installment")],
-        ])
+    keyboard = ReplyKeyboardMarkup(
+        keyboard=[
+            [KeyboardButton(text="💵 Наличные")],
+            [KeyboardButton(text="🏦 Ипотека")],
+            [KeyboardButton(text="📄 Рассрочка")],
+            [KeyboardButton(text="⬅️ Назад")]
+        ],
+        resize_keyboard=True
     )
+    
+    await message.answer("💳 Способ оплаты:", reply_markup=keyboard)
     await state.set_state(RegistrationStates.buyer_payment)
 
 
-@dp.callback_query(F.data.startswith("payment_"))
-async def process_payment(callback: types.CallbackQuery, state: FSMContext):
-    payment = callback.data.replace("payment_", "")
+@dp.message(F.text == "⬅️ Назад", RegistrationStates.buyer_payment)
+async def back_to_budget(message: types.Message, state: FSMContext):
+    keyboard = ReplyKeyboardMarkup(
+        keyboard=[[KeyboardButton(text="⬅️ Назад")]],
+        resize_keyboard=True
+    )
+    await message.answer(
+        "💰 Какой у вас бюджет (в USD)?\n\nВведите максимальную сумму цифрами:",
+        reply_markup=keyboard
+    )
+    await state.set_state(RegistrationStates.buyer_budget)
+
+
+@dp.message(RegistrationStates.buyer_payment)
+async def process_payment(message: types.Message, state: FSMContext):
+    payment_map = {
+        "💵 наличные": "cash",
+        "🏦 ипотека": "mortgage",
+        "📄 рассрочка": "installment"
+    }
+    payment = payment_map.get(message.text.lower(), "cash")
     data = await state.get_data()
     
     db = SessionLocal()
-    user = db.query(User).filter(User.telegram_id == callback.from_user.id).first()
+    user = db.query(User).filter(User.telegram_id == message.from_user.id).first()
     if user:
         user.search_rooms = data.get("rooms", "")
         user.search_district = data.get("district", "")
@@ -276,7 +352,7 @@ async def process_payment(callback: types.CallbackQuery, state: FSMContext):
     db.close()
     
     await state.clear()
-    await show_buyer_menu(callback.message, callback.from_user.id)
+    await show_buyer_menu(message, message.from_user.id)
 
 
 async def show_buyer_menu(message, user_id):
@@ -301,41 +377,96 @@ async def show_buyer_menu(message, user_id):
     )
 
 
-@dp.callback_query(F.data == "role_seller")
-async def process_seller_role(callback: types.CallbackQuery, state: FSMContext):
+@dp.message(F.text == "💼 Я хочу продать/сдать", RegistrationStates.choosing_role)
+async def process_seller_role(message: types.Message, state: FSMContext):
     db = SessionLocal()
-    user = db.query(User).filter(User.telegram_id == callback.from_user.id).first()
+    user = db.query(User).filter(User.telegram_id == message.from_user.id).first()
     if user:
         user.role = UserRole.SELLER
         db.commit()
     db.close()
     
-    await callback.message.edit_text(
-        "💼 Отлично! Выберите тип аккаунта:",
-        reply_markup=InlineKeyboardMarkup(inline_keyboard=[
-            [InlineKeyboardButton(text="🏠 Собственник", callback_data="seller_owner")],
-            [InlineKeyboardButton(text="🔑 Риелтор", callback_data="seller_realtor")],
-            [InlineKeyboardButton(text="🏗 Застройщик", callback_data="seller_developer")],
-        ])
+    keyboard = ReplyKeyboardMarkup(
+        keyboard=[
+            [KeyboardButton(text="🏠 Собственник")],
+            [KeyboardButton(text="🔑 Риелтор")],
+            [KeyboardButton(text="🏗 Застройщик")],
+            [KeyboardButton(text="⬅️ Назад")]
+        ],
+        resize_keyboard=True
     )
+    
+    await message.answer("💼 Отлично! Выберите тип аккаунта:", reply_markup=keyboard)
     await state.set_state(RegistrationStates.seller_type)
 
 
-@dp.callback_query(F.data.startswith("seller_"))
-async def process_seller_type(callback: types.CallbackQuery, state: FSMContext):
-    seller_type = callback.data.replace("seller_", "")
-    type_map = {"owner": SellerType.OWNER, "realtor": SellerType.REALTOR, "developer": SellerType.DEVELOPER}
-    await state.update_data(seller_type=type_map.get(seller_type, SellerType.OWNER))
+@dp.message(F.text == "⬅️ Назад", RegistrationStates.seller_type)
+async def back_to_role_from_seller(message: types.Message, state: FSMContext):
+    keyboard = ReplyKeyboardMarkup(
+        keyboard=[
+            [KeyboardButton(text="🏠 Я ищу недвижимость")],
+            [KeyboardButton(text="💼 Я хочу продать/сдать")]
+        ],
+        resize_keyboard=True
+    )
+    await message.answer("Выберите вашу роль:", reply_markup=keyboard)
+    await state.set_state(RegistrationStates.choosing_role)
+
+
+@dp.message(RegistrationStates.seller_type)
+async def process_seller_type(message: types.Message, state: FSMContext):
+    type_map = {
+        "🏠 собственник": SellerType.OWNER,
+        "🔑 риелтор": SellerType.REALTOR,
+        "🏗 застройщик": SellerType.DEVELOPER
+    }
+    await state.update_data(seller_type=type_map.get(message.text.lower(), SellerType.OWNER))
     
-    await callback.message.edit_text("🏢 Введите название компании или ваше имя:")
+    keyboard = ReplyKeyboardMarkup(
+        keyboard=[[KeyboardButton(text="⬅️ Назад")]],
+        resize_keyboard=True
+    )
+    
+    await message.answer("🏢 Введите название компании или ваше имя:", reply_markup=keyboard)
     await state.set_state(RegistrationStates.seller_company)
+
+
+@dp.message(F.text == "⬅️ Назад", RegistrationStates.seller_company)
+async def back_to_seller_type(message: types.Message, state: FSMContext):
+    keyboard = ReplyKeyboardMarkup(
+        keyboard=[
+            [KeyboardButton(text="🏠 Собственник")],
+            [KeyboardButton(text="🔑 Риелтор")],
+            [KeyboardButton(text="🏗 Застройщик")],
+            [KeyboardButton(text="⬅️ Назад")]
+        ],
+        resize_keyboard=True
+    )
+    await message.answer("💼 Выберите тип аккаунта:", reply_markup=keyboard)
+    await state.set_state(RegistrationStates.seller_type)
 
 
 @dp.message(RegistrationStates.seller_company)
 async def process_company_name(message: types.Message, state: FSMContext):
     await state.update_data(company_name=message.text)
-    await message.answer("👤 Введите имя менеджера (кто будет отвечать на звонки):")
+    
+    keyboard = ReplyKeyboardMarkup(
+        keyboard=[[KeyboardButton(text="⬅️ Назад")]],
+        resize_keyboard=True
+    )
+    
+    await message.answer("👤 Введите имя менеджера (кто будет отвечать на звонки):", reply_markup=keyboard)
     await state.set_state(RegistrationStates.seller_manager)
+
+
+@dp.message(F.text == "⬅️ Назад", RegistrationStates.seller_manager)
+async def back_to_company(message: types.Message, state: FSMContext):
+    keyboard = ReplyKeyboardMarkup(
+        keyboard=[[KeyboardButton(text="⬅️ Назад")]],
+        resize_keyboard=True
+    )
+    await message.answer("🏢 Введите название компании или ваше имя:", reply_markup=keyboard)
+    await state.set_state(RegistrationStates.seller_company)
 
 
 @dp.message(RegistrationStates.seller_manager)
@@ -343,13 +474,25 @@ async def process_manager_name(message: types.Message, state: FSMContext):
     await state.update_data(manager_name=message.text)
     
     keyboard = ReplyKeyboardMarkup(
-        keyboard=[[KeyboardButton(text="📱 Отправить номер", request_contact=True)]],
-        resize_keyboard=True,
-        one_time_keyboard=True
+        keyboard=[
+            [KeyboardButton(text="📱 Отправить номер", request_contact=True)],
+            [KeyboardButton(text="⬅️ Назад")]
+        ],
+        resize_keyboard=True
     )
     
     await message.answer("📱 Поделитесь вашим номером телефона:", reply_markup=keyboard)
     await state.set_state(RegistrationStates.seller_phone)
+
+
+@dp.message(F.text == "⬅️ Назад", RegistrationStates.seller_phone)
+async def back_to_manager(message: types.Message, state: FSMContext):
+    keyboard = ReplyKeyboardMarkup(
+        keyboard=[[KeyboardButton(text="⬅️ Назад")]],
+        resize_keyboard=True
+    )
+    await message.answer("👤 Введите имя менеджера (кто будет отвечать на звонки):", reply_markup=keyboard)
+    await state.set_state(RegistrationStates.seller_manager)
 
 
 @dp.message(RegistrationStates.seller_phone)
