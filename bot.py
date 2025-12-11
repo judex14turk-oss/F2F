@@ -1409,12 +1409,23 @@ async def my_properties(message: types.Message):
         
         if photos_list:
             try:
-                await message.answer_photo(
-                    photo=photos_list[0],
-                    caption=text,
-                    reply_markup=keyboard,
-                    parse_mode="HTML"
-                )
+                from aiogram.types import InputMediaPhoto
+                if len(photos_list) > 1:
+                    media_group = []
+                    for i, photo_id in enumerate(photos_list[:10]):
+                        if i == 0:
+                            media_group.append(InputMediaPhoto(media=photo_id, caption=text, parse_mode="HTML"))
+                        else:
+                            media_group.append(InputMediaPhoto(media=photo_id))
+                    await message.answer_media_group(media_group)
+                    await message.answer("⬇️ Действия:", reply_markup=keyboard)
+                else:
+                    await message.answer_photo(
+                        photo=photos_list[0],
+                        caption=text,
+                        reply_markup=keyboard,
+                        parse_mode="HTML"
+                    )
             except:
                 await message.answer(text, reply_markup=keyboard, parse_mode="HTML")
         else:
