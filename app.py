@@ -150,11 +150,18 @@ def webapp_register():
         
         db = get_db()
         
-        existing = db.query(User).filter(
+        from models import SellerType as ST, TariffType as TT, UserRole as UR
+        from datetime import timedelta
+        
+        existing_by_contact = db.query(User).filter(
             (User.phone == phone) | (User.email == email)
         ).first()
         
-        if existing:
+        existing_by_tg = None
+        if tg_id:
+            existing_by_tg = db.query(User).filter(User.telegram_id == int(tg_id)).first()
+        
+        if existing_by_contact and (not existing_by_tg or existing_by_contact.id != existing_by_tg.id):
             db.close()
             return render_template('webapp_register.html',
                 error="Пользователь с таким телефоном или email уже существует",
@@ -163,25 +170,35 @@ def webapp_register():
                 tg_id=tg_id
             )
         
-        from models import SellerType as ST, TariffType as TT, UserRole as UR
-        from datetime import timedelta
-        
         seller_type_enum = ST.REALTOR if seller_type == 'realtor' else ST.DEVELOPER
         tariff = TT.AGENCY_START if seller_type == 'realtor' else TT.DEVELOPER_PRO
         
-        user = User(
-            telegram_id=int(tg_id) if tg_id else 0,
-            role=UR.SELLER,
-            seller_type=seller_type_enum,
-            company_name=company_name,
-            manager_name=manager_name,
-            phone=phone,
-            email=email,
-            password=password,
-            tariff=tariff,
-            trial_ends_at=datetime.utcnow() + timedelta(days=14)
-        )
-        db.add(user)
+        if existing_by_tg:
+            user = existing_by_tg
+            user.role = UR.SELLER
+            user.seller_type = seller_type_enum
+            user.company_name = company_name
+            user.manager_name = manager_name
+            user.phone = phone
+            user.email = email
+            user.password = password
+            user.tariff = tariff
+            user.trial_ends_at = datetime.utcnow() + timedelta(days=14)
+        else:
+            user = User(
+                telegram_id=int(tg_id) if tg_id else 0,
+                role=UR.SELLER,
+                seller_type=seller_type_enum,
+                company_name=company_name,
+                manager_name=manager_name,
+                phone=phone,
+                email=email,
+                password=password,
+                tariff=tariff,
+                trial_ends_at=datetime.utcnow() + timedelta(days=14)
+            )
+            db.add(user)
+        
         db.commit()
         user_id = user.id
         db.close()
