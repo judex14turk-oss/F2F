@@ -1687,37 +1687,102 @@ async def deals(message: types.Message):
     else:
         matches = db.query(Match).filter(Match.buyer_id == user.id).order_by(Match.created_at.desc()).all()
     
-    db.close()
-    
     if not matches:
+        db.close()
         await message.answer("Пока нет сделок. Они появятся после мэтчей!")
         return
     
-    text = "💬 Ваши сделки:\n\n"
+    await message.answer(f"💬 Ваши сделки ({len(matches)}):\n\nНиже показаны анкеты ваших контактов:")
     
-    for match in matches[:20]:
-        db = SessionLocal()
+    for match in matches[:10]:
         buyer = db.query(User).filter(User.id == match.buyer_id).first()
         seller = db.query(User).filter(User.id == match.seller_id).first()
         prop = db.query(Property).filter(Property.id == match.property_id).first()
-        db.close()
         
         if user.role == UserRole.SELLER:
             contact = buyer
+            role_text = "🏠 Покупатель"
         else:
             contact = seller
+            role_text = "💼 Продавец"
         
-        text += (
-            f"👤 {contact.first_name or 'Контакт'}\n"
-            f"📍 {prop.district if prop else ''} | ${prop.price:,} if prop else ''\n"
-            f"📞 {contact.phone or 'Нет телефона'}\n"
-            f"📅 {match.created_at.strftime('%d.%m.%Y')}\n"
+        contact_name = contact.first_name or contact.username or "Контакт"
+        contact_username = f"@{contact.username}" if contact.username else "Не указан"
+        contact_phone = contact.phone or "Не указан"
+        
+        prop_info = ""
+        if prop:
+            rooms_text = f"{prop.rooms} комн." if prop.rooms else "Студия"
+            prop_type_text = "Продажа" if prop.property_type == PropertyType.SALE else "Аренда"
+            prop_info = (
+                f"\n📍 Объект: {prop.district}\n"
+                f"🏠 {rooms_text} | {prop.area} м² | ${prop.price:,}\n"
+                f"📋 Тип: {prop_type_text}"
+            )
+        
+        buyer_info = ""
+        if contact.role == UserRole.BUYER:
+            search_rooms = contact.search_rooms or "Не указано"
+            search_district = contact.search_district or "Любой"
+            search_budget = f"${contact.search_budget_max:,}" if contact.search_budget_max else "Не указан"
+            payment_types = {
+                "cash": "💵 Наличные",
+                "mortgage": "🏦 Ипотека",
+                "installment": "📄 Рассрочка"
+            }
+            payment = payment_types.get(contact.search_payment_type, "Не указан")
+            buyer_info = (
+                f"\n\n📊 Параметры поиска клиента:\n"
+                f"🚪 Комнат: {search_rooms}\n"
+                f"📍 Район: {search_district}\n"
+                f"💰 Бюджет до: {search_budget}\n"
+                f"💳 Оплата: {payment}"
+            )
+        
+        seller_info = ""
+        if contact.role == UserRole.SELLER:
+            seller_type_names = {
+                SellerType.OWNER: "🏠 Собственник",
+                SellerType.REALTOR: "🔑 Риелтор",
+                SellerType.DEVELOPER: "🏗 Застройщик"
+            }
+            seller_type_text = seller_type_names.get(contact.seller_type, "Продавец")
+            company = contact.company_name or "Не указана"
+            manager = contact.manager_name or contact.first_name or "Не указан"
+            seller_info = (
+                f"\n\n📊 Информация о продавце:\n"
+                f"💼 Тип: {seller_type_text}\n"
+                f"🏢 Компания: {company}\n"
+                f"👤 Менеджер: {manager}"
+            )
+        
+        card_text = (
+            f"━━━━━━━━━━━━━━━━━━━━\n"
+            f"{role_text}\n\n"
+            f"👤 Имя: {contact_name}\n"
+            f"📱 Телеграм: {contact_username}\n"
+            f"📞 Телефон: {contact_phone}\n"
+            f"📅 Дата мэтча: {match.created_at.strftime('%d.%m.%Y %H:%M')}"
+            f"{prop_info}"
+            f"{buyer_info}"
+            f"{seller_info}"
         )
+        
         if match.note:
-            text += f"📝 {match.note}\n"
-        text += "\n"
+            card_text += f"\n\n📝 Заметка: {match.note}"
+        
+        keyboard = None
+        if contact.username:
+            keyboard = InlineKeyboardMarkup(inline_keyboard=[
+                [InlineKeyboardButton(text="💬 Написать в Telegram", url=f"https://t.me/{contact.username}")]
+            ])
+        
+        await message.answer(card_text, reply_markup=keyboard)
     
-    await message.answer(text)
+    if len(matches) > 10:
+        await message.answer(f"... и ещё {len(matches) - 10} контактов")
+    
+    db.close()
 
 
 class FindBuyerStates(StatesGroup):
