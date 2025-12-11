@@ -1059,6 +1059,23 @@ async def view_properties(message: types.Message, state: FSMContext):
         Property.status == PropertyStatus.ACTIVE,
         Property.owner_id != user.id
     )
+    
+    if user.search_rooms:
+        rooms_list = [int(r.strip()) for r in user.search_rooms.split(",") if r.strip().isdigit()]
+        if rooms_list:
+            query = query.filter(Property.rooms.in_(rooms_list))
+    
+    if user.search_district:
+        districts = [d.strip() for d in user.search_district.split(",") if d.strip()]
+        if districts:
+            query = query.filter(Property.district.in_(districts))
+    
+    if user.search_budget_max:
+        query = query.filter(Property.price <= user.search_budget_max)
+    
+    if user.search_budget_min:
+        query = query.filter(Property.price >= user.search_budget_min)
+    
     if liked_ids:
         query = query.filter(Property.id.notin_(liked_ids))
     if skipped_ids:
