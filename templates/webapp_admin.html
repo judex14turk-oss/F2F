@@ -182,6 +182,45 @@
             font-size: 0.9rem;
         }
         
+        .user-controls {
+            margin-top: 12px;
+            padding-top: 12px;
+            border-top: 1px solid #eee;
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+        }
+        
+        .control-section {
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
+        }
+        
+        .control-label {
+            font-size: 0.8rem;
+            color: #666;
+            font-weight: 500;
+        }
+        
+        .control-form {
+            margin: 0;
+        }
+        
+        .control-row {
+            display: flex;
+            gap: 8px;
+        }
+        
+        .control-select {
+            flex: 1;
+            padding: 8px 12px;
+            border: 1px solid #e2e8f0;
+            border-radius: 8px;
+            font-size: 0.9rem;
+            background: white;
+        }
+        
         .btn-save {
             background: #10b981;
             color: white;
@@ -325,26 +364,6 @@
             </div>
             
             <div class="user-info">
-                {% if user.role.value == 'buyer' %}
-                <span class="badge badge-buyer">Покупатель</span>
-                {% else %}
-                <span class="badge badge-seller">Продавец</span>
-                {% endif %}
-                
-                {% if user.tariff %}
-                    {% if user.tariff.value|lower == 'free' %}
-                    <span class="badge badge-free">Бесплатный</span>
-                    {% elif user.tariff.value|lower == 'agency_start' %}
-                    <span class="badge badge-agency">Агентство</span>
-                    {% elif user.tariff.value|lower == 'developer_pro' %}
-                    <span class="badge badge-developer">Застройщик</span>
-                    {% elif user.tariff.value|lower == 'pro' %}
-                    <span class="badge badge-pro">PRO</span>
-                    {% elif user.tariff.value|lower == 'premium' %}
-                    <span class="badge badge-premium">Premium</span>
-                    {% endif %}
-                {% endif %}
-                
                 {% if user.is_admin %}
                 <span class="badge badge-admin">
                     {% if user.admin_role %}
@@ -360,21 +379,40 @@
                 {% endif %}
             </div>
             
-            {% if permissions.can_edit_tariff %}
-            <form class="tariff-form" method="POST" action="{{ url_for('webapp_update_tariff', user_id=user.id) }}">
-                <input type="hidden" name="tg_id" value="{{ tg_id }}">
-                <div class="tariff-select">
-                    <select name="tariff">
-                        <option value="free" {% if user.tariff and user.tariff.value|lower == 'free' %}selected{% endif %}>Бесплатный</option>
-                        <option value="agency_start" {% if user.tariff and user.tariff.value|lower == 'agency_start' %}selected{% endif %}>Агентство</option>
-                        <option value="developer_pro" {% if user.tariff and user.tariff.value|lower == 'developer_pro' %}selected{% endif %}>Застройщик</option>
-                        <option value="pro" {% if user.tariff and user.tariff.value|lower == 'pro' %}selected{% endif %}>PRO</option>
-                        <option value="premium" {% if user.tariff and user.tariff.value|lower == 'premium' %}selected{% endif %}>Premium</option>
-                    </select>
-                    <button type="submit" class="btn-save"><i class="bi bi-check-lg"></i></button>
+            <div class="user-controls">
+                <div class="control-section">
+                    <label class="control-label">Роль:</label>
+                    <form class="control-form" method="POST" action="{{ url_for('webapp_update_role', user_id=user.id) }}">
+                        <input type="hidden" name="tg_id" value="{{ tg_id }}">
+                        <div class="control-row">
+                            <select name="role" class="control-select">
+                                <option value="buyer" {% if user.role and user.role.value == 'buyer' %}selected{% endif %}>Покупатель</option>
+                                <option value="seller" {% if user.role and user.role.value == 'seller' %}selected{% endif %}>Продавец</option>
+                            </select>
+                            <button type="submit" class="btn-save"><i class="bi bi-check-lg"></i></button>
+                        </div>
+                    </form>
                 </div>
-            </form>
-            {% endif %}
+                
+                {% if permissions.can_edit_tariff %}
+                <div class="control-section">
+                    <label class="control-label">Тариф:</label>
+                    <form class="control-form" method="POST" action="{{ url_for('webapp_update_tariff', user_id=user.id) }}">
+                        <input type="hidden" name="tg_id" value="{{ tg_id }}">
+                        <div class="control-row">
+                            <select name="tariff" class="control-select">
+                                <option value="free" {% if user.tariff and user.tariff.value|lower == 'free' %}selected{% endif %}>Бесплатный</option>
+                                <option value="agency_start" {% if user.tariff and user.tariff.value|lower == 'agency_start' %}selected{% endif %}>Агентство</option>
+                                <option value="developer_pro" {% if user.tariff and user.tariff.value|lower == 'developer_pro' %}selected{% endif %}>Застройщик</option>
+                                <option value="pro" {% if user.tariff and user.tariff.value|lower == 'pro' %}selected{% endif %}>PRO</option>
+                                <option value="premium" {% if user.tariff and user.tariff.value|lower == 'premium' %}selected{% endif %}>Premium</option>
+                            </select>
+                            <button type="submit" class="btn-save"><i class="bi bi-check-lg"></i></button>
+                        </div>
+                    </form>
+                </div>
+                {% endif %}
+            </div>
             
             {% if permissions.can_manage_admins or permissions.can_delete_users %}
             <div class="action-buttons">

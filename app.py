@@ -700,6 +700,31 @@ def webapp_update_tariff(user_id):
     return redirect(url_for('webapp_admin', tg_id=tg_id))
 
 
+@app.route('/webapp/admin/user/<int:user_id>/role', methods=['POST'])
+def webapp_update_role(user_id):
+    tg_id = request.form.get('tg_id')
+    role = request.form.get('role')
+    
+    db = get_db()
+    admin = db.query(User).filter(User.telegram_id == int(tg_id)).first() if tg_id else None
+    
+    if not admin or not admin.is_admin:
+        db.close()
+        return "Доступ запрещён", 403
+    
+    user = db.query(User).filter(User.id == user_id).first()
+    if user:
+        role_map = {
+            'buyer': UserRole.BUYER,
+            'seller': UserRole.SELLER
+        }
+        user.role = role_map.get(role, UserRole.BUYER)
+        db.commit()
+    db.close()
+    
+    return redirect(url_for('webapp_admin', tg_id=tg_id))
+
+
 @app.route('/webapp/admin/admins')
 def webapp_admins():
     tg_id = request.args.get('tg_id')
