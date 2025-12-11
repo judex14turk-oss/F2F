@@ -5,7 +5,7 @@ from datetime import datetime, timedelta
 
 from aiogram import Bot, Dispatcher, types, F
 from aiogram.filters import Command, CommandStart
-from aiogram.types import InlineKeyboardMarkup, InlineKeyboardButton, ReplyKeyboardMarkup, KeyboardButton, ReplyKeyboardRemove
+from aiogram.types import InlineKeyboardMarkup, InlineKeyboardButton, ReplyKeyboardMarkup, KeyboardButton, ReplyKeyboardRemove, WebAppInfo
 from aiogram.fsm.context import FSMContext
 from aiogram.fsm.state import State, StatesGroup
 from aiogram.fsm.storage.memory import MemoryStorage
@@ -377,6 +377,11 @@ async def show_buyer_menu(message, user_id):
     )
 
 
+WEBAPP_BASE_URL = os.environ.get('REPLIT_DEV_DOMAIN', '')
+if WEBAPP_BASE_URL and not WEBAPP_BASE_URL.startswith('https://'):
+    WEBAPP_BASE_URL = f"https://{WEBAPP_BASE_URL}"
+
+
 @dp.message(F.text == "💼 Я хочу продать/сдать", RegistrationStates.choosing_role)
 async def process_seller_role(message: types.Message, state: FSMContext):
     db = SessionLocal()
@@ -386,11 +391,19 @@ async def process_seller_role(message: types.Message, state: FSMContext):
         db.commit()
     db.close()
     
+    tg_id = message.from_user.id
+    
     keyboard = ReplyKeyboardMarkup(
         keyboard=[
             [KeyboardButton(text="🏠 Собственник")],
-            [KeyboardButton(text="🔑 Риелтор")],
-            [KeyboardButton(text="🏗 Застройщик")],
+            [KeyboardButton(
+                text="🔑 Риелтор",
+                web_app=WebAppInfo(url=f"{WEBAPP_BASE_URL}/webapp/auth?type=realtor&tg_id={tg_id}")
+            )],
+            [KeyboardButton(
+                text="🏗 Застройщик",
+                web_app=WebAppInfo(url=f"{WEBAPP_BASE_URL}/webapp/auth?type=developer&tg_id={tg_id}")
+            )],
             [KeyboardButton(text="⬅️ Назад")]
         ],
         resize_keyboard=True
@@ -413,14 +426,9 @@ async def back_to_role_from_seller(message: types.Message, state: FSMContext):
     await state.set_state(RegistrationStates.choosing_role)
 
 
-@dp.message(RegistrationStates.seller_type)
-async def process_seller_type(message: types.Message, state: FSMContext):
-    type_map = {
-        "🏠 собственник": SellerType.OWNER,
-        "🔑 риелтор": SellerType.REALTOR,
-        "🏗 застройщик": SellerType.DEVELOPER
-    }
-    await state.update_data(seller_type=type_map.get(message.text.lower(), SellerType.OWNER))
+@dp.message(F.text == "🏠 Собственник", RegistrationStates.seller_type)
+async def process_owner_type(message: types.Message, state: FSMContext):
+    await state.update_data(seller_type=SellerType.OWNER)
     
     keyboard = ReplyKeyboardMarkup(
         keyboard=[[KeyboardButton(text="⬅️ Назад")]],
@@ -431,13 +439,44 @@ async def process_seller_type(message: types.Message, state: FSMContext):
     await state.set_state(RegistrationStates.seller_company)
 
 
+@dp.message(F.web_app_data)
+async def handle_webapp_data(message: types.Message, state: FSMContext):
+    import json
+    try:
+        data = json.loads(message.web_app_data.data)
+        action = data.get('action', '')
+        user_id = data.get('user_id', 0)
+        
+        if action in ['login_success', 'register_success']:
+            await state.clear()
+            
+            db = SessionLocal()
+            user = db.query(User).filter(User.id == user_id).first()
+            buyers_count = db.query(User).filter(User.role == UserRole.BUYER).count()
+            db.close()
+            
+            if user:
+                await show_seller_menu(message, message.from_user.id, buyers_count)
+            else:
+                await message.answer("Произошла ошибка. Попробуйте еще раз.")
+    except Exception as e:
+        await message.answer(f"Ошибка обработки данных: {str(e)}")
+
+
 @dp.message(F.text == "⬅️ Назад", RegistrationStates.seller_company)
 async def back_to_seller_type(message: types.Message, state: FSMContext):
+    tg_id = message.from_user.id
     keyboard = ReplyKeyboardMarkup(
         keyboard=[
             [KeyboardButton(text="🏠 Собственник")],
-            [KeyboardButton(text="🔑 Риелтор")],
-            [KeyboardButton(text="🏗 Застройщик")],
+            [KeyboardButton(
+                text="🔑 Риелтор",
+                web_app=WebAppInfo(url=f"{WEBAPP_BASE_URL}/webapp/auth?type=realtor&tg_id={tg_id}")
+            )],
+            [KeyboardButton(
+                text="🏗 Застройщик",
+                web_app=WebAppInfo(url=f"{WEBAPP_BASE_URL}/webapp/auth?type=developer&tg_id={tg_id}")
+            )],
             [KeyboardButton(text="⬅️ Назад")]
         ],
         resize_keyboard=True

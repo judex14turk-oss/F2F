@@ -68,6 +68,141 @@ def logout():
     return redirect(url_for('index'))
 
 
+@app.route('/webapp/auth')
+def webapp_auth():
+    seller_type = request.args.get('type', 'realtor')
+    tg_id = request.args.get('tg_id', '')
+    
+    type_names = {
+        'realtor': '🔑 Риелтор',
+        'developer': '🏗 Застройщик'
+    }
+    
+    return render_template('webapp_auth.html',
+        seller_type=seller_type,
+        seller_type_name=type_names.get(seller_type, 'Риелтор'),
+        tg_id=tg_id
+    )
+
+
+@app.route('/webapp/login', methods=['GET', 'POST'])
+def webapp_login():
+    seller_type = request.args.get('type', 'realtor')
+    tg_id = request.args.get('tg_id', '')
+    
+    if request.method == 'POST':
+        login_value = request.form.get('login', '')
+        password = request.form.get('password', '')
+        tg_id = request.form.get('tg_id', '')
+        seller_type = request.form.get('seller_type', 'realtor')
+        
+        db = get_db()
+        user = db.query(User).filter(
+            (User.phone == login_value) | (User.email == login_value)
+        ).first()
+        
+        if user and user.password == password:
+            if tg_id:
+                user.telegram_id = int(tg_id)
+                db.commit()
+            session['user_id'] = user.id
+            db.close()
+            return '''
+                <script src="https://telegram.org/js/telegram-web-app.js"></script>
+                <script>
+                    const tg = window.Telegram.WebApp;
+                    tg.ready();
+                    tg.sendData(JSON.stringify({action: 'login_success', user_id: ''' + str(user.id) + '''}));
+                    tg.close();
+                </script>
+            '''
+        db.close()
+        return render_template('webapp_login.html',
+            error="Неверный логин или пароль",
+            seller_type=seller_type,
+            tg_id=tg_id
+        )
+    
+    return render_template('webapp_login.html',
+        seller_type=seller_type,
+        tg_id=tg_id
+    )
+
+
+@app.route('/webapp/register', methods=['GET', 'POST'])
+def webapp_register():
+    seller_type = request.args.get('type', 'realtor')
+    tg_id = request.args.get('tg_id', '')
+    
+    type_names = {
+        'realtor': '🔑 Риелтор',
+        'developer': '🏗 Застройщик'
+    }
+    
+    if request.method == 'POST':
+        company_name = request.form.get('company_name', '')
+        manager_name = request.form.get('manager_name', '')
+        phone = request.form.get('phone', '')
+        email = request.form.get('email', '')
+        password = request.form.get('password', '')
+        tg_id = request.form.get('tg_id', '')
+        seller_type = request.form.get('seller_type', 'realtor')
+        
+        db = get_db()
+        
+        existing = db.query(User).filter(
+            (User.phone == phone) | (User.email == email)
+        ).first()
+        
+        if existing:
+            db.close()
+            return render_template('webapp_register.html',
+                error="Пользователь с таким телефоном или email уже существует",
+                seller_type=seller_type,
+                seller_type_name=type_names.get(seller_type, 'Риелтор'),
+                tg_id=tg_id
+            )
+        
+        from models import SellerType as ST, TariffType as TT, UserRole as UR
+        from datetime import timedelta
+        
+        seller_type_enum = ST.REALTOR if seller_type == 'realtor' else ST.DEVELOPER
+        tariff = TT.AGENCY_START if seller_type == 'realtor' else TT.DEVELOPER_PRO
+        
+        user = User(
+            telegram_id=int(tg_id) if tg_id else 0,
+            role=UR.SELLER,
+            seller_type=seller_type_enum,
+            company_name=company_name,
+            manager_name=manager_name,
+            phone=phone,
+            email=email,
+            password=password,
+            tariff=tariff,
+            trial_ends_at=datetime.utcnow() + timedelta(days=14)
+        )
+        db.add(user)
+        db.commit()
+        user_id = user.id
+        db.close()
+        
+        return '''
+            <script src="https://telegram.org/js/telegram-web-app.js"></script>
+            <script>
+                const tg = window.Telegram.WebApp;
+                tg.ready();
+                tg.sendData(JSON.stringify({action: 'register_success', user_id: ''' + str(user_id) + '''}));
+                tg.close();
+            </script>
+        '''
+    
+    return render_template('webapp_register.html',
+        seller_type=seller_type,
+        seller_type_name=type_names.get(seller_type, 'Риелтор'),
+        tg_id=tg_id
+    )
+
+
 @app.route('/admin')
 @admin_required
 def admin_dashboard():
