@@ -183,7 +183,7 @@
         .promo-input-wrapper {
             display: flex;
             gap: 8px;
-            align-items: stretch;
+            align-items: center;
         }
         
         .promo-input {
@@ -191,12 +191,13 @@
             background: var(--bg-secondary);
             border: 1px solid var(--border-color);
             border-radius: 10px;
-            padding: 12px 16px;
+            padding: 0 16px;
             color: var(--text-primary);
             font-size: 15px;
             outline: none;
             transition: border-color 0.2s;
-            height: 46px;
+            height: 44px;
+            line-height: 44px;
             box-sizing: border-box;
         }
         
@@ -218,9 +219,11 @@
             font-weight: 600;
             cursor: pointer;
             transition: transform 0.2s, box-shadow 0.2s;
-            height: 46px;
+            height: 44px;
+            line-height: 44px;
             box-sizing: border-box;
             white-space: nowrap;
+            flex-shrink: 0;
         }
         
         .promo-btn:hover {
