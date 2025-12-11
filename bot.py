@@ -708,15 +708,7 @@ async def show_seller_menu(message, user_id, buyers_count=None):
         TariffType.DEVELOPER_PRO: "👑 Премиум"
     }
     
-    keyboard = ReplyKeyboardMarkup(
-        keyboard=[
-            [KeyboardButton(text="➕ Добавить объект")],
-            [KeyboardButton(text="🏢 Мои объекты"), KeyboardButton(text="🎯 Найти покупателя")],
-            [KeyboardButton(text="❤️ Меня лайкнули"), KeyboardButton(text="💬 Сделки")],
-            [KeyboardButton(text="👤 Профиль"), KeyboardButton(text="💳 Тарифы")]
-        ],
-        resize_keyboard=True
-    )
+    keyboard = get_seller_menu()
     
     await message.answer(
         f"✅ Регистрация завершена!\n\n"
@@ -1091,15 +1083,7 @@ async def finish_photos(callback: types.CallbackQuery, state: FSMContext):
         budget_max=data.get("price")
     )
     
-    keyboard = ReplyKeyboardMarkup(
-        keyboard=[
-            [KeyboardButton(text="➕ Добавить объект")],
-            [KeyboardButton(text="🏢 Мои объекты"), KeyboardButton(text="🎯 Найти покупателя")],
-            [KeyboardButton(text="❤️ Меня лайкнули"), KeyboardButton(text="💬 Сделки")],
-            [KeyboardButton(text="👤 Профиль"), KeyboardButton(text="💳 Тарифы")]
-        ],
-        resize_keyboard=True
-    )
+    keyboard = get_seller_menu()
     
     await callback.message.answer(
         f"🎯 {buyers_count} покупателей ищут похожие квартиры.\n"
@@ -1293,15 +1277,7 @@ async def process_back_reply(message: types.Message, state: FSMContext):
             resize_keyboard=True
         )
     else:
-        keyboard = ReplyKeyboardMarkup(
-            keyboard=[
-                [KeyboardButton(text="➕ Добавить объект")],
-                [KeyboardButton(text="🏢 Мои объекты"), KeyboardButton(text="🎯 Найти покупателя")],
-                [KeyboardButton(text="❤️ Меня лайкнули"), KeyboardButton(text="💬 Сделки")],
-                [KeyboardButton(text="👤 Профиль"), KeyboardButton(text="💳 Тарифы")]
-            ],
-            resize_keyboard=True
-        )
+        keyboard = get_seller_menu()
     
     await message.answer("Вы вернулись в меню", reply_markup=keyboard)
 
@@ -2097,9 +2073,20 @@ def get_seller_menu():
     return ReplyKeyboardMarkup(
         keyboard=[
             [KeyboardButton(text="➕ Добавить объект")],
-            [KeyboardButton(text="🏢 Мои объекты"), KeyboardButton(text="🎯 Найти покупателя")],
+            [KeyboardButton(text="🎯 Найти покупателя")],
+            [KeyboardButton(text="👤 Профиль")]
+        ],
+        resize_keyboard=True
+    )
+
+
+def get_seller_profile_menu():
+    return ReplyKeyboardMarkup(
+        keyboard=[
             [KeyboardButton(text="❤️ Меня лайкнули"), KeyboardButton(text="💬 Сделки")],
-            [KeyboardButton(text="👤 Профиль"), KeyboardButton(text="💳 Тарифы")]
+            [KeyboardButton(text="🏢 Мои объекты"), KeyboardButton(text="💳 Тарифы")],
+            [KeyboardButton(text="👤 Мой профиль")],
+            [KeyboardButton(text="🔙 Главное меню")]
         ],
         resize_keyboard=True
     )
@@ -2400,66 +2387,109 @@ async def profile(message: types.Message):
     user = db.query(User).filter(User.telegram_id == message.from_user.id).first()
     db.close()
     
+    if user.role == UserRole.SELLER:
+        keyboard = get_seller_profile_menu()
+        await message.answer("📂 Раздел профиля:", reply_markup=keyboard)
+    else:
+        await show_buyer_profile(message, user)
+
+
+@dp.message(F.text == "👤 Мой профиль")
+async def my_profile(message: types.Message):
+    db = SessionLocal()
+    user = db.query(User).filter(User.telegram_id == message.from_user.id).first()
+    db.close()
+    
+    await show_seller_profile_info(message, user)
+
+
+@dp.message(F.text == "🔙 Главное меню")
+async def back_to_main_menu(message: types.Message):
+    db = SessionLocal()
+    user = db.query(User).filter(User.telegram_id == message.from_user.id).first()
+    db.close()
+    
+    if user.role == UserRole.SELLER:
+        keyboard = get_seller_menu()
+    else:
+        keyboard = ReplyKeyboardMarkup(
+            keyboard=[
+                [KeyboardButton(text="🏠 Смотреть квартиры")],
+                [KeyboardButton(text="❤️ Мои лайки"), KeyboardButton(text="💬 Мэтчи")],
+                [KeyboardButton(text="👤 Профиль"), KeyboardButton(text="⚙️ Настройки поиска")]
+            ],
+            resize_keyboard=True
+        )
+    
+    await message.answer("🏠 Главное меню", reply_markup=keyboard)
+
+
+async def show_seller_profile_info(message, user):
     webapp_url = os.environ.get('REPLIT_DEV_DOMAIN', '')
     if not webapp_url:
         webapp_url = os.environ.get('REPLIT_DOMAINS', '').split(',')[0] if os.environ.get('REPLIT_DOMAINS') else ''
     
-    if user.role == UserRole.SELLER:
-        type_names = {
-            SellerType.OWNER: "Собственник",
-            SellerType.REALTOR: "Риелтор",
-            SellerType.DEVELOPER: "Застройщик"
-        }
-        tariff_names = {
-            TariffType.FREE: "🆓 Бесплатный",
-            TariffType.PRO: "⭐ Про",
-            TariffType.PREMIUM: "👑 Премиум",
-            TariffType.AGENCY_START: "⭐ Про",
-            TariffType.DEVELOPER_PRO: "👑 Премиум"
-        }
-        
-        text = (
-            f"👤 Ваш профиль\n\n"
-            f"🆔 Ваш ID: {user.telegram_id}\n"
-            f"📋 Тип: {type_names.get(user.seller_type, 'Не указан')}\n"
-            f"🏢 Компания: {user.company_name or 'Не указана'}\n"
-            f"👤 Менеджер: {user.manager_name or 'Не указан'}\n"
-            f"📞 Телефон: {user.phone or 'Не указан'}\n"
-            f"💳 Тариф: {tariff_names.get(user.tariff, 'Бесплатный')}\n"
-        )
-        
-        buttons = [[InlineKeyboardButton(text="🏠 Перейти в режим покупателя", callback_data="switch_to_buyer")]]
-        
-        if user.is_admin and webapp_url:
-            buttons.append([InlineKeyboardButton(
-                text="🔐 Админ-панель",
-                web_app=types.WebAppInfo(url=f"https://{webapp_url}/webapp/admin?tg_id={user.telegram_id}")
-            )])
-        
-        keyboard = InlineKeyboardMarkup(inline_keyboard=buttons)
-    else:
-        payment_names = {"cash": "Наличные", "mortgage": "Ипотека", "installment": "Рассрочка"}
-        budget = f"${user.search_budget_max:,}" if user.search_budget_max else "Не указан"
-        
-        text = (
-            f"👤 Ваш профиль\n\n"
-            f"🆔 Ваш ID: {user.telegram_id}\n"
-            f"🚪 Ищу: {user.search_rooms or 'Любые'} комн.\n"
-            f"📍 Район: {user.search_district or 'Любой'}\n"
-            f"💰 Бюджет: до {budget}\n"
-            f"💳 Оплата: {payment_names.get(user.search_payment_type, 'Не указано')}\n"
-        )
-        
-        buttons = [[InlineKeyboardButton(text="💼 Перейти в режим продавца", callback_data="switch_to_seller")]]
-        
-        if user.is_admin and webapp_url:
-            buttons.append([InlineKeyboardButton(
-                text="🔐 Админ-панель",
-                web_app=types.WebAppInfo(url=f"https://{webapp_url}/webapp/admin?tg_id={user.telegram_id}")
-            )])
-        
-        keyboard = InlineKeyboardMarkup(inline_keyboard=buttons)
+    type_names = {
+        SellerType.OWNER: "Собственник",
+        SellerType.REALTOR: "Риелтор",
+        SellerType.DEVELOPER: "Застройщик"
+    }
+    tariff_names = {
+        TariffType.FREE: "🆓 Бесплатный",
+        TariffType.PRO: "⭐ Про",
+        TariffType.PREMIUM: "👑 Премиум",
+        TariffType.AGENCY_START: "⭐ Про",
+        TariffType.DEVELOPER_PRO: "👑 Премиум"
+    }
     
+    text = (
+        f"👤 Ваш профиль\n\n"
+        f"🆔 Ваш ID: {user.telegram_id}\n"
+        f"📋 Тип: {type_names.get(user.seller_type, 'Не указан')}\n"
+        f"🏢 Компания: {user.company_name or 'Не указана'}\n"
+        f"👤 Менеджер: {user.manager_name or 'Не указан'}\n"
+        f"📞 Телефон: {user.phone or 'Не указан'}\n"
+        f"💳 Тариф: {tariff_names.get(user.tariff, 'Бесплатный')}\n"
+    )
+    
+    buttons = [[InlineKeyboardButton(text="🏠 Перейти в режим покупателя", callback_data="switch_to_buyer")]]
+    
+    if user.is_admin and webapp_url:
+        buttons.append([InlineKeyboardButton(
+            text="🔐 Админ-панель",
+            web_app=types.WebAppInfo(url=f"https://{webapp_url}/webapp/admin?tg_id={user.telegram_id}")
+        )])
+    
+    keyboard = InlineKeyboardMarkup(inline_keyboard=buttons)
+    await message.answer(text, reply_markup=keyboard)
+
+
+async def show_buyer_profile(message, user):
+    webapp_url = os.environ.get('REPLIT_DEV_DOMAIN', '')
+    if not webapp_url:
+        webapp_url = os.environ.get('REPLIT_DOMAINS', '').split(',')[0] if os.environ.get('REPLIT_DOMAINS') else ''
+    
+    payment_names = {"cash": "Наличные", "mortgage": "Ипотека", "installment": "Рассрочка"}
+    budget = f"${user.search_budget_max:,}" if user.search_budget_max else "Не указан"
+    
+    text = (
+        f"👤 Ваш профиль\n\n"
+        f"🆔 Ваш ID: {user.telegram_id}\n"
+        f"🚪 Ищу: {user.search_rooms or 'Любые'} комн.\n"
+        f"📍 Район: {user.search_district or 'Любой'}\n"
+        f"💰 Бюджет: до {budget}\n"
+        f"💳 Оплата: {payment_names.get(user.search_payment_type, 'Не указано')}\n"
+    )
+    
+    buttons = [[InlineKeyboardButton(text="💼 Перейти в режим продавца", callback_data="switch_to_seller")]]
+    
+    if user.is_admin and webapp_url:
+        buttons.append([InlineKeyboardButton(
+            text="🔐 Админ-панель",
+            web_app=types.WebAppInfo(url=f"https://{webapp_url}/webapp/admin?tg_id={user.telegram_id}")
+        )])
+    
+    keyboard = InlineKeyboardMarkup(inline_keyboard=buttons)
     await message.answer(text, reply_markup=keyboard)
 
 
@@ -2507,15 +2537,7 @@ async def switch_to_seller(callback: types.CallbackQuery, state: FSMContext):
     await callback.answer("Режим изменён на продавца")
     await callback.message.delete()
     
-    keyboard = ReplyKeyboardMarkup(
-        keyboard=[
-            [KeyboardButton(text="➕ Добавить объект")],
-            [KeyboardButton(text="🏢 Мои объекты"), KeyboardButton(text="🎯 Найти покупателя")],
-            [KeyboardButton(text="❤️ Меня лайкнули"), KeyboardButton(text="💬 Сделки")],
-            [KeyboardButton(text="👤 Профиль"), KeyboardButton(text="💳 Тарифы")]
-        ],
-        resize_keyboard=True
-    )
+    keyboard = get_seller_menu()
     
     await callback.message.answer(
         f"💼 Вы теперь в режиме продавца!\n\n"
