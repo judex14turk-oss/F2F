@@ -1188,24 +1188,339 @@ async def my_properties(message: types.Message):
         await message.answer("У вас пока нет объектов. Нажмите '➕ Добавить объект'!")
         return
     
-    text = "🏢 Ваши объекты:\n\n"
-    
     status_emoji = {
         PropertyStatus.ACTIVE: "🟢",
         PropertyStatus.MODERATION: "🟡",
         PropertyStatus.ARCHIVE: "⚫"
     }
     
+    status_names = {
+        PropertyStatus.ACTIVE: "Активно",
+        PropertyStatus.MODERATION: "На модерации",
+        PropertyStatus.ARCHIVE: "В архиве"
+    }
+    
     for prop in properties:
         emoji = status_emoji.get(prop.status, "⚪")
+        status_name = status_names.get(prop.status, "")
         type_str = "Продажа" if prop.property_type == PropertyType.SALE else "Аренда"
-        text += (
-            f"{emoji} {prop.district or 'Объект'}\n"
-            f"   {type_str} | {prop.rooms} комн. | ${prop.price:,}\n"
-            f"   👁 {prop.views_count} | ❤️ {prop.likes_count}\n\n"
+        
+        floor_info = ""
+        if prop.floor and prop.total_floors:
+            floor_info = f"🏢 Этаж: {prop.floor}/{prop.total_floors}\n"
+        elif prop.floor:
+            floor_info = f"🏢 Этаж: {prop.floor}\n"
+        
+        area_info = f"📐 Площадь: {prop.area} м²\n" if prop.area else ""
+        
+        building_names = {
+            "brick": "Кирпичный",
+            "monolith": "Монолитный", 
+            "panel": "Панельный",
+            "block": "Блочный",
+            "wood": "Деревянный"
+        }
+        building_info = f"🧱 Дом: {building_names.get(prop.building_type, prop.building_type)}\n" if prop.building_type else ""
+        
+        renovation_names = {
+            "new": "Новый ремонт",
+            "medium": "Средний ремонт",
+            "needs": "Требует ремонта",
+            "rough": "Чистовая отделка",
+            "shell": "Коробка"
+        }
+        renovation_info = f"🔧 Ремонт: {renovation_names.get(prop.renovation, prop.renovation)}\n" if prop.renovation else ""
+        
+        furniture_info = "🛋 С мебелью\n" if prop.has_furniture else ""
+        
+        text = (
+            f"{emoji} <b>{prop.district or 'Объект'}</b> — {status_name}\n"
+            f"━━━━━━━━━━━━━━━━━━━━\n"
+            f"📋 {type_str} | {prop.rooms} комн. | <b>${prop.price:,}</b>\n"
+            f"{area_info}"
+            f"{floor_info}"
+            f"{building_info}"
+            f"{renovation_info}"
+            f"{furniture_info}"
+            f"━━━━━━━━━━━━━━━━━━━━\n"
+            f"👁 Просмотров: {prop.views_count} | ❤️ Лайков: {prop.likes_count}\n"
         )
+        
+        keyboard = InlineKeyboardMarkup(inline_keyboard=[
+            [
+                InlineKeyboardButton(text="✏️ Редактировать", callback_data=f"prop_edit_{prop.id}"),
+                InlineKeyboardButton(text="🗑 Удалить", callback_data=f"prop_delete_{prop.id}")
+            ],
+            [
+                InlineKeyboardButton(text="📦 В архив" if prop.status == PropertyStatus.ACTIVE else "✅ Активировать", 
+                                     callback_data=f"prop_toggle_{prop.id}")
+            ]
+        ])
+        
+        await message.answer(text, reply_markup=keyboard, parse_mode="HTML")
+
+
+class EditPropertyStates(StatesGroup):
+    choosing_field = State()
+    editing_price = State()
+    editing_rooms = State()
+    editing_area = State()
+    editing_floor = State()
+    editing_description = State()
+
+
+@dp.callback_query(F.data.startswith("prop_toggle_"))
+async def toggle_property_status(callback: types.CallbackQuery):
+    prop_id = int(callback.data.replace("prop_toggle_", ""))
     
-    await message.answer(text)
+    db = SessionLocal()
+    prop = db.query(Property).filter(Property.id == prop_id).first()
+    
+    if not prop:
+        await callback.answer("Объект не найден")
+        db.close()
+        return
+    
+    user = db.query(User).filter(User.telegram_id == callback.from_user.id).first()
+    if not user or prop.owner_id != user.id:
+        await callback.answer("Нет доступа")
+        db.close()
+        return
+    
+    if prop.status == PropertyStatus.ACTIVE:
+        prop.status = PropertyStatus.ARCHIVE
+        new_status = "В архиве"
+    else:
+        prop.status = PropertyStatus.ACTIVE
+        new_status = "Активно"
+    
+    db.commit()
+    db.close()
+    
+    await callback.answer(f"Статус изменён: {new_status}")
+    await callback.message.delete()
+
+
+@dp.callback_query(F.data.startswith("prop_delete_"))
+async def delete_property_confirm(callback: types.CallbackQuery):
+    prop_id = int(callback.data.replace("prop_delete_", ""))
+    
+    keyboard = InlineKeyboardMarkup(inline_keyboard=[
+        [
+            InlineKeyboardButton(text="✅ Да, удалить", callback_data=f"prop_confirm_del_{prop_id}"),
+            InlineKeyboardButton(text="❌ Отмена", callback_data=f"prop_cancel_del_{prop_id}")
+        ]
+    ])
+    
+    await callback.message.edit_text(
+        "⚠️ <b>Вы уверены, что хотите удалить этот объект?</b>\n\n"
+        "Это действие нельзя отменить.",
+        reply_markup=keyboard,
+        parse_mode="HTML"
+    )
+
+
+@dp.callback_query(F.data.startswith("prop_confirm_del_"))
+async def delete_property_confirmed(callback: types.CallbackQuery):
+    prop_id = int(callback.data.replace("prop_confirm_del_", ""))
+    
+    db = SessionLocal()
+    prop = db.query(Property).filter(Property.id == prop_id).first()
+    
+    if not prop:
+        await callback.answer("Объект не найден")
+        db.close()
+        return
+    
+    user = db.query(User).filter(User.telegram_id == callback.from_user.id).first()
+    if not user or prop.owner_id != user.id:
+        await callback.answer("Нет доступа")
+        db.close()
+        return
+    
+    db.query(Like).filter(Like.property_id == prop_id).delete()
+    db.delete(prop)
+    db.commit()
+    db.close()
+    
+    await callback.message.edit_text("✅ Объект успешно удалён!")
+
+
+@dp.callback_query(F.data.startswith("prop_cancel_del_"))
+async def delete_property_cancelled(callback: types.CallbackQuery):
+    await callback.answer("Удаление отменено")
+    await callback.message.delete()
+
+
+@dp.callback_query(F.data.startswith("prop_edit_"))
+async def edit_property_menu(callback: types.CallbackQuery, state: FSMContext):
+    prop_id = int(callback.data.replace("prop_edit_", ""))
+    
+    await state.update_data(editing_prop_id=prop_id)
+    
+    keyboard = InlineKeyboardMarkup(inline_keyboard=[
+        [InlineKeyboardButton(text="💰 Цена", callback_data=f"edit_field_price")],
+        [InlineKeyboardButton(text="🚪 Комнаты", callback_data=f"edit_field_rooms")],
+        [InlineKeyboardButton(text="📐 Площадь", callback_data=f"edit_field_area")],
+        [InlineKeyboardButton(text="🏢 Этаж", callback_data=f"edit_field_floor")],
+        [InlineKeyboardButton(text="📝 Описание", callback_data=f"edit_field_description")],
+        [InlineKeyboardButton(text="❌ Отмена", callback_data="edit_cancel")]
+    ])
+    
+    await callback.message.edit_text(
+        "✏️ <b>Что хотите изменить?</b>",
+        reply_markup=keyboard,
+        parse_mode="HTML"
+    )
+    await state.set_state(EditPropertyStates.choosing_field)
+
+
+@dp.callback_query(F.data == "edit_cancel")
+async def edit_cancel(callback: types.CallbackQuery, state: FSMContext):
+    await state.clear()
+    await callback.message.edit_text("Редактирование отменено.")
+
+
+@dp.callback_query(F.data == "edit_field_price", EditPropertyStates.choosing_field)
+async def edit_price_start(callback: types.CallbackQuery, state: FSMContext):
+    await callback.message.edit_text("💰 Введите новую цену в долларах:")
+    await state.set_state(EditPropertyStates.editing_price)
+
+
+@dp.callback_query(F.data == "edit_field_rooms", EditPropertyStates.choosing_field)
+async def edit_rooms_start(callback: types.CallbackQuery, state: FSMContext):
+    await callback.message.edit_text("🚪 Введите количество комнат:")
+    await state.set_state(EditPropertyStates.editing_rooms)
+
+
+@dp.callback_query(F.data == "edit_field_area", EditPropertyStates.choosing_field)
+async def edit_area_start(callback: types.CallbackQuery, state: FSMContext):
+    await callback.message.edit_text("📐 Введите площадь в м²:")
+    await state.set_state(EditPropertyStates.editing_area)
+
+
+@dp.callback_query(F.data == "edit_field_floor", EditPropertyStates.choosing_field)
+async def edit_floor_start(callback: types.CallbackQuery, state: FSMContext):
+    await callback.message.edit_text("🏢 Введите этаж (например: 5 или 5/9):")
+    await state.set_state(EditPropertyStates.editing_floor)
+
+
+@dp.callback_query(F.data == "edit_field_description", EditPropertyStates.choosing_field)
+async def edit_description_start(callback: types.CallbackQuery, state: FSMContext):
+    await callback.message.edit_text("📝 Введите новое описание:")
+    await state.set_state(EditPropertyStates.editing_description)
+
+
+@dp.message(EditPropertyStates.editing_price)
+async def save_price(message: types.Message, state: FSMContext):
+    price = validate_number(message.text.replace("$", "").replace(" ", ""))
+    if price is None or price <= 0:
+        await message.answer("❌ Введите корректную цену числом")
+        return
+    
+    data = await state.get_data()
+    prop_id = data.get("editing_prop_id")
+    
+    db = SessionLocal()
+    prop = db.query(Property).filter(Property.id == prop_id).first()
+    if prop:
+        prop.price = int(price)
+        db.commit()
+    db.close()
+    
+    await state.clear()
+    await message.answer(f"✅ Цена изменена на ${int(price):,}")
+
+
+@dp.message(EditPropertyStates.editing_rooms)
+async def save_rooms(message: types.Message, state: FSMContext):
+    rooms = validate_number(message.text)
+    if rooms is None or rooms < 1 or rooms > 20:
+        await message.answer("❌ Введите корректное количество комнат (1-20)")
+        return
+    
+    data = await state.get_data()
+    prop_id = data.get("editing_prop_id")
+    
+    db = SessionLocal()
+    prop = db.query(Property).filter(Property.id == prop_id).first()
+    if prop:
+        prop.rooms = int(rooms)
+        db.commit()
+    db.close()
+    
+    await state.clear()
+    await message.answer(f"✅ Количество комнат изменено на {int(rooms)}")
+
+
+@dp.message(EditPropertyStates.editing_area)
+async def save_area(message: types.Message, state: FSMContext):
+    area = validate_number(message.text)
+    if area is None or area <= 0:
+        await message.answer("❌ Введите корректную площадь")
+        return
+    
+    data = await state.get_data()
+    prop_id = data.get("editing_prop_id")
+    
+    db = SessionLocal()
+    prop = db.query(Property).filter(Property.id == prop_id).first()
+    if prop:
+        prop.area = float(area)
+        db.commit()
+    db.close()
+    
+    await state.clear()
+    await message.answer(f"✅ Площадь изменена на {area} м²")
+
+
+@dp.message(EditPropertyStates.editing_floor)
+async def save_floor(message: types.Message, state: FSMContext):
+    text = message.text.strip()
+    
+    if "/" in text:
+        parts = text.split("/")
+        floor = validate_number(parts[0])
+        total = validate_number(parts[1])
+    else:
+        floor = validate_number(text)
+        total = None
+    
+    if floor is None or floor < 1:
+        await message.answer("❌ Введите корректный этаж")
+        return
+    
+    data = await state.get_data()
+    prop_id = data.get("editing_prop_id")
+    
+    db = SessionLocal()
+    prop = db.query(Property).filter(Property.id == prop_id).first()
+    if prop:
+        prop.floor = int(floor)
+        if total:
+            prop.total_floors = int(total)
+        db.commit()
+    db.close()
+    
+    await state.clear()
+    floor_str = f"{int(floor)}/{int(total)}" if total else str(int(floor))
+    await message.answer(f"✅ Этаж изменён на {floor_str}")
+
+
+@dp.message(EditPropertyStates.editing_description)
+async def save_description(message: types.Message, state: FSMContext):
+    data = await state.get_data()
+    prop_id = data.get("editing_prop_id")
+    
+    db = SessionLocal()
+    prop = db.query(Property).filter(Property.id == prop_id).first()
+    if prop:
+        prop.description = message.text
+        db.commit()
+    db.close()
+    
+    await state.clear()
+    await message.answer("✅ Описание обновлено!")
 
 
 @dp.message(F.text == "❤️ Меня лайкнули")
