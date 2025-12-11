@@ -1287,8 +1287,21 @@ async def my_properties(message: types.Message):
             ])
         keyboard = InlineKeyboardMarkup(inline_keyboard=buttons)
         
-        photos_list = prop.photos.split(",") if prop.photos else []
-        if photos_list and photos_list[0]:
+        photos_list = [p for p in (prop.photos.split(",") if prop.photos else []) if p]
+        if len(photos_list) > 1:
+            from aiogram.types import InputMediaPhoto
+            media_group = []
+            for i, photo_id in enumerate(photos_list[:10]):
+                if i == 0:
+                    media_group.append(InputMediaPhoto(media=photo_id, caption=text, parse_mode="HTML"))
+                else:
+                    media_group.append(InputMediaPhoto(media=photo_id))
+            try:
+                await message.answer_media_group(media_group)
+                await message.answer("⬆️ Управление объектом:", reply_markup=keyboard)
+            except:
+                await message.answer(text, reply_markup=keyboard, parse_mode="HTML")
+        elif photos_list:
             try:
                 await message.answer_photo(
                     photo=photos_list[0],
