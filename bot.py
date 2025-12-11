@@ -1347,6 +1347,7 @@ class EditPropertyStates(StatesGroup):
     editing_area = State()
     editing_floor = State()
     editing_description = State()
+    editing_photos = State()
 
 
 @dp.callback_query(F.data.startswith("prop_toggle_"))
@@ -1444,6 +1445,7 @@ async def edit_property_menu(callback: types.CallbackQuery, state: FSMContext):
         [InlineKeyboardButton(text="📐 Площадь", callback_data=f"edit_field_area")],
         [InlineKeyboardButton(text="🏢 Этаж", callback_data=f"edit_field_floor")],
         [InlineKeyboardButton(text="📝 Описание", callback_data=f"edit_field_description")],
+        [InlineKeyboardButton(text="📷 Фото", callback_data=f"edit_field_photos")],
         [InlineKeyboardButton(text="❌ Отмена", callback_data="edit_cancel")]
     ])
     
@@ -1601,6 +1603,71 @@ async def save_description(message: types.Message, state: FSMContext):
     
     await state.clear()
     await message.answer("✅ Описание обновлено!")
+
+
+@dp.callback_query(F.data == "edit_field_photos", EditPropertyStates.choosing_field)
+async def edit_photos_start(callback: types.CallbackQuery, state: FSMContext):
+    await state.update_data(edit_photos=[])
+    await callback.message.edit_text(
+        "📷 <b>Отправьте новые фото</b>\n\n"
+        "Отправляйте фото по одному (до 10 штук).\n"
+        "Когда закончите, нажмите 'Готово'.",
+        parse_mode="HTML",
+        reply_markup=InlineKeyboardMarkup(inline_keyboard=[
+            [InlineKeyboardButton(text="✅ Готово", callback_data="edit_photos_done")],
+            [InlineKeyboardButton(text="❌ Отмена", callback_data="edit_photos_cancel")]
+        ])
+    )
+    await state.set_state(EditPropertyStates.editing_photos)
+
+
+@dp.message(EditPropertyStates.editing_photos, F.photo)
+async def edit_photos_receive(message: types.Message, state: FSMContext):
+    data = await state.get_data()
+    photos = data.get("edit_photos", [])
+    
+    if len(photos) >= 10:
+        await message.answer("⚠️ Достигнут лимит в 10 фотографий!")
+        return
+    
+    photo_id = message.photo[-1].file_id
+    photos.append(photo_id)
+    await state.update_data(edit_photos=photos)
+    
+    await message.answer(
+        f"✅ Фото добавлено ({len(photos)}/10)",
+        reply_markup=InlineKeyboardMarkup(inline_keyboard=[
+            [InlineKeyboardButton(text="✅ Готово", callback_data="edit_photos_done")],
+            [InlineKeyboardButton(text="❌ Отмена", callback_data="edit_photos_cancel")]
+        ])
+    )
+
+
+@dp.callback_query(F.data == "edit_photos_done", EditPropertyStates.editing_photos)
+async def edit_photos_save(callback: types.CallbackQuery, state: FSMContext):
+    data = await state.get_data()
+    photos = data.get("edit_photos", [])
+    prop_id = data.get("editing_prop_id")
+    
+    if not photos:
+        await callback.answer("Добавьте хотя бы одно фото!")
+        return
+    
+    db = SessionLocal()
+    prop = db.query(Property).filter(Property.id == prop_id).first()
+    if prop:
+        prop.photos = ",".join(photos)
+        db.commit()
+    db.close()
+    
+    await state.clear()
+    await callback.message.edit_text(f"✅ Фото обновлены! Добавлено {len(photos)} фото.")
+
+
+@dp.callback_query(F.data == "edit_photos_cancel", EditPropertyStates.editing_photos)
+async def edit_photos_cancel(callback: types.CallbackQuery, state: FSMContext):
+    await state.clear()
+    await callback.message.edit_text("Редактирование фото отменено.")
 
 
 @dp.message(F.text == "❤️ Меня лайкнули")
