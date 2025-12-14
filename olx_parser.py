@@ -206,7 +206,7 @@ class OLXParser:
         
         return listings
     
-    def parse_listing(self, url, get_phone=False):
+    def parse_listing_with_driver(self, driver, url, get_phone=False):
         result = {
             'url': url,
             'title': None,
@@ -233,14 +233,9 @@ class OLXParser:
             'error': None
         }
         
-        driver = self.get_driver()
-        if not driver:
-            result['error'] = 'Failed to initialize browser'
-            return result
-        
         try:
             driver.get(url)
-            time.sleep(3)
+            time.sleep(1.5)
             
             if get_phone:
                 try:
@@ -250,7 +245,7 @@ class OLXParser:
                     for btn in phone_buttons:
                         try:
                             btn.click()
-                            time.sleep(2)
+                            time.sleep(1.5)
                             break
                         except:
                             continue
@@ -294,10 +289,18 @@ class OLXParser:
             
         except Exception as e:
             result['error'] = str(e)
-        finally:
-            driver.quit()
             
         return result
+    
+    def parse_listing(self, url, get_phone=False):
+        driver = self.get_driver()
+        if not driver:
+            return {'url': url, 'error': 'Failed to initialize browser'}
+        
+        try:
+            return self.parse_listing_with_driver(driver, url, get_phone)
+        finally:
+            driver.quit()
     
     def parse_listing_with_phone(self, url):
         return self.parse_listing(url, get_phone=True)
@@ -329,39 +332,58 @@ class OLXParser:
         total = len(listing_urls)
         district_name = self.TASHKENT_DISTRICTS.get(district, '') if district else ''
         
-        for i, url in enumerate(listing_urls):
-            if len(results) >= max_listings:
-                break
+        driver = self.get_driver()
+        if not driver:
+            return {
+                'total_found': total,
+                'parsed': 0,
+                'skipped_old': 0,
+                'skipped_district': 0,
+                'filters': {
+                    'deal_type': deal_type,
+                    'property_type': property_type,
+                    'district': district,
+                    'rooms': rooms,
+                    'housing_type': housing_type,
+                    'max_days': max_days
+                },
+                'listings': [],
+                'error': 'Failed to initialize browser'
+            }
+        
+        try:
+            for i, url in enumerate(listing_urls):
+                if len(results) >= max_listings:
+                    break
+                    
+                if progress_callback:
+                    progress_callback(i + 1, total, url)
                 
-            if progress_callback:
-                progress_callback(i + 1, total, url)
-            
-            try:
-                if get_phone:
-                    data = self.parse_listing_with_phone(url)
-                else:
-                    data = self.parse_listing(url)
-                
-                if max_days and not self.is_listing_fresh(data.get('published_date'), max_days):
-                    skipped_old += 1
-                    continue
-                
-                if district and district != 'all' and district_name:
-                    location = data.get('location', '') or ''
-                    parsed_district = data.get('district', '') or ''
-                    if district_name not in location and district_name not in parsed_district:
-                        skipped_district += 1
+                try:
+                    data = self.parse_listing_with_driver(driver, url, get_phone)
+                    
+                    if max_days and not self.is_listing_fresh(data.get('published_date'), max_days):
+                        skipped_old += 1
                         continue
-                
-                results.append(data)
-                
-                time.sleep(0.5)
-                
-            except Exception as e:
-                results.append({
-                    'url': url,
-                    'error': str(e)
-                })
+                    
+                    if district and district != 'all' and district_name:
+                        location = data.get('location', '') or ''
+                        parsed_district = data.get('district', '') or ''
+                        if district_name not in location and district_name not in parsed_district:
+                            skipped_district += 1
+                            continue
+                    
+                    results.append(data)
+                    
+                    time.sleep(0.3)
+                    
+                except Exception as e:
+                    results.append({
+                        'url': url,
+                        'error': str(e)
+                    })
+        finally:
+            driver.quit()
         
         return {
             'total_found': total,

@@ -100,7 +100,10 @@ def get_active_buyers_count(rooms=None, district=None, budget_max=None):
     return count
 
 
-def get_tariff_limits(tariff: TariffType):
+def get_tariff_limits(tariff: TariffType, is_admin: bool = False):
+    if is_admin:
+        return {"properties": 999999, "daily_likes": 999999, "daily_offers": 999999, "priority": True}
+    
     limits = {
         TariffType.FREE: {"properties": 2, "daily_likes": 1, "daily_offers": 1, "priority": False},
         TariffType.PRO: {"properties": 50, "daily_likes": 10, "daily_offers": 10, "priority": False},
@@ -732,7 +735,7 @@ async def add_property_start(message: types.Message, state: FSMContext):
         db.close()
         return
     
-    limits = get_tariff_limits(user.tariff)
+    limits = get_tariff_limits(user.tariff, user.is_admin)
     current_properties = db.query(Property).filter(
         Property.owner_id == user.id,
         Property.status != PropertyStatus.ARCHIVE
@@ -2113,7 +2116,7 @@ async def find_buyers(message: types.Message, state: FSMContext):
         await message.answer("Эта функция доступна только для продавцов.")
         return
     
-    limits = get_tariff_limits(user.tariff)
+    limits = get_tariff_limits(user.tariff, user.is_admin)
     if limits["daily_offers"] == 0:
         await message.answer(
             "⚠️ В бесплатном тарифе нельзя писать первым в базе спроса.\n\n"
@@ -2252,7 +2255,7 @@ async def send_offer(callback: types.CallbackQuery):
     db = SessionLocal()
     seller = db.query(User).filter(User.telegram_id == callback.from_user.id).first()
     
-    limits = get_tariff_limits(seller.tariff)
+    limits = get_tariff_limits(seller.tariff, seller.is_admin)
     
     if seller.daily_offers_count >= limits["daily_offers"]:
         await callback.answer("Вы достигли лимита предложений на сегодня!")
