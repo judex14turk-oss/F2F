@@ -419,7 +419,7 @@
     <div class="loading-overlay" id="loadingOverlay">
         <div class="spinner"></div>
         <div class="loading-text" id="loadingText">Парсинг объявлений...</div>
-        <div class="loading-progress" id="loadingProgress"></div>
+        <div class="loading-progress" id="loadingProgress">0 / 0</div>
     </div>
     
     <script>
@@ -480,6 +480,10 @@
             overlay.classList.add('visible');
             errorMsg.classList.remove('visible');
             
+            const maxListingsVal = parseInt(document.getElementById('maxListings').value);
+            document.getElementById('loadingProgress').textContent = `0 / ${maxListingsVal}`;
+            document.getElementById('loadingText').textContent = 'Парсинг объявлений...';
+            
             const data = {
                 tg_id: '{{ tg_id }}',
                 deal_type: filters.deal_type,
@@ -522,7 +526,11 @@
             const count = document.getElementById('resultsCount');
             
             section.classList.add('visible');
-            count.textContent = result.parsed + ' найдено';
+            let statsText = `${result.parsed} / ${result.total_found}`;
+            if (result.skipped_old > 0) {
+                statsText += ` (пропущено старых: ${result.skipped_old})`;
+            }
+            count.textContent = statsText;
             container.innerHTML = '';
             
             if (!result.listings || result.listings.length === 0) {
