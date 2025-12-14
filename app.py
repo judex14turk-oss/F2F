@@ -1086,8 +1086,6 @@ def webapp_parser_run():
     
     data = request.get_json()
     tg_id = data.get('tg_id')
-    url = data.get('url', '')
-    get_phone = data.get('get_phone', False)
     
     if not tg_id:
         return jsonify({'error': 'Telegram ID не указан'}), 400
@@ -1107,16 +1105,27 @@ def webapp_parser_run():
     
     db.close()
     
-    if not url or 'olx.uz' not in url:
-        return jsonify({'error': 'Неверная ссылка на OLX'}), 400
+    deal_type = data.get('deal_type', 'sale')
+    property_type = data.get('property_type', 'apartment')
+    district = data.get('district', 'all')
+    rooms = data.get('rooms', '')
+    housing_type = data.get('housing_type', 'all')
+    max_listings = data.get('max_listings', 20)
+    get_phone = data.get('get_phone', False)
     
     try:
         parser = OLXParser()
         
-        if get_phone:
-            result = parser.parse_listing_with_phone(url)
-        else:
-            result = parser.parse_listing(url)
+        result = parser.bulk_parse(
+            deal_type=deal_type,
+            property_type=property_type,
+            district=district,
+            rooms=rooms if rooms else None,
+            housing_type=housing_type,
+            max_pages=5,
+            max_listings=min(max_listings, 100),
+            get_phone=get_phone
+        )
         
         return jsonify(result)
         
