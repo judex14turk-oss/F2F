@@ -8,7 +8,7 @@ The platform has two main user interfaces:
 1. **Telegram Bot** - Primary interface for buyers (swipe-based property discovery) and sellers (property management)
 2. **Web Admin/CRM Panel** - Flask-based dashboard for sellers to manage listings and track deals, plus admin functionality for platform management
 
-## Recent Changes (December 11, 2025)
+## Recent Changes (December 14, 2025)
 
 - Initial project setup with full functionality
 - Created Telegram bot with aiogram 3.x
@@ -23,6 +23,11 @@ The platform has two main user interfaces:
 - Added three-tier admin role system (Super Admin, Admin, Operator) with granular permissions
 - Admin panel accessible via WebApp in Telegram bot
 - Separate page for managing administrators (only visible to Super Admin and Admin roles)
+- **NEW: OLX Parser module** - массовый парсинг объявлений недвижимости с OLX.uz
+  - Доступен только для Super Admin
+  - Фильтры: тип сделки (продажа/аренда), тип недвижимости (квартира/дом/участок), район Ташкента, комнаты, тип жилья
+  - Сбор данных: фото, цена, параметры, описание, телефон
+  - Файл парсера: `olx_parser.py`
 
 ## User Preferences
 
