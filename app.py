@@ -1075,8 +1075,53 @@ def webapp_parser():
     return render_template('webapp_parser.html',
         tg_id=tg_id,
         permissions=permissions,
-        admin_user=admin_user
+        admin_user=admin_user,
+        parse_history=[]
     )
+
+
+@app.route('/webapp/admin/parser/run', methods=['POST'])
+def webapp_parser_run():
+    from olx_parser import OLXParser
+    
+    data = request.get_json()
+    tg_id = data.get('tg_id')
+    url = data.get('url', '')
+    get_phone = data.get('get_phone', False)
+    
+    if not tg_id:
+        return jsonify({'error': 'Telegram ID не указан'}), 400
+    
+    db = get_db()
+    admin_user = db.query(User).filter(User.telegram_id == int(tg_id)).first()
+    
+    if not admin_user or not admin_user.is_admin:
+        db.close()
+        return jsonify({'error': 'Доступ запрещён'}), 403
+    
+    permissions = get_admin_permissions(admin_user.admin_role)
+    
+    if not permissions['can_parse']:
+        db.close()
+        return jsonify({'error': 'У вас нет прав для парсинга'}), 403
+    
+    db.close()
+    
+    if not url or 'olx.uz' not in url:
+        return jsonify({'error': 'Неверная ссылка на OLX'}), 400
+    
+    try:
+        parser = OLXParser()
+        
+        if get_phone:
+            result = parser.parse_listing_with_phone(url)
+        else:
+            result = parser.parse_listing(url)
+        
+        return jsonify(result)
+        
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
 
 
 @app.route('/webapp/admin/stats')

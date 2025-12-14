@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Парсинг</title>
+    <title>Парсинг OLX</title>
     <script src="https://telegram.org/js/telegram-web-app.js"></script>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.0/font/bootstrap-icons.css" rel="stylesheet">
     <style>
@@ -86,7 +86,7 @@
         .parser-icon {
             width: 48px;
             height: 48px;
-            background: linear-gradient(135deg, #3b82f6 0%, #8b5cf6 100%);
+            background: linear-gradient(135deg, #10b981 0%, #059669 100%);
             border-radius: 12px;
             display: flex;
             align-items: center;
@@ -107,40 +107,64 @@
             margin-top: 2px;
         }
         
-        .parser-description {
-            color: #aaa;
-            font-size: 0.85rem;
-            line-height: 1.5;
+        .form-group {
             margin-bottom: 16px;
         }
         
-        .parser-status {
+        .form-label {
+            display: block;
+            font-size: 0.85rem;
+            color: #aaa;
+            margin-bottom: 8px;
+        }
+        
+        .form-input {
+            width: 100%;
+            padding: 12px 14px;
+            background: #1a1a1a;
+            border: 1px solid #2a2a2a;
+            border-radius: 8px;
+            color: #e5e5e5;
+            font-size: 0.9rem;
+        }
+        
+        .form-input:focus {
+            outline: none;
+            border-color: #3b82f6;
+        }
+        
+        .form-input::placeholder {
+            color: #666;
+        }
+        
+        .checkbox-group {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+            margin-top: 8px;
+        }
+        
+        .checkbox-item {
             display: flex;
             align-items: center;
-            gap: 8px;
-            padding: 10px 14px;
-            background: rgba(34, 197, 94, 0.1);
-            border: 1px solid rgba(34, 197, 94, 0.2);
-            border-radius: 8px;
-            margin-bottom: 16px;
-        }
-        
-        .status-dot {
-            width: 8px;
-            height: 8px;
-            background: #22c55e;
-            border-radius: 50%;
-            animation: pulse 2s infinite;
-        }
-        
-        @keyframes pulse {
-            0%, 100% { opacity: 1; }
-            50% { opacity: 0.5; }
-        }
-        
-        .status-text {
+            gap: 6px;
+            padding: 8px 12px;
+            background: #1a1a1a;
+            border: 1px solid #2a2a2a;
+            border-radius: 6px;
             font-size: 0.8rem;
-            color: #22c55e;
+            color: #ccc;
+            cursor: pointer;
+        }
+        
+        .checkbox-item.active {
+            background: rgba(59, 130, 246, 0.2);
+            border-color: #3b82f6;
+            color: #60a5fa;
+        }
+        
+        .checkbox-item input {
+            display: none;
         }
         
         .btn-parser {
@@ -159,34 +183,187 @@
         }
         
         .btn-primary {
-            background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%);
+            background: linear-gradient(135deg, #10b981 0%, #059669 100%);
             color: white;
         }
         
         .btn-primary:hover {
             transform: translateY(-1px);
-            box-shadow: 0 4px 12px rgba(59, 130, 246, 0.3);
+            box-shadow: 0 4px 12px rgba(16, 185, 129, 0.3);
         }
         
-        .btn-secondary {
-            background: #252525;
-            color: #e5e5e5;
-            border: 1px solid #353535;
+        .btn-primary:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+            transform: none;
         }
         
-        .btn-secondary:hover {
-            background: #303030;
-        }
-        
-        .info-section {
+        .result-card {
             background: #151515;
             border: 1px solid #252525;
             border-radius: 12px;
+            margin-bottom: 16px;
+            overflow: hidden;
+            display: none;
+        }
+        
+        .result-card.visible {
+            display: block;
+        }
+        
+        .result-header {
             padding: 16px;
+            background: linear-gradient(135deg, #1e3a5f 0%, #1e293b 100%);
+            border-bottom: 1px solid #252525;
+        }
+        
+        .result-title {
+            font-size: 1rem;
+            font-weight: 600;
+            color: #fff;
+            margin-bottom: 4px;
+        }
+        
+        .result-price {
+            font-size: 1.2rem;
+            font-weight: 700;
+            color: #4ade80;
+        }
+        
+        .result-body {
+            padding: 16px;
+        }
+        
+        .result-photos {
+            display: flex;
+            gap: 8px;
+            overflow-x: auto;
+            margin-bottom: 16px;
+            padding-bottom: 8px;
+        }
+        
+        .result-photo {
+            width: 100px;
+            height: 75px;
+            border-radius: 8px;
+            object-fit: cover;
+            flex-shrink: 0;
+        }
+        
+        .result-params {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 10px;
             margin-bottom: 16px;
         }
         
-        .info-title {
+        .param-item {
+            background: #1a1a1a;
+            padding: 10px;
+            border-radius: 8px;
+        }
+        
+        .param-label {
+            font-size: 0.7rem;
+            color: #888;
+            margin-bottom: 2px;
+        }
+        
+        .param-value {
+            font-size: 0.9rem;
+            font-weight: 600;
+            color: #fff;
+        }
+        
+        .result-description {
+            background: #1a1a1a;
+            padding: 12px;
+            border-radius: 8px;
+            font-size: 0.85rem;
+            color: #ccc;
+            line-height: 1.5;
+            max-height: 150px;
+            overflow-y: auto;
+        }
+        
+        .result-phone {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            padding: 12px;
+            background: rgba(16, 185, 129, 0.1);
+            border: 1px solid rgba(16, 185, 129, 0.2);
+            border-radius: 8px;
+            margin-top: 12px;
+        }
+        
+        .result-phone i {
+            color: #10b981;
+            font-size: 1.2rem;
+        }
+        
+        .result-phone span {
+            font-size: 1rem;
+            font-weight: 600;
+            color: #10b981;
+        }
+        
+        .loading-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0,0,0,0.8);
+            display: none;
+            align-items: center;
+            justify-content: center;
+            z-index: 1000;
+        }
+        
+        .loading-overlay.visible {
+            display: flex;
+        }
+        
+        .loading-content {
+            text-align: center;
+            color: #fff;
+        }
+        
+        .spinner {
+            width: 50px;
+            height: 50px;
+            border: 3px solid #333;
+            border-top-color: #3b82f6;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+            margin: 0 auto 16px;
+        }
+        
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+        
+        .error-message {
+            background: rgba(220, 38, 38, 0.1);
+            border: 1px solid rgba(220, 38, 38, 0.3);
+            color: #f87171;
+            padding: 12px;
+            border-radius: 8px;
+            margin-bottom: 16px;
+            font-size: 0.85rem;
+            display: none;
+        }
+        
+        .error-message.visible {
+            display: block;
+        }
+        
+        .history-section {
+            margin-top: 24px;
+        }
+        
+        .history-title {
             font-size: 0.9rem;
             font-weight: 600;
             color: #fff;
@@ -196,56 +373,37 @@
             gap: 8px;
         }
         
-        .info-list {
-            list-style: none;
-        }
-        
-        .info-list li {
-            padding: 8px 0;
-            border-bottom: 1px solid #252525;
-            font-size: 0.8rem;
-            color: #aaa;
-            display: flex;
-            align-items: center;
-            gap: 8px;
-        }
-        
-        .info-list li:last-child {
-            border-bottom: none;
-        }
-        
-        .info-list li i {
-            color: #3b82f6;
-            width: 16px;
-        }
-        
-        .empty-state {
-            text-align: center;
-            padding: 40px 20px;
-            color: #666;
-        }
-        
-        .empty-state i {
-            font-size: 3rem;
-            margin-bottom: 15px;
-            color: #333;
-        }
-        
-        .empty-state h3 {
-            font-size: 1rem;
-            color: #888;
+        .history-item {
+            background: #151515;
+            border: 1px solid #252525;
+            border-radius: 8px;
+            padding: 12px;
             margin-bottom: 8px;
+            cursor: pointer;
         }
         
-        .empty-state p {
+        .history-item:hover {
+            border-color: #3b82f6;
+        }
+        
+        .history-item-title {
             font-size: 0.85rem;
+            color: #fff;
+            margin-bottom: 4px;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+        
+        .history-item-date {
+            font-size: 0.75rem;
             color: #666;
         }
     </style>
 </head>
 <body>
     <div class="header">
-        <h1><i class="bi bi-cloud-download"></i> Парсинг данных</h1>
+        <h1><i class="bi bi-cloud-download"></i> Парсинг OLX</h1>
         <div class="header-role">{{ permissions.role_name }}</div>
     </div>
     
@@ -277,48 +435,92 @@
         <div class="parser-card">
             <div class="parser-card-header">
                 <div class="parser-icon">
-                    <i class="bi bi-database"></i>
+                    <i class="bi bi-house-door"></i>
                 </div>
                 <div>
-                    <div class="parser-title">Модуль парсинга</div>
-                    <div class="parser-subtitle">Сбор и обработка данных</div>
+                    <div class="parser-title">Парсер OLX.uz</div>
+                    <div class="parser-subtitle">Сбор данных о недвижимости</div>
                 </div>
             </div>
             
-            <div class="parser-description">
-                Раздел для настройки и запуска парсинга данных из внешних источников. 
-                Здесь вы сможете управлять источниками, настраивать фильтры и запускать сбор данных.
-            </div>
-            
-            <div class="parser-status">
-                <div class="status-dot"></div>
-                <span class="status-text">Готов к настройке</span>
-            </div>
-            
-            <button class="btn-parser btn-primary" disabled>
-                <i class="bi bi-gear"></i>
-                Настроить парсинг
-            </button>
+            <form id="parseForm">
+                <input type="hidden" name="tg_id" value="{{ tg_id }}">
+                
+                <div class="form-group">
+                    <label class="form-label">Ссылка на объявление OLX</label>
+                    <input type="url" name="url" class="form-input" 
+                           placeholder="https://www.olx.uz/d/obyavlenie/..." required>
+                </div>
+                
+                <div class="form-group">
+                    <label class="form-label">Получить данные</label>
+                    <div class="checkbox-group">
+                        <label class="checkbox-item active" onclick="toggleCheckbox(this)">
+                            <input type="checkbox" name="get_photos" checked>
+                            <i class="bi bi-image"></i> Фото
+                        </label>
+                        <label class="checkbox-item active" onclick="toggleCheckbox(this)">
+                            <input type="checkbox" name="get_params" checked>
+                            <i class="bi bi-list-ul"></i> Параметры
+                        </label>
+                        <label class="checkbox-item active" onclick="toggleCheckbox(this)">
+                            <input type="checkbox" name="get_description" checked>
+                            <i class="bi bi-text-paragraph"></i> Описание
+                        </label>
+                        <label class="checkbox-item" onclick="toggleCheckbox(this)">
+                            <input type="checkbox" name="get_phone">
+                            <i class="bi bi-telephone"></i> Телефон
+                        </label>
+                    </div>
+                </div>
+                
+                <div class="error-message" id="errorMessage"></div>
+                
+                <button type="submit" class="btn-parser btn-primary" id="parseBtn">
+                    <i class="bi bi-play-fill"></i>
+                    Запустить парсинг
+                </button>
+            </form>
         </div>
         
-        <div class="info-section">
-            <div class="info-title">
-                <i class="bi bi-info-circle"></i>
-                Возможности модуля
+        <div class="result-card" id="resultCard">
+            <div class="result-header">
+                <div class="result-title" id="resultTitle">-</div>
+                <div class="result-price" id="resultPrice">-</div>
             </div>
-            <ul class="info-list">
-                <li><i class="bi bi-check"></i> Парсинг объявлений недвижимости</li>
-                <li><i class="bi bi-check"></i> Автоматическое обновление данных</li>
-                <li><i class="bi bi-check"></i> Фильтрация по параметрам</li>
-                <li><i class="bi bi-check"></i> История парсинга</li>
-                <li><i class="bi bi-check"></i> Экспорт результатов</li>
-            </ul>
+            <div class="result-body">
+                <div class="result-photos" id="resultPhotos"></div>
+                
+                <div class="result-params" id="resultParams"></div>
+                
+                <div class="result-description" id="resultDescription"></div>
+                
+                <div class="result-phone" id="resultPhone" style="display: none;">
+                    <i class="bi bi-telephone-fill"></i>
+                    <span id="phoneNumber">-</span>
+                </div>
+            </div>
         </div>
         
-        <div class="empty-state">
-            <i class="bi bi-code-slash"></i>
-            <h3>Раздел в разработке</h3>
-            <p>Функционал парсинга будет доступен в ближайшее время</p>
+        {% if parse_history %}
+        <div class="history-section">
+            <div class="history-title">
+                <i class="bi bi-clock-history"></i> История парсинга
+            </div>
+            {% for item in parse_history %}
+            <div class="history-item" onclick="fillUrl('{{ item.url }}')">
+                <div class="history-item-title">{{ item.title or item.url }}</div>
+                <div class="history-item-date">{{ item.date }}</div>
+            </div>
+            {% endfor %}
+        </div>
+        {% endif %}
+    </div>
+    
+    <div class="loading-overlay" id="loadingOverlay">
+        <div class="loading-content">
+            <div class="spinner"></div>
+            <div id="loadingText">Парсинг данных...</div>
         </div>
     </div>
     
@@ -326,8 +528,135 @@
         if (window.Telegram && window.Telegram.WebApp) {
             Telegram.WebApp.ready();
             Telegram.WebApp.expand();
+        }
+        
+        function toggleCheckbox(el) {
+            const checkbox = el.querySelector('input[type="checkbox"]');
+            checkbox.checked = !checkbox.checked;
+            el.classList.toggle('active', checkbox.checked);
+        }
+        
+        function fillUrl(url) {
+            document.querySelector('input[name="url"]').value = url;
+        }
+        
+        document.getElementById('parseForm').addEventListener('submit', async function(e) {
+            e.preventDefault();
             
-            document.body.style.backgroundColor = Telegram.WebApp.backgroundColor || '#0a0a0a';
+            const form = e.target;
+            const formData = new FormData(form);
+            const url = formData.get('url');
+            
+            if (!url || !url.includes('olx.uz')) {
+                showError('Введите корректную ссылку на объявление OLX.uz');
+                return;
+            }
+            
+            showLoading(true);
+            hideError();
+            
+            try {
+                const response = await fetch('/webapp/admin/parser/run', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        tg_id: formData.get('tg_id'),
+                        url: url,
+                        get_photos: formData.get('get_photos') === 'on',
+                        get_params: formData.get('get_params') === 'on',
+                        get_description: formData.get('get_description') === 'on',
+                        get_phone: formData.get('get_phone') === 'on'
+                    })
+                });
+                
+                const data = await response.json();
+                
+                if (data.error) {
+                    showError(data.error);
+                } else {
+                    displayResult(data);
+                }
+            } catch (err) {
+                showError('Ошибка при парсинге: ' + err.message);
+            } finally {
+                showLoading(false);
+            }
+        });
+        
+        function showLoading(show) {
+            document.getElementById('loadingOverlay').classList.toggle('visible', show);
+            document.getElementById('parseBtn').disabled = show;
+        }
+        
+        function showError(message) {
+            const el = document.getElementById('errorMessage');
+            el.textContent = message;
+            el.classList.add('visible');
+        }
+        
+        function hideError() {
+            document.getElementById('errorMessage').classList.remove('visible');
+        }
+        
+        function displayResult(data) {
+            const card = document.getElementById('resultCard');
+            card.classList.add('visible');
+            
+            document.getElementById('resultTitle').textContent = data.title || 'Без названия';
+            document.getElementById('resultPrice').textContent = 
+                (data.price || '-') + ' ' + (data.currency || '');
+            
+            const photosContainer = document.getElementById('resultPhotos');
+            photosContainer.innerHTML = '';
+            if (data.photos && data.photos.length > 0) {
+                data.photos.forEach(url => {
+                    const img = document.createElement('img');
+                    img.src = url;
+                    img.className = 'result-photo';
+                    img.onerror = function() { this.style.display = 'none'; };
+                    photosContainer.appendChild(img);
+                });
+            }
+            
+            const paramsContainer = document.getElementById('resultParams');
+            paramsContainer.innerHTML = '';
+            const params = [
+                { label: 'Комнаты', value: data.rooms },
+                { label: 'Площадь', value: data.total_area ? data.total_area + ' м²' : null },
+                { label: 'Этаж', value: data.floor && data.total_floors ? data.floor + '/' + data.total_floors : data.floor },
+                { label: 'Тип', value: data.property_type },
+                { label: 'Планировка', value: data.layout },
+                { label: 'Санузел', value: data.bathroom },
+                { label: 'Мебель', value: data.furnished },
+                { label: 'Локация', value: data.location }
+            ];
+            
+            params.forEach(p => {
+                if (p.value) {
+                    const div = document.createElement('div');
+                    div.className = 'param-item';
+                    div.innerHTML = `
+                        <div class="param-label">${p.label}</div>
+                        <div class="param-value">${p.value}</div>
+                    `;
+                    paramsContainer.appendChild(div);
+                }
+            });
+            
+            const descEl = document.getElementById('resultDescription');
+            descEl.textContent = data.description || 'Описание отсутствует';
+            
+            const phoneEl = document.getElementById('resultPhone');
+            if (data.phone) {
+                document.getElementById('phoneNumber').textContent = data.phone;
+                phoneEl.style.display = 'flex';
+            } else {
+                phoneEl.style.display = 'none';
+            }
+            
+            card.scrollIntoView({ behavior: 'smooth', block: 'start' });
         }
     </script>
 </body>
