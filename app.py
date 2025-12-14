@@ -1103,10 +1103,11 @@ def webapp_parser_run():
         db.close()
         return jsonify({'error': 'У вас нет прав для парсинга'}), 403
     
+    admin_user_id = admin_user.id
     db.close()
     
     deal_type = data.get('deal_type', 'sale')
-    property_type = data.get('property_type', 'apartment')
+    property_type_str = data.get('property_type', 'apartment')
     district = data.get('district', 'all')
     rooms = data.get('rooms', '')
     housing_type = data.get('housing_type', 'all')
@@ -1119,7 +1120,7 @@ def webapp_parser_run():
         
         result = parser.bulk_parse(
             deal_type=deal_type,
-            property_type=property_type,
+            property_type=property_type_str,
             district=district,
             rooms=rooms if rooms else None,
             housing_type=housing_type,
@@ -1128,6 +1129,82 @@ def webapp_parser_run():
             get_phone=get_phone,
             max_days=max_days if max_days > 0 else None
         )
+        
+        db = get_db()
+        added_count = 0
+        skipped_count = 0
+        
+        prop_type_enum = PropertyType.SALE if deal_type == 'sale' else PropertyType.RENT
+        
+        for listing in result.get('listings', []):
+            if listing.get('error') and not listing.get('title'):
+                continue
+            
+            olx_id = listing.get('olx_id')
+            if olx_id:
+                existing = db.query(Property).filter(Property.olx_id == olx_id).first()
+                if existing:
+                    skipped_count += 1
+                    continue
+            
+            try:
+                price_str = listing.get('price', '0')
+                price = int(price_str.replace(' ', '').replace(',', '')) if price_str else 0
+            except:
+                price = 0
+            
+            try:
+                rooms_count = int(listing.get('rooms')) if listing.get('rooms') else None
+            except:
+                rooms_count = None
+            
+            try:
+                area_val = float(listing.get('total_area')) if listing.get('total_area') else None
+            except:
+                area_val = None
+            
+            try:
+                floor_val = int(listing.get('floor')) if listing.get('floor') else None
+            except:
+                floor_val = None
+            
+            try:
+                total_floors_val = int(listing.get('total_floors')) if listing.get('total_floors') else None
+            except:
+                total_floors_val = None
+            
+            photos_list = listing.get('photos', [])
+            photos_str = ','.join(photos_list[:10]) if photos_list else ''
+            
+            new_property = Property(
+                owner_id=admin_user_id,
+                property_type=prop_type_enum,
+                district=listing.get('district') or listing.get('location'),
+                address=listing.get('location'),
+                rooms=rooms_count,
+                floor=floor_val,
+                total_floors=total_floors_val,
+                area=area_val,
+                price=price if price > 0 else 1,
+                description=listing.get('description'),
+                photos=photos_str,
+                status=PropertyStatus.ACTIVE,
+                building_type=listing.get('property_type'),
+                phone=listing.get('phone'),
+                olx_url=listing.get('url'),
+                olx_id=olx_id,
+                source='olx',
+                seller_name=listing.get('seller_name')
+            )
+            
+            db.add(new_property)
+            added_count += 1
+        
+        db.commit()
+        db.close()
+        
+        result['added_to_db'] = added_count
+        result['skipped_duplicates'] = skipped_count
         
         return jsonify(result)
         

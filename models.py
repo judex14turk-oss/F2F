@@ -115,6 +115,12 @@ class Property(Base):
     bathroom_type = Column(String(50))
     has_furniture = Column(Boolean, default=False)
     
+    phone = Column(String(50))
+    olx_url = Column(String(500))
+    olx_id = Column(String(50), unique=True, nullable=True)
+    source = Column(String(50), default='manual')
+    seller_name = Column(String(200))
+    
     owner = relationship("User", back_populates="properties")
     likes = relationship("Like", back_populates="property")
 

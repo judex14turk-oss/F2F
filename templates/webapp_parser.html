@@ -526,9 +526,12 @@
             const count = document.getElementById('resultsCount');
             
             section.classList.add('visible');
-            let statsText = `${result.parsed} / ${result.total_found}`;
+            let statsText = `Добавлено: ${result.added_to_db || 0} из ${result.parsed}`;
+            if (result.skipped_duplicates > 0) {
+                statsText += ` (дубли: ${result.skipped_duplicates})`;
+            }
             if (result.skipped_old > 0) {
-                statsText += ` (пропущено старых: ${result.skipped_old})`;
+                statsText += ` (старые: ${result.skipped_old})`;
             }
             count.textContent = statsText;
             container.innerHTML = '';
