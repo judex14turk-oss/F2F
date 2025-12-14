@@ -9,7 +9,7 @@ from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
 from selenium.common.exceptions import TimeoutException
 import json
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 
 
 class OLXParser:
@@ -95,7 +95,8 @@ class OLXParser:
         if district and district != 'all':
             district_name = self.TASHKENT_DISTRICTS.get(district, '')
             if district_name:
-                params.append(f"search[district_id]={district}")
+                from urllib.parse import quote
+                params.append(f"search[description]={quote(district_name)}")
         
         if rooms and property_type == 'apartment':
             params.append(f"search[filter_float_number_of_rooms:from]={rooms}")
@@ -113,6 +114,23 @@ class OLXParser:
             url += "?" + "&".join(params)
         
         return url
+    
+    def filter_by_district(self, listings, district):
+        if not district or district == 'all':
+            return listings
+        
+        district_name = self.TASHKENT_DISTRICTS.get(district, '')
+        if not district_name:
+            return listings
+        
+        filtered = []
+        for listing in listings:
+            location = listing.get('location', '') or ''
+            parsed_district = listing.get('district', '') or ''
+            if district_name in location or district_name in parsed_district:
+                filtered.append(listing)
+        
+        return filtered
     
     def get_listings_from_category(self, deal_type='sale', property_type='apartment', 
                                     district='all', rooms=None, housing_type='all', 
@@ -259,9 +277,13 @@ class OLXParser:
         
         results = []
         skipped_old = 0
+        skipped_district = 0
         
-        fetch_limit = max_listings * 3 if max_days else max_listings
-        fetch_pages = max(max_pages, (fetch_limit // 40) + 1) if max_days else max_pages
+        fetch_multiplier = 3 if max_days else 2
+        if district and district != 'all':
+            fetch_multiplier = 5
+        fetch_limit = max_listings * fetch_multiplier
+        fetch_pages = max(max_pages, (fetch_limit // 40) + 1)
         
         listing_urls = self.get_listings_from_category(
             deal_type=deal_type,
@@ -274,6 +296,7 @@ class OLXParser:
         )
         
         total = len(listing_urls)
+        district_name = self.TASHKENT_DISTRICTS.get(district, '') if district else ''
         
         for i, url in enumerate(listing_urls):
             if len(results) >= max_listings:
@@ -292,6 +315,13 @@ class OLXParser:
                     skipped_old += 1
                     continue
                 
+                if district and district != 'all' and district_name:
+                    location = data.get('location', '') or ''
+                    parsed_district = data.get('district', '') or ''
+                    if district_name not in location and district_name not in parsed_district:
+                        skipped_district += 1
+                        continue
+                
                 results.append(data)
                 
                 time.sleep(0.5)
@@ -306,6 +336,7 @@ class OLXParser:
             'total_found': total,
             'parsed': len(results),
             'skipped_old': skipped_old,
+            'skipped_district': skipped_district,
             'filters': {
                 'deal_type': deal_type,
                 'property_type': property_type,
@@ -429,11 +460,16 @@ class OLXParser:
             return match.group(1)
         return None
     
+    def get_tashkent_now(self):
+        tashkent_tz = timezone(timedelta(hours=5))
+        return datetime.now(tashkent_tz)
+    
     def parse_date_string(self, date_str):
         if not date_str:
             return None
         
-        today = datetime.now().replace(hour=0, minute=0, second=0, microsecond=0)
+        tashkent_now = self.get_tashkent_now()
+        today = tashkent_now.replace(hour=0, minute=0, second=0, microsecond=0, tzinfo=None)
         
         if 'Сегодня' in date_str:
             return today
@@ -462,7 +498,8 @@ class OLXParser:
         if not parsed_date:
             return True
         
-        today = datetime.now().replace(hour=0, minute=0, second=0, microsecond=0)
+        tashkent_now = self.get_tashkent_now()
+        today = tashkent_now.replace(hour=0, minute=0, second=0, microsecond=0, tzinfo=None)
         age_days = (today - parsed_date).days
         
         return age_days <= max_days
