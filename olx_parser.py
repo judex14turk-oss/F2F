@@ -4,16 +4,56 @@ import requests
 from bs4 import BeautifulSoup
 from selenium import webdriver
 from selenium.webdriver.chrome.options import Options
-from selenium.webdriver.chrome.service import Service
 from selenium.webdriver.common.by import By
 from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
-from selenium.common.exceptions import TimeoutException, NoSuchElementException
+from selenium.common.exceptions import TimeoutException
 import json
-import os
 
 
 class OLXParser:
+    BASE_URL = "https://www.olx.uz"
+    
+    DEAL_TYPES = {
+        'sale': 'prodazha',
+        'rent': 'dolgosrochnaya-arenda'
+    }
+    
+    PROPERTY_TYPES = {
+        'apartment': 'kvartiry',
+        'land': 'zemelnye-uchastki',
+        'house': 'doma'
+    }
+    
+    TASHKENT_DISTRICTS = {
+        'all': '',
+        'bektemir': 'Бектемирский',
+        'chilanzar': 'Чиланзарский',
+        'yakkasaray': 'Яккасарайский',
+        'yunusabad': 'Юнусабадский',
+        'mirzo_ulugbek': 'Мирзо-Улугбекский',
+        'mirabad': 'Мирабадский',
+        'sergeli': 'Сергелийский',
+        'shaykhantakhur': 'Шайхантахурский',
+        'uchtepa': 'Учтепинский',
+        'yashnabad': 'Яшнабадский',
+        'olmazor': 'Олмазорский'
+    }
+    
+    ROOMS = {
+        '1': '1',
+        '2': '2',
+        '3': '3',
+        '4': '4',
+        '5+': '5'
+    }
+
+    HOUSING_TYPES = {
+        'all': '',
+        'new': 'Новостройка',
+        'secondary': 'Вторичный рынок'
+    }
+    
     def __init__(self):
         self.headers = {
             'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
@@ -37,6 +77,73 @@ class OLXParser:
             print(f"Error creating driver: {e}")
             return None
     
+    def build_category_url(self, deal_type='sale', property_type='apartment', district='all', rooms=None, housing_type='all', page=1):
+        deal = self.DEAL_TYPES.get(deal_type, 'prodazha')
+        prop = self.PROPERTY_TYPES.get(property_type, 'kvartiry')
+        
+        url = f"{self.BASE_URL}/nedvizhimost/{prop}/{deal}/tashkent/"
+        
+        params = []
+        
+        if district and district != 'all':
+            district_name = self.TASHKENT_DISTRICTS.get(district, '')
+            if district_name:
+                params.append(f"search[district_id]={district}")
+        
+        if rooms and property_type == 'apartment':
+            params.append(f"search[filter_float_number_of_rooms:from]={rooms}")
+            params.append(f"search[filter_float_number_of_rooms:to]={rooms}")
+        
+        if housing_type and housing_type != 'all' and property_type == 'apartment':
+            housing = self.HOUSING_TYPES.get(housing_type, '')
+            if housing:
+                params.append(f"search[filter_enum_flat_type][0]={housing_type}")
+        
+        if page > 1:
+            params.append(f"page={page}")
+        
+        if params:
+            url += "?" + "&".join(params)
+        
+        return url
+    
+    def get_listings_from_category(self, deal_type='sale', property_type='apartment', 
+                                    district='all', rooms=None, housing_type='all', 
+                                    max_pages=3, max_listings=50):
+        listings = []
+        
+        for page in range(1, max_pages + 1):
+            if len(listings) >= max_listings:
+                break
+                
+            url = self.build_category_url(deal_type, property_type, district, rooms, housing_type, page)
+            
+            try:
+                response = requests.get(url, headers=self.headers, timeout=30)
+                response.raise_for_status()
+                soup = BeautifulSoup(response.text, 'lxml')
+                
+                listing_links = soup.find_all('a', href=lambda x: x and '/d/obyavlenie/' in x if x else False)
+                
+                seen_urls = set()
+                for link in listing_links:
+                    href = link.get('href', '')
+                    if href.startswith('/'):
+                        href = self.BASE_URL + href
+                    
+                    if href not in seen_urls and '/d/obyavlenie/' in href:
+                        seen_urls.add(href)
+                        if len(listings) < max_listings:
+                            listings.append(href)
+                
+                time.sleep(1)
+                
+            except Exception as e:
+                print(f"Error fetching page {page}: {e}")
+                break
+        
+        return listings
+    
     def parse_listing(self, url):
         result = {
             'url': url,
@@ -57,6 +164,7 @@ class OLXParser:
             'commission': None,
             'description': None,
             'location': None,
+            'district': None,
             'seller_name': None,
             'olx_id': None,
             'published_date': None,
@@ -89,6 +197,11 @@ class OLXParser:
             result['nearby'] = params.get('Рядом есть', '').split(', ') if params.get('Рядом есть') else []
             result['commission'] = params.get('Комиссионные')
             
+            for district_key, district_name in self.TASHKENT_DISTRICTS.items():
+                if district_name and district_name in (result['location'] or ''):
+                    result['district'] = district_name
+                    break
+            
         except Exception as e:
             result['error'] = str(e)
             
@@ -99,7 +212,7 @@ class OLXParser:
         
         driver = self.get_driver()
         if not driver:
-            result['error'] = 'Failed to initialize browser'
+            result['phone_error'] = 'Failed to initialize browser'
             return result
             
         try:
@@ -107,24 +220,21 @@ class OLXParser:
             time.sleep(3)
             
             try:
-                phone_button = WebDriverWait(driver, 10).until(
-                    EC.element_to_be_clickable((By.XPATH, "//button[contains(text(), 'Показать телефон') or contains(text(), 'показать')]"))
-                )
-                phone_button.click()
-                time.sleep(2)
+                phone_buttons = driver.find_elements(By.XPATH, 
+                    "//button[contains(text(), 'Показать') or contains(text(), 'показать') or contains(text(), 'телефон')]")
+                
+                for btn in phone_buttons:
+                    try:
+                        btn.click()
+                        time.sleep(2)
+                        break
+                    except:
+                        continue
                 
                 phone_elements = driver.find_elements(By.XPATH, "//a[starts-with(@href, 'tel:')]")
                 if phone_elements:
                     phone_href = phone_elements[0].get_attribute('href')
                     result['phone'] = phone_href.replace('tel:', '').strip()
-                else:
-                    phone_text = driver.find_element(By.XPATH, "//div[contains(@class, 'css-')]//a[contains(@href, 'tel:')]").text
-                    result['phone'] = phone_text.strip()
-                    
-            except TimeoutException:
-                all_links = driver.find_elements(By.XPATH, "//a[starts-with(@href, 'tel:')]")
-                if all_links:
-                    result['phone'] = all_links[0].get_attribute('href').replace('tel:', '')
                     
             except Exception as e:
                 result['phone_error'] = str(e)
@@ -135,6 +245,57 @@ class OLXParser:
             driver.quit()
             
         return result
+    
+    def bulk_parse(self, deal_type='sale', property_type='apartment', district='all',
+                   rooms=None, housing_type='all', max_pages=2, max_listings=20, 
+                   get_phone=False, progress_callback=None):
+        
+        results = []
+        
+        listing_urls = self.get_listings_from_category(
+            deal_type=deal_type,
+            property_type=property_type,
+            district=district,
+            rooms=rooms,
+            housing_type=housing_type,
+            max_pages=max_pages,
+            max_listings=max_listings
+        )
+        
+        total = len(listing_urls)
+        
+        for i, url in enumerate(listing_urls):
+            if progress_callback:
+                progress_callback(i + 1, total, url)
+            
+            try:
+                if get_phone:
+                    data = self.parse_listing_with_phone(url)
+                else:
+                    data = self.parse_listing(url)
+                
+                results.append(data)
+                
+                time.sleep(0.5)
+                
+            except Exception as e:
+                results.append({
+                    'url': url,
+                    'error': str(e)
+                })
+        
+        return {
+            'total_found': total,
+            'parsed': len(results),
+            'filters': {
+                'deal_type': deal_type,
+                'property_type': property_type,
+                'district': district,
+                'rooms': rooms,
+                'housing_type': housing_type
+            },
+            'listings': results
+        }
     
     def _extract_title(self, soup):
         title_el = soup.find('h1') or soup.find('h4')
@@ -153,7 +314,6 @@ class OLXParser:
     
     def _extract_photos(self, soup):
         photos = []
-        
         img_tags = soup.find_all('img')
         for img in img_tags:
             src = img.get('src', '')
@@ -177,44 +337,27 @@ class OLXParser:
     
     def _extract_parameters(self, soup):
         params = {}
-        
-        param_items = soup.find_all(['li', 'p', 'div'])
-        for item in param_items:
-            text = item.get_text(strip=True)
-            
-            patterns = [
-                (r'Тип жилья[:\s]+(.+)', 'Тип жилья'),
-                (r'Количество комнат[:\s]+(\d+)', 'Количество комнат'),
-                (r'Общая площадь[:\s]+(\d+)', 'Общая площадь'),
-                (r'Этаж[:\s]+(\d+)', 'Этаж'),
-                (r'Этажность дома[:\s]+(\d+)', 'Этажность дома'),
-                (r'Планировка[:\s]+(.+)', 'Планировка'),
-                (r'Санузел[:\s]+(.+)', 'Санузел'),
-                (r'Меблирована[:\s]+(.+)', 'Меблирована'),
-                (r'Рядом есть[:\s]+(.+)', 'Рядом есть'),
-                (r'Комиссионные[:\s]+(.+)', 'Комиссионные'),
-            ]
-            
-            for pattern, key in patterns:
-                match = re.search(pattern, text, re.IGNORECASE)
-                if match:
-                    params[key] = match.group(1).strip()
-        
         all_text = soup.get_text()
-        for pattern, key in [
-            (r'Тип жилья:\s*([^\n]+)', 'Тип жилья'),
-            (r'Количество комнат:\s*(\d+)', 'Количество комнат'),
-            (r'Общая площадь:\s*(\d+)', 'Общая площадь'),
-            (r'Этаж:\s*(\d+)', 'Этаж'),
-            (r'Этажность дома:\s*(\d+)', 'Этажность дома'),
-            (r'Планировка:\s*([^\n]+)', 'Планировка'),
-            (r'Санузел:\s*([^\n]+)', 'Санузел'),
-            (r'Меблирована:\s*([^\n]+)', 'Меблирована'),
-        ]:
-            if key not in params:
-                match = re.search(pattern, all_text, re.IGNORECASE)
-                if match:
-                    params[key] = match.group(1).strip()
+        
+        patterns = [
+            (r'Тип жилья[:\s]+([^\n]+)', 'Тип жилья'),
+            (r'Количество комнат[:\s]+(\d+)', 'Количество комнат'),
+            (r'Общая площадь[:\s]+(\d+)', 'Общая площадь'),
+            (r'Этаж[:\s]+(\d+)', 'Этаж'),
+            (r'Этажность дома[:\s]+(\d+)', 'Этажность дома'),
+            (r'Планировка[:\s]+([^\n]+)', 'Планировка'),
+            (r'Санузел[:\s]+([^\n]+)', 'Санузел'),
+            (r'Меблирована[:\s]+([^\n]+)', 'Меблирована'),
+            (r'Рядом есть[:\s]+([^\n]+)', 'Рядом есть'),
+            (r'Комиссионные[:\s]+([^\n]+)', 'Комиссионные'),
+        ]
+        
+        for pattern, key in patterns:
+            match = re.search(pattern, all_text, re.IGNORECASE)
+            if match:
+                value = match.group(1).strip()
+                if len(value) < 100:
+                    params[key] = value
                     
         return params
     
@@ -232,15 +375,10 @@ class OLXParser:
         return None
     
     def _extract_location(self, soup):
-        location_el = soup.find('a', {'href': lambda x: x and '/d/tashkent/' in x if x else False})
-        if location_el:
-            return location_el.get_text(strip=True)
-        
         text = soup.get_text()
-        match = re.search(r'(Ташкент[^\n]+район)', text)
+        match = re.search(r'(Ташкент[,\s]+[^\n]+район)', text)
         if match:
-            return match.group(1)
-            
+            return match.group(1).strip()
         return None
     
     def _extract_seller(self, soup):
@@ -256,7 +394,6 @@ class OLXParser:
         text = soup.get_text()
         patterns = [
             r'Опубликовано\s+(.+?)(?:\n|$)',
-            r'(\d{1,2}\s+\w+\s+\d{4})',
             r'(Сегодня в \d{2}:\d{2})',
             r'(Вчера в \d{2}:\d{2})',
         ]
@@ -270,64 +407,36 @@ class OLXParser:
         match = re.search(r'ID(\w+)\.html', url)
         if match:
             return match.group(1)
-        
-        text = soup.get_text()
-        match = re.search(r'ID[:\s]+(\d+)', text)
-        if match:
-            return match.group(1)
-            
         return None
-    
-    def parse_category_page(self, category_url, max_pages=1):
-        listings = []
-        
-        for page in range(1, max_pages + 1):
-            page_url = f"{category_url}?page={page}" if page > 1 else category_url
-            
-            try:
-                response = requests.get(page_url, headers=self.headers, timeout=30)
-                response.raise_for_status()
-                soup = BeautifulSoup(response.text, 'lxml')
-                
-                links = soup.find_all('a', href=lambda x: x and '/d/obyavlenie/' in x if x else False)
-                for link in links:
-                    href = link.get('href', '')
-                    if href.startswith('/'):
-                        href = 'https://www.olx.uz' + href
-                    if href not in listings:
-                        listings.append(href)
-                        
-            except Exception as e:
-                print(f"Error parsing page {page}: {e}")
-                break
-                
-        return listings
 
 
-def test_parser():
+def test_bulk_parser():
     parser = OLXParser()
     
-    test_url = "https://www.olx.uz/d/obyavlenie/prodam-2-v-3-h-komnatnuyu-mirabadskiy-rayon-kuylyuk-1-ID4e6lN.html"
+    def progress(current, total, url):
+        print(f"[{current}/{total}] Parsing: {url[:60]}...")
     
-    print("Parsing listing without phone...")
-    result = parser.parse_listing(test_url)
+    results = parser.bulk_parse(
+        deal_type='sale',
+        property_type='apartment',
+        district='mirabad',
+        rooms='2',
+        max_pages=1,
+        max_listings=3,
+        get_phone=False,
+        progress_callback=progress
+    )
     
-    print(f"\nTitle: {result['title']}")
-    print(f"Price: {result['price']} {result['currency']}")
-    print(f"Rooms: {result['rooms']}")
-    print(f"Area: {result['total_area']} m2")
-    print(f"Floor: {result['floor']} / {result['total_floors']}")
-    print(f"Type: {result['property_type']}")
-    print(f"Layout: {result['layout']}")
-    print(f"Bathroom: {result['bathroom']}")
-    print(f"Furnished: {result['furnished']}")
-    print(f"Location: {result['location']}")
-    print(f"Seller: {result['seller_name']}")
-    print(f"Photos: {len(result['photos'])} found")
-    print(f"OLX ID: {result['olx_id']}")
+    print(f"\nFound: {results['total_found']} listings")
+    print(f"Parsed: {results['parsed']} listings")
     
-    return result
+    for listing in results['listings']:
+        print(f"\n--- {listing.get('title', 'No title')} ---")
+        print(f"Price: {listing.get('price')} {listing.get('currency')}")
+        print(f"Rooms: {listing.get('rooms')}")
+        print(f"Area: {listing.get('total_area')} m2")
+        print(f"Photos: {len(listing.get('photos', []))}")
 
 
 if __name__ == '__main__':
-    test_parser()
+    test_bulk_parser()
