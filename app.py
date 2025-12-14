@@ -1110,7 +1110,8 @@ def webapp_parser_run():
     district = data.get('district', 'all')
     rooms = data.get('rooms', '')
     housing_type = data.get('housing_type', 'all')
-    max_listings = data.get('max_listings', 20)
+    max_listings = data.get('max_listings', 50)
+    max_days = data.get('max_days', 7)
     get_phone = data.get('get_phone', False)
     
     try:
@@ -1122,9 +1123,10 @@ def webapp_parser_run():
             district=district,
             rooms=rooms if rooms else None,
             housing_type=housing_type,
-            max_pages=5,
-            max_listings=min(max_listings, 100),
-            get_phone=get_phone
+            max_pages=25,
+            max_listings=min(max_listings, 1000),
+            get_phone=get_phone,
+            max_days=max_days if max_days > 0 else None
         )
         
         return jsonify(result)

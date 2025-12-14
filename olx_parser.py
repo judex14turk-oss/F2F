@@ -9,6 +9,7 @@ from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
 from selenium.common.exceptions import TimeoutException
 import json
+from datetime import datetime, timedelta
 
 
 class OLXParser:
@@ -52,6 +53,12 @@ class OLXParser:
         'all': '',
         'new': 'Новостройка',
         'secondary': 'Вторичный рынок'
+    }
+    
+    RUSSIAN_MONTHS = {
+        'января': 1, 'февраля': 2, 'марта': 3, 'апреля': 4,
+        'мая': 5, 'июня': 6, 'июля': 7, 'августа': 8,
+        'сентября': 9, 'октября': 10, 'ноября': 11, 'декабря': 12
     }
     
     def __init__(self):
@@ -248,9 +255,13 @@ class OLXParser:
     
     def bulk_parse(self, deal_type='sale', property_type='apartment', district='all',
                    rooms=None, housing_type='all', max_pages=2, max_listings=20, 
-                   get_phone=False, progress_callback=None):
+                   get_phone=False, progress_callback=None, max_days=None):
         
         results = []
+        skipped_old = 0
+        
+        fetch_limit = max_listings * 3 if max_days else max_listings
+        fetch_pages = max(max_pages, (fetch_limit // 40) + 1) if max_days else max_pages
         
         listing_urls = self.get_listings_from_category(
             deal_type=deal_type,
@@ -258,13 +269,16 @@ class OLXParser:
             district=district,
             rooms=rooms,
             housing_type=housing_type,
-            max_pages=max_pages,
-            max_listings=max_listings
+            max_pages=fetch_pages,
+            max_listings=fetch_limit
         )
         
         total = len(listing_urls)
         
         for i, url in enumerate(listing_urls):
+            if len(results) >= max_listings:
+                break
+                
             if progress_callback:
                 progress_callback(i + 1, total, url)
             
@@ -273,6 +287,10 @@ class OLXParser:
                     data = self.parse_listing_with_phone(url)
                 else:
                     data = self.parse_listing(url)
+                
+                if max_days and not self.is_listing_fresh(data.get('published_date'), max_days):
+                    skipped_old += 1
+                    continue
                 
                 results.append(data)
                 
@@ -287,12 +305,14 @@ class OLXParser:
         return {
             'total_found': total,
             'parsed': len(results),
+            'skipped_old': skipped_old,
             'filters': {
                 'deal_type': deal_type,
                 'property_type': property_type,
                 'district': district,
                 'rooms': rooms,
-                'housing_type': housing_type
+                'housing_type': housing_type,
+                'max_days': max_days
             },
             'listings': results
         }
@@ -408,6 +428,44 @@ class OLXParser:
         if match:
             return match.group(1)
         return None
+    
+    def parse_date_string(self, date_str):
+        if not date_str:
+            return None
+        
+        today = datetime.now().replace(hour=0, minute=0, second=0, microsecond=0)
+        
+        if 'Сегодня' in date_str:
+            return today
+        
+        if 'Вчера' in date_str:
+            return today - timedelta(days=1)
+        
+        for month_name, month_num in self.RUSSIAN_MONTHS.items():
+            if month_name in date_str.lower():
+                match = re.search(r'(\d{1,2})\s+' + month_name + r'\s+(\d{4})', date_str.lower())
+                if match:
+                    day = int(match.group(1))
+                    year = int(match.group(2))
+                    try:
+                        return datetime(year, month_num, day)
+                    except:
+                        pass
+        
+        return None
+    
+    def is_listing_fresh(self, date_str, max_days):
+        if max_days is None or max_days == 0:
+            return True
+        
+        parsed_date = self.parse_date_string(date_str)
+        if not parsed_date:
+            return True
+        
+        today = datetime.now().replace(hour=0, minute=0, second=0, microsecond=0)
+        age_days = (today - parsed_date).days
+        
+        return age_days <= max_days
 
 
 def test_bulk_parser():

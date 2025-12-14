@@ -23,10 +23,12 @@ The platform has two main user interfaces:
 - Added three-tier admin role system (Super Admin, Admin, Operator) with granular permissions
 - Admin panel accessible via WebApp in Telegram bot
 - Separate page for managing administrators (only visible to Super Admin and Admin roles)
-- **NEW: OLX Parser module** - массовый парсинг объявлений недвижимости с OLX.uz
+- **OLX Parser module** - массовый парсинг объявлений недвижимости с OLX.uz
   - Доступен только для Super Admin
   - Фильтры: тип сделки (продажа/аренда), тип недвижимости (квартира/дом/участок), район Ташкента, комнаты, тип жилья
-  - Сбор данных: фото, цена, параметры, описание, телефон
+  - **Фильтр по дате публикации**: за сегодня, 3 дня, неделю, 2 недели, все даты
+  - **Увеличенный лимит**: до 1000 объявлений (10, 20, 50, 100, 200, 500, 1000)
+  - Сбор данных: фото, цена, параметры, описание, телефон, дата публикации
   - Файл парсера: `olx_parser.py`
 
 ## User Preferences

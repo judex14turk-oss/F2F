@@ -371,12 +371,26 @@
             </div>
             
             <div class="filter-group">
+                <label class="filter-label">Дата публикации</label>
+                <select class="filter-select" id="maxDays">
+                    <option value="1">За сегодня</option>
+                    <option value="3">За 3 дня</option>
+                    <option value="7" selected>За неделю</option>
+                    <option value="14">За 2 недели</option>
+                    <option value="0">Все даты</option>
+                </select>
+            </div>
+            
+            <div class="filter-group">
                 <label class="filter-label">Макс. объявлений</label>
                 <select class="filter-select" id="maxListings">
                     <option value="10">10 объявлений</option>
-                    <option value="20" selected>20 объявлений</option>
-                    <option value="50">50 объявлений</option>
+                    <option value="20">20 объявлений</option>
+                    <option value="50" selected>50 объявлений</option>
                     <option value="100">100 объявлений</option>
+                    <option value="200">200 объявлений</option>
+                    <option value="500">500 объявлений</option>
+                    <option value="1000">Все (макс 1000)</option>
                 </select>
             </div>
             
@@ -474,6 +488,7 @@
                 rooms: filters.property_type === 'apartment' ? filters.rooms : '',
                 housing_type: filters.property_type === 'apartment' ? filters.housing_type : 'all',
                 max_listings: parseInt(document.getElementById('maxListings').value),
+                max_days: parseInt(document.getElementById('maxDays').value),
                 get_phone: document.getElementById('getPhoneCheck').checked
             };
             
