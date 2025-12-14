@@ -41,19 +41,19 @@ class OLXParser:
         'olmazor': 'Олмазорский'
     }
     
-    DISTRICT_URL_SLUGS = {
-        'all': '',
-        'bektemir': 'bektemir',
-        'chilanzar': 'chilanzar',
-        'yakkasaray': 'yakkasarayskiy-rayon',
-        'yunusabad': 'yunusabad',
-        'mirzo_ulugbek': 'mirzo-ulugbekskiy-rayon',
-        'mirabad': 'mirabad',
-        'sergeli': 'sergeli',
-        'shaykhantakhur': 'shaykhantakhurskiy-rayon',
-        'uchtepa': 'uchtepinskiy-rayon',
-        'yashnabad': 'yashnabad',
-        'olmazor': 'olmazor'
+    DISTRICT_IDS = {
+        'all': None,
+        'bektemir': 15,
+        'chilanzar': 17,
+        'yakkasaray': 24,
+        'yunusabad': 25,
+        'mirzo_ulugbek': 19,
+        'mirabad': 18,
+        'sergeli': 20,
+        'shaykhantakhur': 21,
+        'uchtepa': 22,
+        'yashnabad': 23,
+        'olmazor': 16
     }
     
     ROOMS = {
@@ -105,12 +105,12 @@ class OLXParser:
         
         url = f"{self.BASE_URL}/nedvizhimost/{prop}/{deal}/tashkent/"
         
-        if district and district != 'all':
-            district_slug = self.DISTRICT_URL_SLUGS.get(district, '')
-            if district_slug:
-                url += f"q-{district_slug}/"
-        
         params = []
+        
+        if district and district != 'all':
+            district_id = self.DISTRICT_IDS.get(district)
+            if district_id:
+                params.append(f"search[district_id]={district_id}")
         
         if rooms and property_type == 'apartment':
             params.append(f"search[filter_float_number_of_rooms:from]={rooms}")
