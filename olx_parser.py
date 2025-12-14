@@ -41,6 +41,21 @@ class OLXParser:
         'olmazor': 'Олмазорский'
     }
     
+    DISTRICT_URL_SLUGS = {
+        'all': '',
+        'bektemir': 'bektemir',
+        'chilanzar': 'chilanzar',
+        'yakkasaray': 'yakkasarayskiy-rayon',
+        'yunusabad': 'yunusabad',
+        'mirzo_ulugbek': 'mirzo-ulugbekskiy-rayon',
+        'mirabad': 'mirabad',
+        'sergeli': 'sergeli',
+        'shaykhantakhur': 'shaykhantakhurskiy-rayon',
+        'uchtepa': 'uchtepinskiy-rayon',
+        'yashnabad': 'yashnabad',
+        'olmazor': 'olmazor'
+    }
+    
     ROOMS = {
         '1': '1',
         '2': '2',
@@ -90,13 +105,12 @@ class OLXParser:
         
         url = f"{self.BASE_URL}/nedvizhimost/{prop}/{deal}/tashkent/"
         
-        params = []
-        
         if district and district != 'all':
-            district_name = self.TASHKENT_DISTRICTS.get(district, '')
-            if district_name:
-                from urllib.parse import quote
-                params.append(f"search[description]={quote(district_name)}")
+            district_slug = self.DISTRICT_URL_SLUGS.get(district, '')
+            if district_slug:
+                url += f"q-{district_slug}/"
+        
+        params = []
         
         if rooms and property_type == 'apartment':
             params.append(f"search[filter_float_number_of_rooms:from]={rooms}")
@@ -136,40 +150,63 @@ class OLXParser:
                                     district='all', rooms=None, housing_type='all', 
                                     max_pages=3, max_listings=50):
         listings = []
+        seen_urls = set()
         
-        for page in range(1, max_pages + 1):
-            if len(listings) >= max_listings:
-                break
-                
-            url = self.build_category_url(deal_type, property_type, district, rooms, housing_type, page)
-            
-            try:
-                response = requests.get(url, headers=self.headers, timeout=30)
-                response.raise_for_status()
-                soup = BeautifulSoup(response.text, 'lxml')
-                
-                listing_links = soup.find_all('a', href=lambda x: x and '/d/obyavlenie/' in x if x else False)
-                
-                seen_urls = set()
-                for link in listing_links:
-                    href = link.get('href', '')
-                    if href.startswith('/'):
-                        href = self.BASE_URL + href
+        driver = self.get_driver()
+        if not driver:
+            print("Failed to initialize browser for category listing")
+            return listings
+        
+        try:
+            for page in range(1, max_pages + 1):
+                if len(listings) >= max_listings:
+                    break
                     
-                    if href not in seen_urls and '/d/obyavlenie/' in href:
-                        seen_urls.add(href)
-                        if len(listings) < max_listings:
-                            listings.append(href)
+                url = self.build_category_url(deal_type, property_type, district, rooms, housing_type, page)
+                print(f"Fetching page {page}: {url}")
                 
-                time.sleep(1)
-                
-            except Exception as e:
-                print(f"Error fetching page {page}: {e}")
-                break
+                try:
+                    driver.get(url)
+                    time.sleep(3)
+                    
+                    for _ in range(3):
+                        driver.execute_script("window.scrollTo(0, document.body.scrollHeight);")
+                        time.sleep(1)
+                    
+                    page_source = driver.page_source
+                    soup = BeautifulSoup(page_source, 'lxml')
+                    
+                    listing_links = soup.find_all('a', href=lambda x: x and '/d/obyavlenie/' in x if x else False)
+                    
+                    page_count = 0
+                    for link in listing_links:
+                        href = link.get('href', '')
+                        if href.startswith('/'):
+                            href = self.BASE_URL + href
+                        
+                        if href not in seen_urls and '/d/obyavlenie/' in href:
+                            seen_urls.add(href)
+                            if len(listings) < max_listings:
+                                listings.append(href)
+                                page_count += 1
+                    
+                    print(f"Page {page}: found {page_count} new listings, total: {len(listings)}")
+                    
+                    if page_count == 0:
+                        print(f"No listings found on page {page}, stopping")
+                        break
+                    
+                    time.sleep(1)
+                    
+                except Exception as e:
+                    print(f"Error fetching page {page}: {e}")
+                    break
+        finally:
+            driver.quit()
         
         return listings
     
-    def parse_listing(self, url):
+    def parse_listing(self, url, get_phone=False):
         result = {
             'url': url,
             'title': None,
@@ -196,10 +233,38 @@ class OLXParser:
             'error': None
         }
         
+        driver = self.get_driver()
+        if not driver:
+            result['error'] = 'Failed to initialize browser'
+            return result
+        
         try:
-            response = requests.get(url, headers=self.headers, timeout=30)
-            response.raise_for_status()
-            soup = BeautifulSoup(response.text, 'lxml')
+            driver.get(url)
+            time.sleep(3)
+            
+            if get_phone:
+                try:
+                    phone_buttons = driver.find_elements(By.XPATH, 
+                        "//button[contains(text(), 'Показать') or contains(text(), 'показать') or contains(text(), 'телефон')]")
+                    
+                    for btn in phone_buttons:
+                        try:
+                            btn.click()
+                            time.sleep(2)
+                            break
+                        except:
+                            continue
+                    
+                    phone_elements = driver.find_elements(By.XPATH, "//a[starts-with(@href, 'tel:')]")
+                    if phone_elements:
+                        phone_href = phone_elements[0].get_attribute('href')
+                        result['phone'] = phone_href.replace('tel:', '').strip()
+                        
+                except Exception as e:
+                    result['phone_error'] = str(e)
+            
+            page_source = driver.page_source
+            soup = BeautifulSoup(page_source, 'lxml')
             
             result['title'] = self._extract_title(soup)
             result['price'], result['currency'] = self._extract_price(soup)
@@ -229,47 +294,13 @@ class OLXParser:
             
         except Exception as e:
             result['error'] = str(e)
-            
-        return result
-    
-    def parse_listing_with_phone(self, url):
-        result = self.parse_listing(url)
-        
-        driver = self.get_driver()
-        if not driver:
-            result['phone_error'] = 'Failed to initialize browser'
-            return result
-            
-        try:
-            driver.get(url)
-            time.sleep(3)
-            
-            try:
-                phone_buttons = driver.find_elements(By.XPATH, 
-                    "//button[contains(text(), 'Показать') or contains(text(), 'показать') or contains(text(), 'телефон')]")
-                
-                for btn in phone_buttons:
-                    try:
-                        btn.click()
-                        time.sleep(2)
-                        break
-                    except:
-                        continue
-                
-                phone_elements = driver.find_elements(By.XPATH, "//a[starts-with(@href, 'tel:')]")
-                if phone_elements:
-                    phone_href = phone_elements[0].get_attribute('href')
-                    result['phone'] = phone_href.replace('tel:', '').strip()
-                    
-            except Exception as e:
-                result['phone_error'] = str(e)
-                
-        except Exception as e:
-            result['error'] = str(e)
         finally:
             driver.quit()
             
         return result
+    
+    def parse_listing_with_phone(self, url):
+        return self.parse_listing(url, get_phone=True)
     
     def bulk_parse(self, deal_type='sale', property_type='apartment', district='all',
                    rooms=None, housing_type='all', max_pages=2, max_listings=20, 
