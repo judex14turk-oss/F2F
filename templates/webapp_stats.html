@@ -185,6 +185,11 @@
             <i class="bi bi-tag"></i> Тарифы
         </a>
         {% endif %}
+        {% if permissions.can_parse %}
+        <a href="{{ url_for('webapp_parser', tg_id=tg_id) }}" class="nav-tab">
+            <i class="bi bi-cloud-download"></i> Парсинг
+        </a>
+        {% endif %}
     </div>
     
     <div class="period-filter">

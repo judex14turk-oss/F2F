@@ -540,6 +540,7 @@ def get_admin_permissions(admin_role):
             'can_view_admins': True,
             'can_manage_admins': True,
             'can_delete_users': True,
+            'can_parse': True,
             'role_name': 'Старший администратор'
         }
     elif admin_role == AdminRole.ADMIN:
@@ -548,6 +549,7 @@ def get_admin_permissions(admin_role):
             'can_view_admins': True,
             'can_manage_admins': False,
             'can_delete_users': False,
+            'can_parse': False,
             'role_name': 'Администратор'
         }
     elif admin_role == AdminRole.OPERATOR:
@@ -556,6 +558,7 @@ def get_admin_permissions(admin_role):
             'can_view_admins': False,
             'can_manage_admins': False,
             'can_delete_users': False,
+            'can_parse': False,
             'role_name': 'Оператор'
         }
     return {
@@ -563,6 +566,7 @@ def get_admin_permissions(admin_role):
         'can_view_admins': False,
         'can_manage_admins': False,
         'can_delete_users': False,
+        'can_parse': False,
         'role_name': 'Нет доступа'
     }
 
@@ -1044,6 +1048,35 @@ def webapp_delete_promo(promo_id):
     db.close()
     
     return redirect(url_for('webapp_tariff_settings', tg_id=tg_id))
+
+
+@app.route('/webapp/admin/parser')
+def webapp_parser():
+    tg_id = request.args.get('tg_id')
+    
+    if not tg_id:
+        return "Telegram ID не указан", 400
+    
+    db = get_db()
+    admin_user = db.query(User).filter(User.telegram_id == int(tg_id)).first()
+    
+    if not admin_user or not admin_user.is_admin:
+        db.close()
+        return "Доступ запрещён", 403
+    
+    permissions = get_admin_permissions(admin_user.admin_role)
+    
+    if not permissions['can_parse']:
+        db.close()
+        return "У вас нет прав для доступа к парсингу", 403
+    
+    db.close()
+    
+    return render_template('webapp_parser.html',
+        tg_id=tg_id,
+        permissions=permissions,
+        admin_user=admin_user
+    )
 
 
 @app.route('/webapp/admin/stats')
