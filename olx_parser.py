@@ -94,6 +94,7 @@ class OLXParser:
         
         try:
             driver = webdriver.Chrome(options=chrome_options)
+            driver.set_page_load_timeout(15)
             return driver
         except Exception as e:
             print(f"Error creating driver: {e}")
@@ -234,8 +235,12 @@ class OLXParser:
         }
         
         try:
-            driver.get(url)
-            time.sleep(1.5)
+            try:
+                driver.get(url)
+            except TimeoutException:
+                result['error'] = 'Page load timeout'
+                return result
+            time.sleep(1)
             
             if get_phone:
                 try:
@@ -313,10 +318,10 @@ class OLXParser:
         skipped_old = 0
         skipped_district = 0
         
-        fetch_multiplier = 3 if max_days else 2
+        fetch_multiplier = 2 if max_days else 1.5
         if district and district != 'all':
-            fetch_multiplier = 5
-        fetch_limit = max_listings * fetch_multiplier
+            fetch_multiplier = 3
+        fetch_limit = int(max_listings * fetch_multiplier)
         fetch_pages = max(max_pages, (fetch_limit // 40) + 1)
         
         listing_urls = self.get_listings_from_category(
