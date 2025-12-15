@@ -2678,7 +2678,11 @@ async def buyer_switch_to_seller(message: types.Message, state: FSMContext):
 async def buyer_likes(message: types.Message):
     db = SessionLocal()
     user = db.query(User).filter(User.telegram_id == message.from_user.id).first()
-    likes = db.query(Like).filter(Like.user_id == user.id).order_by(Like.created_at.desc()).all()
+    three_days_ago = datetime.utcnow() - timedelta(days=3)
+    likes = db.query(Like).filter(
+        Like.user_id == user.id,
+        Like.created_at >= three_days_ago
+    ).order_by(Like.created_at.desc()).all()
     
     if not likes:
         db.close()
