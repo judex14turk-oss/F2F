@@ -1227,13 +1227,14 @@ async def view_properties(message: types.Message, state: FSMContext):
         elif user.search_deal_type == "sale":
             query = query.filter(Property.property_type == PropertyType.SALE)
     
-    if user.search_rooms:
+    if user.search_rooms and user.search_rooms not in ["any", "Любое", ""]:
         rooms_list = [int(r.strip()) for r in user.search_rooms.split(",") if r.strip().isdigit()]
         if rooms_list:
             query = query.filter(Property.rooms.in_(rooms_list))
     
-    if user.search_housing_type and user.search_housing_type not in ["Любой", ""]:
-        query = query.filter(Property.housing_type.ilike(f"%{user.search_housing_type}%"))
+    if user.search_housing_type and user.search_housing_type not in ["Любой", "any", ""]:
+        housing_base = user.search_housing_type.rstrip("аи")
+        query = query.filter(Property.housing_type.ilike(f"%{housing_base}%"))
     
     if user.search_district and user.search_district not in ["Любой", ""]:
         districts = [d.strip() for d in user.search_district.split(",") if d.strip() and d.strip() != "Любой"]
