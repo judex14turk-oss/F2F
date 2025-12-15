@@ -1,8 +1,14 @@
 from sqlalchemy import create_engine, Column, Integer, String, Text, Float, Boolean, DateTime, ForeignKey, Enum, BigInteger
 from sqlalchemy.orm import declarative_base, sessionmaker, relationship
-from datetime import datetime
+from datetime import datetime, timedelta, timezone
 import enum
 import os
+
+
+def get_tashkent_now():
+    """Возвращает текущее время в Ташкенте (UTC+5)"""
+    tashkent_tz = timezone(timedelta(hours=5))
+    return datetime.now(tashkent_tz).replace(tzinfo=None)
 
 DATABASE_URL = os.environ.get('DATABASE_URL')
 engine = create_engine(DATABASE_URL)
@@ -60,7 +66,7 @@ class User(Base):
     role = Column(Enum(UserRole), default=UserRole.BUYER)
     is_admin = Column(Boolean, default=False)
     admin_role = Column(Enum(AdminRole), nullable=True)
-    created_at = Column(DateTime, default=datetime.utcnow)
+    created_at = Column(DateTime, default=get_tashkent_now)
     
     search_rooms = Column(String(50))
     search_district = Column(String(200))
@@ -76,7 +82,7 @@ class User(Base):
     tariff_expires = Column(DateTime)
     trial_ends_at = Column(DateTime)
     daily_offers_count = Column(Integer, default=0)
-    daily_offers_reset = Column(DateTime, default=datetime.utcnow)
+    daily_offers_reset = Column(DateTime, default=get_tashkent_now)
     trial_used = Column(Boolean, default=False)
     balance = Column(Integer, default=0)
     
@@ -107,8 +113,8 @@ class Property(Base):
     status = Column(Enum(PropertyStatus), default=PropertyStatus.MODERATION)
     views_count = Column(Integer, default=0)
     likes_count = Column(Integer, default=0)
-    created_at = Column(DateTime, default=datetime.utcnow)
-    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    created_at = Column(DateTime, default=get_tashkent_now)
+    updated_at = Column(DateTime, default=get_tashkent_now, onupdate=get_tashkent_now)
     
     housing_type = Column(String(50))
     building_type = Column(String(50))
@@ -135,7 +141,7 @@ class Like(Base):
     user_id = Column(Integer, ForeignKey('users.id'), nullable=False)
     property_id = Column(Integer, ForeignKey('properties.id'), nullable=False)
     property_owner_id = Column(Integer, ForeignKey('users.id'), nullable=False)
-    created_at = Column(DateTime, default=datetime.utcnow)
+    created_at = Column(DateTime, default=get_tashkent_now)
     is_matched = Column(Boolean, default=False)
     
     user = relationship("User", foreign_keys=[user_id], back_populates="likes_given")
@@ -150,7 +156,7 @@ class Match(Base):
     buyer_id = Column(Integer, ForeignKey('users.id'), nullable=False)
     seller_id = Column(Integer, ForeignKey('users.id'), nullable=False)
     property_id = Column(Integer, ForeignKey('properties.id'), nullable=False)
-    created_at = Column(DateTime, default=datetime.utcnow)
+    created_at = Column(DateTime, default=get_tashkent_now)
     note = Column(Text)
     status = Column(String(50), default='active')
     
@@ -166,7 +172,7 @@ class Offer(Base):
     seller_id = Column(Integer, ForeignKey('users.id'), nullable=False)
     buyer_id = Column(Integer, ForeignKey('users.id'), nullable=False)
     property_id = Column(Integer, ForeignKey('properties.id'), nullable=False)
-    created_at = Column(DateTime, default=datetime.utcnow)
+    created_at = Column(DateTime, default=get_tashkent_now)
     is_accepted = Column(Boolean)
     
     seller = relationship("User", foreign_keys=[seller_id], back_populates="offers_sent")
@@ -181,7 +187,7 @@ class ResidentialComplex(Base):
     name = Column(String(200), nullable=False)
     district = Column(String(200))
     developer = Column(String(200))
-    created_at = Column(DateTime, default=datetime.utcnow)
+    created_at = Column(DateTime, default=get_tashkent_now)
 
 
 class District(Base):
@@ -204,7 +210,7 @@ class PromoCode(Base):
     current_uses = Column(Integer, default=0)
     is_active = Column(Boolean, default=True)
     expires_at = Column(DateTime)
-    created_at = Column(DateTime, default=datetime.utcnow)
+    created_at = Column(DateTime, default=get_tashkent_now)
     description = Column(String(200))
 
 
@@ -217,7 +223,7 @@ class TariffSettings(Base):
     properties_limit = Column(Integer, default=2)
     likes_per_day = Column(Integer, default=1)
     priority_display = Column(Boolean, default=False)
-    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    updated_at = Column(DateTime, default=get_tashkent_now, onupdate=get_tashkent_now)
 
 
 def init_db():
