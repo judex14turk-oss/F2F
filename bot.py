@@ -2021,8 +2021,11 @@ async def likes_received(message: types.Message):
             mins_ago = int((time_ago.total_seconds() % 3600) // 60)
             time_str = f"{hours_ago}ч {mins_ago}м назад" if hours_ago > 0 else f"{mins_ago}м назад"
             
+            deal_type_emoji = "🔑" if prop.property_type == PropertyType.RENT else "🏠"
+            deal_type_label = "Аренда" if prop.property_type == PropertyType.RENT else "Продажа"
+            
             text += (
-                f"🏠 Объект: {prop_id}\n"
+                f"{deal_type_emoji} Объект: {prop_id} ({deal_type_label})\n"
                 f"👤 {name} | {username}\n"
                 f"📞 {phone}\n"
                 f"💰 Бюджет: {budget}\n"
