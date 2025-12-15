@@ -491,53 +491,79 @@
             filters.housing_type = el.dataset.value;
         }
         
-        async function startParsing() {
+        function startParsing() {
             const btn = document.getElementById('parseBtn');
             const overlay = document.getElementById('loadingOverlay');
             const errorMsg = document.getElementById('errorMsg');
+            const loadingProgress = document.getElementById('loadingProgress');
+            const loadingText = document.getElementById('loadingText');
             
             btn.disabled = true;
             overlay.classList.add('visible');
             errorMsg.classList.remove('visible');
             
             const maxListingsVal = parseInt(document.getElementById('maxListings').value);
-            document.getElementById('loadingProgress').textContent = `0 / ${maxListingsVal}`;
-            document.getElementById('loadingText').textContent = 'Парсинг объявлений...';
+            loadingProgress.textContent = `0 / ${maxListingsVal}`;
+            loadingText.textContent = 'Получение списка объявлений...';
             
-            const data = {
+            const params = new URLSearchParams({
                 tg_id: '{{ tg_id }}',
                 deal_type: filters.deal_type,
                 property_type: filters.property_type,
                 district: document.getElementById('districtSelect').value,
                 rooms: filters.property_type === 'apartment' ? filters.rooms : '',
                 housing_type: filters.property_type === 'apartment' ? filters.housing_type : 'all',
-                max_listings: parseInt(document.getElementById('maxListings').value),
-                max_days: parseInt(document.getElementById('maxDays').value),
-                get_phone: document.getElementById('getPhoneCheck').checked
+                max_listings: document.getElementById('maxListings').value,
+                max_days: document.getElementById('maxDays').value,
+                get_phone: document.getElementById('getPhoneCheck').checked ? 'true' : 'false'
+            });
+            
+            const eventSource = new EventSource('/webapp/admin/parser/run-stream?' + params.toString());
+            
+            eventSource.onmessage = function(event) {
+                const data = JSON.parse(event.data);
+                
+                if (data.error) {
+                    errorMsg.textContent = data.error;
+                    errorMsg.classList.add('visible');
+                    eventSource.close();
+                    btn.disabled = false;
+                    overlay.classList.remove('visible');
+                    return;
+                }
+                
+                if (data.event === 'start') {
+                    loadingText.textContent = 'Парсинг объявлений...';
+                    loadingProgress.textContent = `0 / ${data.total}`;
+                }
+                
+                if (data.event === 'progress') {
+                    loadingProgress.textContent = `${data.current} / ${data.total} (добавлено: ${data.added})`;
+                }
+                
+                if (data.event === 'complete') {
+                    eventSource.close();
+                    displayResults(data);
+                    btn.disabled = false;
+                    overlay.classList.remove('visible');
+                }
+                
+                if (data.event === 'error') {
+                    errorMsg.textContent = 'Ошибка: ' + data.error;
+                    errorMsg.classList.add('visible');
+                    eventSource.close();
+                    btn.disabled = false;
+                    overlay.classList.remove('visible');
+                }
             };
             
-            try {
-                const response = await fetch('/webapp/admin/parser/run', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify(data)
-                });
-                
-                const result = await response.json();
-                
-                if (result.error) {
-                    errorMsg.textContent = result.error;
-                    errorMsg.classList.add('visible');
-                } else {
-                    displayResults(result);
-                }
-            } catch (err) {
-                errorMsg.textContent = 'Ошибка: ' + err.message;
+            eventSource.onerror = function(event) {
+                errorMsg.textContent = 'Ошибка соединения';
                 errorMsg.classList.add('visible');
-            } finally {
+                eventSource.close();
                 btn.disabled = false;
                 overlay.classList.remove('visible');
-            }
+            };
         }
         
         function displayResults(result) {
