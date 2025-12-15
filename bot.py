@@ -1221,10 +1221,10 @@ async def view_properties(message: types.Message, state: FSMContext):
         or_(Property.owner_id != user.id, Property.source == 'olx')
     )
     
-    if user.search_payment_type:
-        if user.search_payment_type.startswith("rent"):
+    if user.search_deal_type:
+        if user.search_deal_type == "rent":
             query = query.filter(Property.property_type == PropertyType.RENT)
-        elif user.search_payment_type.startswith("buy"):
+        elif user.search_deal_type == "sale":
             query = query.filter(Property.property_type == PropertyType.SALE)
     
     if user.search_rooms:
