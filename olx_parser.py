@@ -17,7 +17,7 @@ class OLXParser:
     
     DEAL_TYPES = {
         'sale': 'prodazha',
-        'rent': 'dolgosrochnaya-arenda'
+        'rent': 'arenda-dolgosrochnaya'
     }
     
     PROPERTY_TYPES = {
