@@ -516,13 +516,17 @@ class OLXParser:
     def _extract_description(self, soup):
         desc_section = soup.find('div', {'data-cy': 'ad_description'})
         if desc_section:
-            return desc_section.get_text(strip=True)
+            text = desc_section.get_text(separator='\n', strip=True)
+            lines = [line.strip() for line in text.split('\n') if line.strip()]
+            return '\n'.join(lines)
         
         for header in soup.find_all(['h2', 'h3']):
             if 'Описание' in header.get_text():
                 next_el = header.find_next_sibling()
                 if next_el:
-                    return next_el.get_text(strip=True)
+                    text = next_el.get_text(separator='\n', strip=True)
+                    lines = [line.strip() for line in text.split('\n') if line.strip()]
+                    return '\n'.join(lines)
         
         return None
     
