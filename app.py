@@ -372,9 +372,20 @@ def update_user_tariff(user_id):
 @admin_required
 def admin_properties():
     db = get_db()
+    
     status_filter = request.args.get('status', 'all')
+    type_filter = request.args.get('type', 'all')
+    district_filter = request.args.get('district', 'all')
+    rooms_filter = request.args.get('rooms', 'all')
+    source_filter = request.args.get('source', 'all')
+    price_min = request.args.get('price_min', '')
+    price_max = request.args.get('price_max', '')
+    search_query = request.args.get('q', '').strip()
+    sort_by = request.args.get('sort', 'created_at')
+    sort_order = request.args.get('order', 'desc')
     
     query = db.query(Property)
+    
     if status_filter == 'active':
         query = query.filter(Property.status == PropertyStatus.ACTIVE)
     elif status_filter == 'moderation':
@@ -382,9 +393,82 @@ def admin_properties():
     elif status_filter == 'archive':
         query = query.filter(Property.status == PropertyStatus.ARCHIVE)
     
-    properties = query.order_by(Property.created_at.desc()).all()
+    if type_filter == 'sale':
+        query = query.filter(Property.property_type == PropertyType.SALE)
+    elif type_filter == 'rent':
+        query = query.filter(Property.property_type == PropertyType.RENT)
+    
+    if district_filter != 'all':
+        query = query.filter(Property.district.ilike(f'%{district_filter}%'))
+    
+    if rooms_filter != 'all' and rooms_filter.isdigit():
+        query = query.filter(Property.rooms == int(rooms_filter))
+    
+    if source_filter == 'olx':
+        query = query.filter(Property.source == 'olx')
+    elif source_filter == 'manual':
+        query = query.filter(Property.source == 'manual')
+    
+    if price_min and price_min.isdigit():
+        query = query.filter(Property.price >= int(price_min))
+    if price_max and price_max.isdigit():
+        query = query.filter(Property.price <= int(price_max))
+    
+    if search_query:
+        search_pattern = f"%{search_query}%"
+        query = query.filter(
+            (Property.unique_id.ilike(search_pattern)) |
+            (Property.residential_complex.ilike(search_pattern)) |
+            (Property.address.ilike(search_pattern)) |
+            (Property.olx_id.ilike(search_pattern)) |
+            (Property.seller_name.ilike(search_pattern))
+        )
+    
+    sort_columns = {
+        'created_at': Property.created_at,
+        'price': Property.price,
+        'area': Property.area,
+        'rooms': Property.rooms,
+        'views': Property.views_count,
+        'likes': Property.likes_count
+    }
+    sort_column = sort_columns.get(sort_by, Property.created_at)
+    
+    if sort_order == 'asc':
+        query = query.order_by(sort_column.asc())
+    else:
+        query = query.order_by(sort_column.desc())
+    
+    properties = query.all()
+    
+    all_districts = db.query(Property.district).distinct().filter(Property.district.isnot(None)).all()
+    districts = sorted([d[0] for d in all_districts if d[0]])
+    
+    total_count = db.query(Property).count()
+    active_count = db.query(Property).filter(Property.status == PropertyStatus.ACTIVE).count()
+    moderation_count = db.query(Property).filter(Property.status == PropertyStatus.MODERATION).count()
+    olx_count = db.query(Property).filter(Property.source == 'olx').count()
+    
     db.close()
-    return render_template('admin/properties.html', properties=properties, status_filter=status_filter)
+    
+    return render_template('admin/properties.html', 
+        properties=properties, 
+        status_filter=status_filter,
+        type_filter=type_filter,
+        district_filter=district_filter,
+        rooms_filter=rooms_filter,
+        source_filter=source_filter,
+        price_min=price_min,
+        price_max=price_max,
+        search_query=search_query,
+        sort_by=sort_by,
+        sort_order=sort_order,
+        districts=districts,
+        total_count=total_count,
+        active_count=active_count,
+        moderation_count=moderation_count,
+        olx_count=olx_count
+    )
 
 
 @app.route('/admin/properties/<int:property_id>/approve', methods=['POST'])
@@ -409,6 +493,24 @@ def reject_property(property_id):
         db.commit()
     db.close()
     return redirect(url_for('admin_properties'))
+
+
+@app.route('/admin/properties/<int:property_id>')
+@admin_required
+def admin_property_detail(property_id):
+    db = get_db()
+    prop = db.query(Property).filter(Property.id == property_id).first()
+    if not prop:
+        db.close()
+        return "Объект не найден", 404
+    
+    owner = db.query(User).filter(User.id == prop.owner_id).first()
+    likes = db.query(Like).filter(Like.property_id == property_id).all()
+    
+    photos = prop.photos.split(',') if prop.photos else []
+    
+    db.close()
+    return render_template('admin/property_detail.html', prop=prop, owner=owner, likes=likes, photos=photos)
 
 
 @app.route('/admin/matches')

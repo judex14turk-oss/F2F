@@ -44,70 +44,222 @@
         </nav>
         
         <main class="col-md-9 ms-sm-auto col-lg-10 px-md-4 py-4">
-            <h2 class="mb-4">Объекты недвижимости</h2>
+            <div class="d-flex justify-content-between align-items-center mb-4">
+                <h2>Объекты недвижимости</h2>
+                <div class="d-flex gap-3">
+                    <span class="badge bg-primary fs-6">Всего: {{ total_count }}</span>
+                    <span class="badge bg-success fs-6">Активных: {{ active_count }}</span>
+                    <span class="badge bg-warning text-dark fs-6">На модерации: {{ moderation_count }}</span>
+                    <span class="badge bg-info fs-6">OLX: {{ olx_count }}</span>
+                </div>
+            </div>
             
             <div class="card mb-4">
+                <div class="card-header bg-light">
+                    <h5 class="mb-0"><i class="bi bi-funnel"></i> Фильтры</h5>
+                </div>
                 <div class="card-body">
-                    <div class="btn-group">
-                        <a href="{{ url_for('admin_properties') }}" class="btn {% if status_filter == 'all' %}btn-primary{% else %}btn-outline-primary{% endif %}">Все</a>
-                        <a href="{{ url_for('admin_properties', status='active') }}" class="btn {% if status_filter == 'active' %}btn-primary{% else %}btn-outline-primary{% endif %}">Активные</a>
-                        <a href="{{ url_for('admin_properties', status='moderation') }}" class="btn {% if status_filter == 'moderation' %}btn-primary{% else %}btn-outline-primary{% endif %}">На модерации</a>
-                        <a href="{{ url_for('admin_properties', status='archive') }}" class="btn {% if status_filter == 'archive' %}btn-primary{% else %}btn-outline-primary{% endif %}">Архив</a>
-                    </div>
+                    <form method="GET" action="{{ url_for('admin_properties') }}" id="filterForm">
+                        <div class="row g-3">
+                            <div class="col-md-3">
+                                <label class="form-label">Поиск</label>
+                                <input type="text" name="q" class="form-control" placeholder="ID, название, адрес..." value="{{ search_query }}">
+                            </div>
+                            <div class="col-md-2">
+                                <label class="form-label">Статус</label>
+                                <select name="status" class="form-select">
+                                    <option value="all" {% if status_filter == 'all' %}selected{% endif %}>Все</option>
+                                    <option value="active" {% if status_filter == 'active' %}selected{% endif %}>Активные</option>
+                                    <option value="moderation" {% if status_filter == 'moderation' %}selected{% endif %}>На модерации</option>
+                                    <option value="archive" {% if status_filter == 'archive' %}selected{% endif %}>Архив</option>
+                                </select>
+                            </div>
+                            <div class="col-md-2">
+                                <label class="form-label">Тип сделки</label>
+                                <select name="type" class="form-select">
+                                    <option value="all" {% if type_filter == 'all' %}selected{% endif %}>Все</option>
+                                    <option value="sale" {% if type_filter == 'sale' %}selected{% endif %}>Продажа</option>
+                                    <option value="rent" {% if type_filter == 'rent' %}selected{% endif %}>Аренда</option>
+                                </select>
+                            </div>
+                            <div class="col-md-2">
+                                <label class="form-label">Район</label>
+                                <select name="district" class="form-select">
+                                    <option value="all">Все районы</option>
+                                    {% for d in districts %}
+                                    <option value="{{ d }}" {% if district_filter == d %}selected{% endif %}>{{ d }}</option>
+                                    {% endfor %}
+                                </select>
+                            </div>
+                            <div class="col-md-2">
+                                <label class="form-label">Комнаты</label>
+                                <select name="rooms" class="form-select">
+                                    <option value="all" {% if rooms_filter == 'all' %}selected{% endif %}>Все</option>
+                                    <option value="1" {% if rooms_filter == '1' %}selected{% endif %}>1</option>
+                                    <option value="2" {% if rooms_filter == '2' %}selected{% endif %}>2</option>
+                                    <option value="3" {% if rooms_filter == '3' %}selected{% endif %}>3</option>
+                                    <option value="4" {% if rooms_filter == '4' %}selected{% endif %}>4</option>
+                                    <option value="5" {% if rooms_filter == '5' %}selected{% endif %}>5+</option>
+                                </select>
+                            </div>
+                            <div class="col-md-2">
+                                <label class="form-label">Источник</label>
+                                <select name="source" class="form-select">
+                                    <option value="all" {% if source_filter == 'all' %}selected{% endif %}>Все</option>
+                                    <option value="olx" {% if source_filter == 'olx' %}selected{% endif %}>OLX</option>
+                                    <option value="manual" {% if source_filter == 'manual' %}selected{% endif %}>Вручную</option>
+                                </select>
+                            </div>
+                            <div class="col-md-2">
+                                <label class="form-label">Цена от ($)</label>
+                                <input type="number" name="price_min" class="form-control" placeholder="Мин" value="{{ price_min }}">
+                            </div>
+                            <div class="col-md-2">
+                                <label class="form-label">Цена до ($)</label>
+                                <input type="number" name="price_max" class="form-control" placeholder="Макс" value="{{ price_max }}">
+                            </div>
+                            <div class="col-md-2">
+                                <label class="form-label">Сортировка</label>
+                                <select name="sort" class="form-select">
+                                    <option value="created_at" {% if sort_by == 'created_at' %}selected{% endif %}>По дате</option>
+                                    <option value="price" {% if sort_by == 'price' %}selected{% endif %}>По цене</option>
+                                    <option value="area" {% if sort_by == 'area' %}selected{% endif %}>По площади</option>
+                                    <option value="rooms" {% if sort_by == 'rooms' %}selected{% endif %}>По комнатам</option>
+                                    <option value="views" {% if sort_by == 'views' %}selected{% endif %}>По просмотрам</option>
+                                    <option value="likes" {% if sort_by == 'likes' %}selected{% endif %}>По лайкам</option>
+                                </select>
+                            </div>
+                            <div class="col-md-2">
+                                <label class="form-label">Порядок</label>
+                                <select name="order" class="form-select">
+                                    <option value="desc" {% if sort_order == 'desc' %}selected{% endif %}>По убыванию</option>
+                                    <option value="asc" {% if sort_order == 'asc' %}selected{% endif %}>По возрастанию</option>
+                                </select>
+                            </div>
+                            <div class="col-md-2 d-flex align-items-end gap-2">
+                                <button type="submit" class="btn btn-primary">
+                                    <i class="bi bi-search"></i> Найти
+                                </button>
+                                <a href="{{ url_for('admin_properties') }}" class="btn btn-outline-secondary">
+                                    <i class="bi bi-x-circle"></i> Сброс
+                                </a>
+                            </div>
+                        </div>
+                    </form>
                 </div>
             </div>
             
             <div class="card">
-                <div class="card-body">
+                <div class="card-header bg-light d-flex justify-content-between align-items-center">
+                    <span>Найдено объектов: <strong>{{ properties|length }}</strong></span>
+                </div>
+                <div class="card-body p-0">
                     <div class="table-responsive">
-                        <table class="table table-hover">
-                            <thead>
+                        <table class="table table-hover table-striped mb-0">
+                            <thead class="table-dark">
                                 <tr>
                                     <th>ID</th>
+                                    <th>Фото</th>
                                     <th>Название</th>
+                                    <th>Тип</th>
                                     <th>Район</th>
-                                    <th>Комнаты</th>
+                                    <th>Комн.</th>
                                     <th>Площадь</th>
                                     <th>Цена</th>
+                                    <th>Источник</th>
                                     <th>Статус</th>
-                                    <th>Просмотры</th>
-                                    <th>Лайки</th>
+                                    <th>Просм.</th>
+                                    <th>Дата</th>
                                     <th>Действия</th>
                                 </tr>
                             </thead>
                             <tbody>
                                 {% for prop in properties %}
                                 <tr>
-                                    <td>{{ prop.id }}</td>
-                                    <td>{{ prop.residential_complex or 'Объект' }}</td>
-                                    <td>{{ prop.district or '-' }}</td>
-                                    <td>{{ prop.rooms }}</td>
-                                    <td>{{ prop.area }} м²</td>
-                                    <td>${{ "{:,}".format(prop.price) }}</td>
                                     <td>
-                                        {% if prop.status.value == 'active' %}
-                                        <span class="badge badge-active">Активен</span>
-                                        {% elif prop.status.value == 'moderation' %}
-                                        <span class="badge badge-moderation">Модерация</span>
+                                        <small class="text-muted">{{ prop.unique_id or prop.id }}</small>
+                                    </td>
+                                    <td>
+                                        {% if prop.photos %}
+                                        {% set photo_list = prop.photos.split(',') %}
+                                        <img src="{{ photo_list[0] }}" alt="Фото" style="width: 50px; height: 50px; object-fit: cover; border-radius: 4px;">
                                         {% else %}
-                                        <span class="badge badge-archive">Архив</span>
+                                        <div style="width: 50px; height: 50px; background: #eee; border-radius: 4px; display: flex; align-items: center; justify-content: center;">
+                                            <i class="bi bi-image text-muted"></i>
+                                        </div>
                                         {% endif %}
                                     </td>
-                                    <td>{{ prop.views_count }}</td>
-                                    <td>{{ prop.likes_count }}</td>
                                     <td>
-                                        {% if prop.status.value == 'moderation' %}
-                                        <form method="POST" action="{{ url_for('approve_property', property_id=prop.id) }}" style="display:inline">
-                                            <button type="submit" class="btn btn-sm btn-success" title="Одобрить">
-                                                <i class="bi bi-check"></i>
-                                            </button>
-                                        </form>
-                                        <form method="POST" action="{{ url_for('reject_property', property_id=prop.id) }}" style="display:inline">
-                                            <button type="submit" class="btn btn-sm btn-danger" title="Отклонить">
-                                                <i class="bi bi-x"></i>
-                                            </button>
-                                        </form>
+                                        <strong>{{ prop.residential_complex or 'Объект' }}</strong>
+                                        {% if prop.address %}
+                                        <br><small class="text-muted">{{ prop.address[:30] }}...</small>
                                         {% endif %}
+                                    </td>
+                                    <td>
+                                        {% if prop.property_type.value == 'sale' %}
+                                        <span class="badge bg-success">Продажа</span>
+                                        {% else %}
+                                        <span class="badge bg-info">Аренда</span>
+                                        {% endif %}
+                                    </td>
+                                    <td>{{ prop.district or '-' }}</td>
+                                    <td>{{ prop.rooms or '-' }}</td>
+                                    <td>{{ prop.area or '-' }} м²</td>
+                                    <td><strong>${{ "{:,}".format(prop.price) }}</strong></td>
+                                    <td>
+                                        {% if prop.source == 'olx' %}
+                                        <span class="badge bg-warning text-dark">OLX</span>
+                                        {% else %}
+                                        <span class="badge bg-secondary">Вручную</span>
+                                        {% endif %}
+                                    </td>
+                                    <td>
+                                        {% if prop.status.value == 'active' %}
+                                        <span class="badge bg-success">Активен</span>
+                                        {% elif prop.status.value == 'moderation' %}
+                                        <span class="badge bg-warning text-dark">Модерация</span>
+                                        {% else %}
+                                        <span class="badge bg-secondary">Архив</span>
+                                        {% endif %}
+                                    </td>
+                                    <td>
+                                        <i class="bi bi-eye"></i> {{ prop.views_count }}
+                                        <br>
+                                        <i class="bi bi-heart text-danger"></i> {{ prop.likes_count }}
+                                    </td>
+                                    <td>
+                                        <small>{{ prop.created_at.strftime('%d.%m.%Y') }}</small>
+                                    </td>
+                                    <td>
+                                        <div class="btn-group-vertical btn-group-sm">
+                                            <a href="{{ url_for('admin_property_detail', property_id=prop.id) }}" class="btn btn-outline-primary btn-sm" title="Подробнее">
+                                                <i class="bi bi-eye"></i>
+                                            </a>
+                                            {% if prop.status.value == 'moderation' %}
+                                            <form method="POST" action="{{ url_for('approve_property', property_id=prop.id) }}" style="display:inline">
+                                                <button type="submit" class="btn btn-success btn-sm" title="Одобрить">
+                                                    <i class="bi bi-check"></i>
+                                                </button>
+                                            </form>
+                                            <form method="POST" action="{{ url_for('reject_property', property_id=prop.id) }}" style="display:inline">
+                                                <button type="submit" class="btn btn-danger btn-sm" title="Отклонить">
+                                                    <i class="bi bi-x"></i>
+                                                </button>
+                                            </form>
+                                            {% endif %}
+                                            {% if prop.olx_url %}
+                                            <a href="{{ prop.olx_url }}" target="_blank" class="btn btn-outline-info btn-sm" title="OLX">
+                                                <i class="bi bi-box-arrow-up-right"></i>
+                                            </a>
+                                            {% endif %}
+                                        </div>
+                                    </td>
+                                </tr>
+                                {% else %}
+                                <tr>
+                                    <td colspan="13" class="text-center py-5">
+                                        <i class="bi bi-inbox display-4 text-muted"></i>
+                                        <p class="text-muted mt-2">Объекты не найдены</p>
                                     </td>
                                 </tr>
                                 {% endfor %}
