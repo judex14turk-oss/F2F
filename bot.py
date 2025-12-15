@@ -3219,6 +3219,45 @@ async def property_lifecycle_task():
             await asyncio.sleep(60)
 
 
+@dp.message(F.text)
+async def catch_all_handler(message: types.Message, state: FSMContext):
+    """Ловит все нераспознанные текстовые сообщения и показывает актуальное меню"""
+    current_state = await state.get_state()
+    if current_state:
+        return
+    
+    db = SessionLocal()
+    user = db.query(User).filter(User.telegram_id == message.from_user.id).first()
+    db.close()
+    
+    if not user:
+        await message.answer(
+            "👋 Добро пожаловать! Нажмите /start чтобы начать.",
+            reply_markup=types.ReplyKeyboardRemove()
+        )
+        return
+    
+    if user.role == UserRole.BUYER:
+        keyboard = get_buyer_menu()
+        await message.answer(
+            "🏠 Главное меню покупателя\n\n"
+            "Выберите действие:",
+            reply_markup=keyboard
+        )
+    elif user.role == UserRole.SELLER:
+        keyboard = get_seller_menu()
+        await message.answer(
+            "💼 Главное меню продавца\n\n"
+            "Выберите действие:",
+            reply_markup=keyboard
+        )
+    else:
+        await message.answer(
+            "Нажмите /start чтобы начать.",
+            reply_markup=types.ReplyKeyboardRemove()
+        )
+
+
 async def main():
     print("Initializing database...")
     init_db()
