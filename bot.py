@@ -1169,6 +1169,12 @@ async def view_properties(message: types.Message, state: FSMContext):
         Property.owner_id != user.id
     )
     
+    if user.search_payment_type:
+        if user.search_payment_type.startswith("rent"):
+            query = query.filter(Property.property_type == PropertyType.RENT)
+        elif user.search_payment_type.startswith("buy"):
+            query = query.filter(Property.property_type == PropertyType.SALE)
+    
     if user.search_rooms:
         rooms_list = [int(r.strip()) for r in user.search_rooms.split(",") if r.strip().isdigit()]
         if rooms_list:
@@ -1177,8 +1183,8 @@ async def view_properties(message: types.Message, state: FSMContext):
     if user.search_housing_type and user.search_housing_type not in ["Любой", ""]:
         query = query.filter(Property.housing_type.ilike(f"%{user.search_housing_type}%"))
     
-    if user.search_district:
-        districts = [d.strip() for d in user.search_district.split(",") if d.strip()]
+    if user.search_district and user.search_district not in ["Любой", ""]:
+        districts = [d.strip() for d in user.search_district.split(",") if d.strip() and d.strip() != "Любой"]
         if districts:
             query = query.filter(Property.district.in_(districts))
     
