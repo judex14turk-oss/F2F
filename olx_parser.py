@@ -431,8 +431,6 @@ class OLXParser:
             result['renovation'] = params.get('Ремонт')
             
             phone = self._extract_phone_from_text(result['description'])
-            if not phone:
-                phone = self._extract_phone_from_text(page_text)
             result['phone'] = phone
             
             for district_key, district_name in self.TASHKENT_DISTRICTS.items():
