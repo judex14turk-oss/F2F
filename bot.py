@@ -1231,11 +1231,11 @@ async def view_properties(message: types.Message, state: FSMContext):
         or_(Property.owner_id != user.id, Property.source == 'olx')
     )
     
-    if user.search_deal_type:
-        if user.search_deal_type == "rent":
-            query = query.filter(Property.property_type == PropertyType.RENT)
-        elif user.search_deal_type == "sale":
-            query = query.filter(Property.property_type == PropertyType.SALE)
+    deal_type = user.search_deal_type or "sale"
+    if deal_type == "rent":
+        query = query.filter(Property.property_type == PropertyType.RENT)
+    else:
+        query = query.filter(Property.property_type == PropertyType.SALE)
     
     if user.search_rooms and user.search_rooms not in ["any", "Любое", ""]:
         rooms_list = [int(r.strip()) for r in user.search_rooms.split(",") if r.strip().isdigit()]
