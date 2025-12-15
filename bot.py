@@ -1232,7 +1232,7 @@ async def show_property_card(message, property_id, state=None):
     furniture = "Да" if prop.has_furniture else "Нет"
     
     text = (
-        f"{type_emoji} {type_name}\n\n"
+        f"{type_emoji} {type_name} | ID: {prop.id}\n\n"
         f"📍 {prop.district or 'Район не указан'}\n"
         f"🚪 {prop.rooms} комн. | 📐 {prop.area} м²\n"
         f"🏢 Этаж {prop.floor}/{prop.total_floors}\n"
