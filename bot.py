@@ -1211,8 +1211,8 @@ async def view_properties(message: types.Message, state: FSMContext):
         return
     
     await state.update_data(properties=[p.id for p in properties], current_index=0)
-    await state.set_state(SearchStates.viewing_properties)
     await show_property_card(message, properties[0].id, state)
+    await state.set_state(SearchStates.viewing_properties)
 
 
 async def show_property_card(message, property_id, state=None):
