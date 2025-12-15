@@ -411,14 +411,57 @@ class OLXParser:
         return title_el.get_text(strip=True) if title_el else None
     
     def _extract_price(self, soup):
-        price_el = soup.find('h3')
-        if price_el:
-            price_text = price_el.get_text(strip=True)
+        # Ищем цену в JSON-LD данных (самый надёжный способ)
+        for script in soup.find_all('script', type='application/ld+json'):
+            try:
+                data = json.loads(script.string)
+                if isinstance(data, dict):
+                    # Проверяем offers.price
+                    if 'offers' in data:
+                        offers = data['offers']
+                        if isinstance(offers, dict) and 'price' in offers:
+                            price = str(offers['price'])
+                            currency = offers.get('priceCurrency', 'у.е.')
+                            if price and price != '0':
+                                return price, currency
+                    # Проверяем прямое поле price
+                    if 'price' in data:
+                        price = str(data['price'])
+                        if price and price != '0':
+                            return price, data.get('priceCurrency', 'у.е.')
+            except:
+                pass
+        
+        # Ищем в data-testid элементах
+        price_container = soup.find(attrs={'data-testid': 'ad-price-container'})
+        if price_container:
+            price_text = price_container.get_text(strip=True)
             numbers = re.findall(r'[\d\s]+', price_text)
             if numbers:
                 price = numbers[0].replace(' ', '').strip()
-                currency = price_text.replace(numbers[0], '').strip()
-                return price, currency
+                if price and len(price) > 1:  # Игнорируем однозначные числа
+                    currency = price_text.replace(numbers[0], '').strip()
+                    return price, currency
+        
+        # Ищем h3 с ценой (проверяем что это действительно цена)
+        for h3 in soup.find_all('h3'):
+            price_text = h3.get_text(strip=True)
+            # Проверяем что это похоже на цену (содержит валюту или большое число)
+            if any(curr in price_text for curr in ['у.е.', '$', 'USD', 'сум', 'UZS']):
+                numbers = re.findall(r'[\d\s]+', price_text)
+                if numbers:
+                    price = numbers[0].replace(' ', '').strip()
+                    if price and len(price) > 1:
+                        currency = price_text.replace(numbers[0], '').strip()
+                        return price, currency
+            # Или если число достаточно большое (более 3 цифр)
+            numbers = re.findall(r'[\d\s]+', price_text)
+            if numbers:
+                price = numbers[0].replace(' ', '').strip()
+                if price and len(price) >= 3:
+                    currency = price_text.replace(numbers[0], '').strip() or 'у.е.'
+                    return price, currency
+        
         return None, None
     
     def _extract_photos(self, soup):
