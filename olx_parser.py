@@ -487,37 +487,51 @@ class OLXParser:
         total = len(listing_urls)
         district_name = self.TASHKENT_DISTRICTS.get(district, '') if district else ''
         
-        for i, url in enumerate(listing_urls):
-            if len(results) >= max_listings:
-                break
+        driver = None
+        if get_phone:
+            driver = self.get_driver()
+            if not driver:
+                print("Warning: Could not initialize browser, falling back to requests")
+        
+        try:
+            for i, url in enumerate(listing_urls):
+                if len(results) >= max_listings:
+                    break
+                    
+                if progress_callback:
+                    progress_callback(i + 1, total, url)
                 
-            if progress_callback:
-                progress_callback(i + 1, total, url)
-            
-            try:
-                data = self.parse_listing_with_requests(url)
-                
-                if max_days and not self.is_listing_fresh(data.get('published_date'), max_days):
-                    skipped_old += 1
-                    continue
-                
-                if district and district != 'all' and district_name:
-                    location = data.get('location', '') or ''
-                    parsed_district = data.get('district', '') or ''
-                    if district_name not in location and district_name not in parsed_district:
-                        skipped_district += 1
+                try:
+                    if get_phone and driver:
+                        data = self.parse_listing_with_driver(driver, url, get_phone=True)
+                    else:
+                        data = self.parse_listing_with_requests(url)
+                    
+                    if max_days and not self.is_listing_fresh(data.get('published_date'), max_days):
+                        skipped_old += 1
                         continue
-                
-                results.append(data)
-                
-                time.sleep(0.3)
-                
-            except Exception as e:
-                print(f"Error parsing {url}: {e}")
-                results.append({
-                    'url': url,
-                    'error': str(e)
-                })
+                    
+                    if district and district != 'all' and district_name:
+                        location = data.get('location', '') or ''
+                        parsed_district = data.get('district', '') or ''
+                        if district_name not in location and district_name not in parsed_district:
+                            skipped_district += 1
+                            continue
+                    
+                    results.append(data)
+                    
+                    if not get_phone:
+                        time.sleep(0.3)
+                    
+                except Exception as e:
+                    print(f"Error parsing {url}: {e}")
+                    results.append({
+                        'url': url,
+                        'error': str(e)
+                    })
+        finally:
+            if driver:
+                driver.quit()
         
         return {
             'total_found': total,

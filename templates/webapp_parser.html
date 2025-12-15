@@ -413,8 +413,12 @@
                 </select>
             </div>
             
-            <!-- Phone extraction disabled - Selenium doesn't work in this environment -->
-            <input type="hidden" id="getPhoneCheck" value="false">
+            <div class="filter-group">
+                <label class="filter-label">
+                    <input type="checkbox" id="getPhoneCheck"> 
+                    Получать телефоны (медленнее, ~30 сек/объявление)
+                </label>
+            </div>
             
             <div class="error-msg" id="errorMsg"></div>
             
