@@ -2253,6 +2253,7 @@ async def view_deal_property(callback: types.CallbackQuery):
 
 
 class FindBuyerStates(StatesGroup):
+    deal_type = State()
     prop_type = State()
     budget = State()
 
@@ -2303,6 +2304,36 @@ async def find_buyers(message: types.Message, state: FSMContext):
     
     keyboard = ReplyKeyboardMarkup(
         keyboard=[
+            [KeyboardButton(text="🏠 Ищут покупку")],
+            [KeyboardButton(text="🔑 Ищут аренду")],
+            [KeyboardButton(text="⬅️ Назад")]
+        ],
+        resize_keyboard=True
+    )
+    await message.answer("🎯 Найти покупателя\n\n🏷 Каких клиентов ищем?", reply_markup=keyboard)
+    await state.set_state(FindBuyerStates.deal_type)
+
+
+@dp.message(F.text == "⬅️ Назад", FindBuyerStates.deal_type)
+async def find_buyer_back_from_deal(message: types.Message, state: FSMContext):
+    await state.clear()
+    await message.answer("Вы вернулись в меню", reply_markup=get_seller_menu())
+
+
+@dp.message(FindBuyerStates.deal_type)
+async def find_buyer_deal_type(message: types.Message, state: FSMContext):
+    deal_types = {
+        "🏠 Ищут покупку": "sale",
+        "🔑 Ищут аренду": "rent"
+    }
+    deal_type = deal_types.get(message.text)
+    if not deal_type:
+        return
+    
+    await state.update_data(find_deal_type=deal_type)
+    
+    keyboard = ReplyKeyboardMarkup(
+        keyboard=[
             [KeyboardButton(text="🏢 Квартиры")],
             [KeyboardButton(text="🏡 Дом / Участок")],
             [KeyboardButton(text="🏪 Коммерческая")],
@@ -2310,14 +2341,22 @@ async def find_buyers(message: types.Message, state: FSMContext):
         ],
         resize_keyboard=True
     )
-    await message.answer("🎯 Найти покупателя\n\n🏢 В каком разделе ищем?", reply_markup=keyboard)
+    await message.answer("🏢 В каком разделе ищем?", reply_markup=keyboard)
     await state.set_state(FindBuyerStates.prop_type)
 
 
 @dp.message(F.text == "⬅️ Назад", FindBuyerStates.prop_type)
-async def find_buyer_back_to_menu(message: types.Message, state: FSMContext):
-    await state.clear()
-    await message.answer("Вы вернулись в меню", reply_markup=get_seller_menu())
+async def find_buyer_back_to_deal(message: types.Message, state: FSMContext):
+    keyboard = ReplyKeyboardMarkup(
+        keyboard=[
+            [KeyboardButton(text="🏠 Ищут покупку")],
+            [KeyboardButton(text="🔑 Ищут аренду")],
+            [KeyboardButton(text="⬅️ Назад")]
+        ],
+        resize_keyboard=True
+    )
+    await message.answer("🏷 Каких клиентов ищем?", reply_markup=keyboard)
+    await state.set_state(FindBuyerStates.deal_type)
 
 
 @dp.message(FindBuyerStates.prop_type)
@@ -2380,6 +2419,7 @@ async def find_buyer_show_results(message: types.Message, state: FSMContext):
     
     data = await state.get_data()
     prop_type = data.get("find_prop_type", "apartment")
+    deal_type = data.get("find_deal_type", "sale")
     min_budget, max_budget = budget_range
     
     await state.clear()
@@ -2390,6 +2430,11 @@ async def find_buyer_show_results(message: types.Message, state: FSMContext):
         User.role == UserRole.BUYER,
         User.search_budget_max > 0
     )
+    
+    if deal_type == "sale":
+        query = query.filter(User.search_deal_type == "sale")
+    else:
+        query = query.filter(User.search_deal_type == "rent")
     
     if min_budget > 0:
         query = query.filter(User.search_budget_max >= min_budget)
@@ -2403,26 +2448,29 @@ async def find_buyer_show_results(message: types.Message, state: FSMContext):
         await message.answer("Пока нет покупателей с такими критериями.", reply_markup=get_seller_menu())
         return
     
+    deal_names = {"sale": "Покупка", "rent": "Аренда"}
     prop_names = {"apartment": "Квартиры", "house": "Дом/Участок", "commercial": "Коммерческая"}
-    text = f"🎯 Покупатели ({prop_names.get(prop_type, prop_type)}, {message.text}):\n\n"
+    text = f"🎯 Клиенты ({deal_names.get(deal_type)} — {prop_names.get(prop_type, prop_type)}, {message.text}):\n\n"
     
     keyboard_buttons = []
     for buyer in buyers:
         rooms = buyer.search_rooms or "Любые"
         district = buyer.search_district or "Любой район"
         budget = buyer.search_budget_max or 0
+        bio_line = f"   📝 {buyer.buyer_bio}\n" if buyer.buyer_bio else ""
         
         text += (
-            f"👤 {buyer.first_name or 'Покупатель'}\n"
+            f"👤 {buyer.first_name or 'Клиент'}\n"
             f"   🚪 {rooms} комн. | 📍 {district}\n"
-            f"   💰 до ${budget:,}\n\n"
+            f"   💰 до ${budget:,}\n"
+            f"{bio_line}\n"
         )
         keyboard_buttons.append([
-            InlineKeyboardButton(text=f"📤 Предложить {buyer.first_name or 'покупателю'}", callback_data=f"offer_{buyer.id}")
+            InlineKeyboardButton(text=f"📤 Предложить {buyer.first_name or 'клиенту'}", callback_data=f"offer_{buyer.id}")
         ])
     
     await message.answer(text, reply_markup=InlineKeyboardMarkup(inline_keyboard=keyboard_buttons))
-    await message.answer("Выберите покупателя или вернитесь в меню", reply_markup=get_seller_menu())
+    await message.answer("Выберите клиента или вернитесь в меню", reply_markup=get_seller_menu())
 
 
 @dp.callback_query(F.data.startswith("offer_"))
