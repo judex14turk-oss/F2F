@@ -8,7 +8,19 @@ The platform has two main user interfaces:
 1. **Telegram Bot** - Primary interface for buyers (swipe-based property discovery) and sellers (property management)
 2. **Web Admin/CRM Panel** - Flask-based dashboard for sellers to manage listings and track deals, plus admin functionality for platform management
 
-## Recent Changes (December 14, 2025)
+## Recent Changes (December 15, 2025)
+
+- **Унифицированный парсер OLX**: создан единый `parse_generator()` в olx_parser.py
+  - Вся логика парсинга (фильтрация по дате, району, обход страниц) теперь в одном месте
+  - Stream endpoint в app.py использует этот генератор
+  - Исправления парсера теперь применяются ко всем режимам автоматически
+- **Property Lifecycle**: добавлена система таймеров для объявлений
+  - Активные объявления автоматически архивируются через 30 дней
+  - Архивные объявления удаляются через 30 дней
+  - Таймеры отображаются в "Мои объекты" и админ-панели
+  - Реактивация сбрасывает таймер
+
+## Previous Changes (December 14, 2025)
 
 - Initial project setup with full functionality
 - Created Telegram bot with aiogram 3.x
