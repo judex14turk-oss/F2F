@@ -1651,8 +1651,14 @@ def webapp_parser_run():
         
         prop_type_enum = PropertyType.SALE if deal_type == 'sale' else PropertyType.RENT
         
+        skipped_no_phone = 0
         for listing in result.get('listings', []):
             if listing.get('error') and not listing.get('title'):
+                continue
+            
+            phone = listing.get('phone')
+            if not phone:
+                skipped_no_phone += 1
                 continue
             
             olx_id = listing.get('olx_id')
@@ -1723,6 +1729,7 @@ def webapp_parser_run():
         
         result['added_to_db'] = added_count
         result['skipped_duplicates'] = skipped_count
+        result['skipped_no_phone'] = skipped_no_phone
         
         return jsonify(result)
         
