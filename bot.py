@@ -2695,12 +2695,10 @@ async def buyer_likes(message: types.Message):
             status_text = "Мэтч!" if like.is_matched else "Ожидание"
             type_name = "Продажа" if prop.property_type == PropertyType.SALE else "Аренда"
             
-            contact_phone = None
-            if like.is_matched:
-                contact_phone = prop.phone
-                if not contact_phone:
-                    owner = db.query(User).filter(User.id == prop.owner_id).first()
-                    contact_phone = owner.phone if owner else None
+            contact_phone = prop.phone
+            if not contact_phone:
+                owner = db.query(User).filter(User.id == prop.owner_id).first()
+                contact_phone = owner.phone if owner else "Не указан"
             
             text = f"{status_emoji} <b>{status_text}</b>  •  {type_name}\n"
             text += "━━━━━━━━━━━━━━━━━━━━\n\n"
@@ -2725,9 +2723,8 @@ async def buyer_likes(message: types.Message):
             if extras:
                 text += f"\n🏠 {' • '.join(extras)}\n"
             
-            if contact_phone:
-                text += f"\n━━━━━━━━━━━━━━━━━━━━\n"
-                text += f"📞 <b><u>Контакт: {contact_phone}</u></b>\n"
+            text += f"\n━━━━━━━━━━━━━━━━━━━━\n"
+            text += f"📞 <b><u>Контакт: {contact_phone}</u></b>\n"
             
             photos = [p for p in (prop.photos.split(",") if prop.photos else []) if p]
             
