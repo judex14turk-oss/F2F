@@ -102,7 +102,7 @@ class Property(Base):
     property_type = Column(Enum(PropertyType), nullable=False)
     residential_complex = Column(String(200))
     district = Column(String(200))
-    address = Column(String(300))
+    address = Column(String(1000))
     rooms = Column(Integer)
     floor = Column(Integer)
     total_floors = Column(Integer)
