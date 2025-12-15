@@ -2679,27 +2679,67 @@ async def buyer_likes(message: types.Message):
     db = SessionLocal()
     user = db.query(User).filter(User.telegram_id == message.from_user.id).first()
     likes = db.query(Like).filter(Like.user_id == user.id).order_by(Like.created_at.desc()).all()
-    db.close()
     
     if not likes:
+        db.close()
         await message.answer("Вы еще не лайкнули ни одной квартиры.", reply_markup=get_buyer_profile_menu())
         return
     
-    text = "❤️ Ваши лайки:\n\n"
+    await message.answer(f"❤️ <b>Ваши лайки ({len(likes)})</b>", reply_markup=get_buyer_profile_menu(), parse_mode="HTML")
     
-    for like in likes[:20]:
-        db = SessionLocal()
+    for like in likes[:10]:
         prop = db.query(Property).filter(Property.id == like.property_id).first()
-        db.close()
         
         if prop:
-            status = "🟢 Мэтч!" if like.is_matched else "⏳ Ожидание"
-            text += (
-                f"{status} {prop.district or 'Объект'}\n"
-                f"   {prop.rooms} комн. | ${prop.price:,}\n\n"
-            )
+            status_emoji = "🟢" if like.is_matched else "⏳"
+            status_text = "Мэтч!" if like.is_matched else "Ожидание"
+            type_name = "Продажа" if prop.property_type == PropertyType.SALE else "Аренда"
+            
+            contact_phone = None
+            if like.is_matched:
+                contact_phone = prop.phone
+                if not contact_phone:
+                    owner = db.query(User).filter(User.id == prop.owner_id).first()
+                    contact_phone = owner.phone if owner else None
+            
+            text = f"{status_emoji} <b>{status_text}</b>  •  {type_name}\n"
+            text += "━━━━━━━━━━━━━━━━━━━━\n\n"
+            text += f"💰 <b>${prop.price:,}</b>\n\n"
+            
+            if prop.district:
+                text += f"📍 {prop.district}\n"
+            if prop.rooms:
+                text += f"🚪 {prop.rooms} комн.\n"
+            if prop.area:
+                text += f"📐 {prop.area} м²\n"
+            if prop.floor and prop.total_floors:
+                text += f"🏢 {prop.floor}/{prop.total_floors} этаж\n"
+            
+            extras = []
+            if prop.building_type:
+                extras.append(prop.building_type)
+            if prop.renovation:
+                extras.append(prop.renovation)
+            if prop.has_furniture:
+                extras.append("с мебелью")
+            if extras:
+                text += f"\n🏠 {' • '.join(extras)}\n"
+            
+            if contact_phone:
+                text += f"\n━━━━━━━━━━━━━━━━━━━━\n"
+                text += f"📞 <b><u>Контакт: {contact_phone}</u></b>\n"
+            
+            photos = [p for p in (prop.photos.split(",") if prop.photos else []) if p]
+            
+            if photos:
+                try:
+                    await message.answer_photo(photo=photos[0], caption=text, parse_mode="HTML")
+                except:
+                    await message.answer(text, parse_mode="HTML")
+            else:
+                await message.answer(text, parse_mode="HTML")
     
-    await message.answer(text, reply_markup=get_buyer_profile_menu())
+    db.close()
 
 
 @dp.message(F.text == "💬 Переписка")
