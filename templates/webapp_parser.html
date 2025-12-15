@@ -308,11 +308,8 @@
                 <input type="text" class="filter-select" id="singleUrl" placeholder="https://www.olx.uz/d/obyavlenie/..." style="margin-bottom: 8px;">
             </div>
             
-            <div class="filter-group">
-                <label class="filter-label" style="display: flex; align-items: center; gap: 8px;">
-                    <input type="checkbox" id="singleGetPhone"> Получить телефон
-                </label>
-            </div>
+            <!-- Phone extraction disabled -->
+            <input type="hidden" id="singleGetPhone" value="false">
             
             <div class="error-msg" id="singleErrorMsg"></div>
             
@@ -416,11 +413,8 @@
                 </select>
             </div>
             
-            <div class="filter-group">
-                <label class="filter-label" style="display: flex; align-items: center; gap: 8px;">
-                    <input type="checkbox" id="getPhoneCheck"> Получить телефоны (медленнее)
-                </label>
-            </div>
+            <!-- Phone extraction disabled - Selenium doesn't work in this environment -->
+            <input type="hidden" id="getPhoneCheck" value="false">
             
             <div class="error-msg" id="errorMsg"></div>
             
