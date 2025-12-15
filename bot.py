@@ -486,6 +486,11 @@ async def process_buyer_phone_contact(message: types.Message, state: FSMContext)
         user.phone = phone
         user.search_district = data.get("district", "")
         user.search_deal_type = data.get("deal_type", "sale")
+        user.search_rooms = None
+        user.search_housing_type = None
+        user.search_budget_max = None
+        user.search_budget_min = None
+        user.search_payment_type = None
         db.commit()
     db.close()
     
@@ -508,6 +513,11 @@ async def process_buyer_phone_text(message: types.Message, state: FSMContext):
         user.phone = phone
         user.search_district = data.get("district", "")
         user.search_deal_type = data.get("deal_type", "sale")
+        user.search_rooms = None
+        user.search_housing_type = None
+        user.search_budget_max = None
+        user.search_budget_min = None
+        user.search_payment_type = None
         db.commit()
     db.close()
     
