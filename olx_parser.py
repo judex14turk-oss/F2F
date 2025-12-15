@@ -85,16 +85,37 @@ class OLXParser:
         
     def get_driver(self):
         chrome_options = Options()
-        chrome_options.add_argument('--headless')
+        chrome_options.add_argument('--headless=new')
         chrome_options.add_argument('--no-sandbox')
         chrome_options.add_argument('--disable-dev-shm-usage')
         chrome_options.add_argument('--disable-gpu')
         chrome_options.add_argument('--window-size=1920,1080')
+        chrome_options.add_argument('--disable-blink-features=AutomationControlled')
+        chrome_options.add_argument('--disable-extensions')
+        chrome_options.add_argument('--disable-infobars')
+        chrome_options.add_argument('--disable-web-security')
+        chrome_options.add_argument('--allow-running-insecure-content')
+        chrome_options.add_argument('--lang=ru-RU,ru')
         chrome_options.add_argument(f'user-agent={self.headers["User-Agent"]}')
+        chrome_options.add_experimental_option('excludeSwitches', ['enable-automation'])
+        chrome_options.add_experimental_option('useAutomationExtension', False)
         
         try:
             driver = webdriver.Chrome(options=chrome_options)
-            driver.set_page_load_timeout(15)
+            driver.execute_cdp_cmd('Page.addScriptToEvaluateOnNewDocument', {
+                'source': '''
+                    Object.defineProperty(navigator, 'webdriver', {
+                        get: () => undefined
+                    });
+                    Object.defineProperty(navigator, 'languages', {
+                        get: () => ['ru-RU', 'ru', 'en-US', 'en']
+                    });
+                    Object.defineProperty(navigator, 'plugins', {
+                        get: () => [1, 2, 3, 4, 5]
+                    });
+                '''
+            })
+            driver.set_page_load_timeout(30)
             return driver
         except Exception as e:
             print(f"Error creating driver: {e}")
@@ -153,57 +174,46 @@ class OLXParser:
         listings = []
         seen_urls = set()
         
-        driver = self.get_driver()
-        if not driver:
-            print("Failed to initialize browser for category listing")
-            return listings
-        
-        try:
-            for page in range(1, max_pages + 1):
-                if len(listings) >= max_listings:
-                    break
-                    
-                url = self.build_category_url(deal_type, property_type, district, rooms, housing_type, page)
-                print(f"Fetching page {page}: {url}")
+        for page in range(1, max_pages + 1):
+            if len(listings) >= max_listings:
+                break
                 
-                try:
-                    driver.get(url)
-                    time.sleep(3)
-                    
-                    for _ in range(3):
-                        driver.execute_script("window.scrollTo(0, document.body.scrollHeight);")
-                        time.sleep(1)
-                    
-                    page_source = driver.page_source
-                    soup = BeautifulSoup(page_source, 'lxml')
-                    
-                    listing_links = soup.find_all('a', href=lambda x: x and '/d/obyavlenie/' in x if x else False)
-                    
-                    page_count = 0
-                    for link in listing_links:
-                        href = link.get('href', '')
-                        if href.startswith('/'):
-                            href = self.BASE_URL + href
-                        
-                        if href not in seen_urls and '/d/obyavlenie/' in href:
-                            seen_urls.add(href)
-                            if len(listings) < max_listings:
-                                listings.append(href)
-                                page_count += 1
-                    
-                    print(f"Page {page}: found {page_count} new listings, total: {len(listings)}")
-                    
-                    if page_count == 0:
-                        print(f"No listings found on page {page}, stopping")
-                        break
-                    
-                    time.sleep(1)
-                    
-                except Exception as e:
-                    print(f"Error fetching page {page}: {e}")
+            url = self.build_category_url(deal_type, property_type, district, rooms, housing_type, page)
+            print(f"Fetching page {page}: {url}")
+            
+            try:
+                response = requests.get(url, headers=self.headers, timeout=30)
+                if response.status_code != 200:
+                    print(f"Error fetching page {page}: status {response.status_code}")
                     break
-        finally:
-            driver.quit()
+                
+                soup = BeautifulSoup(response.text, 'lxml')
+                
+                listing_links = soup.find_all('a', href=lambda x: x and '/d/obyavlenie/' in x if x else False)
+                
+                page_count = 0
+                for link in listing_links:
+                    href = link.get('href', '')
+                    if href.startswith('/'):
+                        href = self.BASE_URL + href
+                    
+                    if href not in seen_urls and '/d/obyavlenie/' in href:
+                        seen_urls.add(href)
+                        if len(listings) < max_listings:
+                            listings.append(href)
+                            page_count += 1
+                
+                print(f"Page {page}: found {page_count} new listings, total: {len(listings)}")
+                
+                if page_count == 0:
+                    print(f"No listings found on page {page}, stopping")
+                    break
+                
+                time.sleep(0.5)
+                
+            except Exception as e:
+                print(f"Error fetching page {page}: {e}")
+                break
         
         return listings
     
@@ -340,15 +350,85 @@ class OLXParser:
             
         return result
     
-    def parse_listing(self, url, get_phone=False):
-        driver = self.get_driver()
-        if not driver:
-            return {'url': url, 'error': 'Failed to initialize browser'}
+    def parse_listing_with_requests(self, url):
+        result = {
+            'url': url,
+            'title': None,
+            'price': None,
+            'currency': None,
+            'phone': None,
+            'photos': [],
+            'property_type': None,
+            'rooms': None,
+            'total_area': None,
+            'floor': None,
+            'total_floors': None,
+            'layout': None,
+            'bathroom': None,
+            'furnished': None,
+            'nearby': [],
+            'commission': None,
+            'description': None,
+            'location': None,
+            'district': None,
+            'seller_name': None,
+            'olx_id': None,
+            'published_date': None,
+            'error': None
+        }
         
         try:
-            return self.parse_listing_with_driver(driver, url, get_phone)
-        finally:
-            driver.quit()
+            response = requests.get(url, headers=self.headers, timeout=30)
+            if response.status_code != 200:
+                result['error'] = f'HTTP {response.status_code}'
+                return result
+            
+            soup = BeautifulSoup(response.text, 'lxml')
+            
+            result['title'] = self._extract_title(soup)
+            result['price'], result['currency'] = self._extract_price(soup)
+            result['photos'] = self._extract_photos(soup)
+            result['olx_id'] = self._extract_olx_id(soup, url)
+            result['description'] = self._extract_description(soup)
+            result['location'] = self._extract_location(soup)
+            result['seller_name'] = self._extract_seller(soup)
+            result['published_date'] = self._extract_date(soup)
+            
+            params = self._extract_parameters(soup)
+            result['property_type'] = params.get('Тип жилья')
+            result['rooms'] = params.get('Количество комнат')
+            result['total_area'] = params.get('Общая площадь')
+            result['floor'] = params.get('Этаж')
+            result['total_floors'] = params.get('Этажность дома')
+            result['layout'] = params.get('Планировка')
+            result['bathroom'] = params.get('Санузел')
+            result['furnished'] = params.get('Меблирована')
+            result['nearby'] = params.get('Рядом есть', '').split(', ') if params.get('Рядом есть') else []
+            result['commission'] = params.get('Комиссионные')
+            result['building_type'] = params.get('Тип строения')
+            result['renovation'] = params.get('Ремонт')
+            
+            for district_key, district_name in self.TASHKENT_DISTRICTS.items():
+                if district_name and district_name in (result['location'] or ''):
+                    result['district'] = district_name
+                    break
+            
+        except Exception as e:
+            result['error'] = str(e)
+            
+        return result
+    
+    def parse_listing(self, url, get_phone=False):
+        if get_phone:
+            driver = self.get_driver()
+            if not driver:
+                return {'url': url, 'error': 'Failed to initialize browser'}
+            try:
+                return self.parse_listing_with_driver(driver, url, get_phone=True)
+            finally:
+                driver.quit()
+        else:
+            return self.parse_listing_with_requests(url)
     
     def parse_listing_with_phone(self, url):
         return self.parse_listing(url, get_phone=True)
@@ -380,24 +460,12 @@ class OLXParser:
         total = len(listing_urls)
         district_name = self.TASHKENT_DISTRICTS.get(district, '') if district else ''
         
-        driver = self.get_driver()
-        if not driver:
-            return {
-                'total_found': total,
-                'parsed': 0,
-                'skipped_old': 0,
-                'skipped_district': 0,
-                'filters': {
-                    'deal_type': deal_type,
-                    'property_type': property_type,
-                    'district': district,
-                    'rooms': rooms,
-                    'housing_type': housing_type,
-                    'max_days': max_days
-                },
-                'listings': [],
-                'error': 'Failed to initialize browser'
-            }
+        driver = None
+        if get_phone:
+            driver = self.get_driver()
+            if not driver:
+                print("Warning: Could not initialize browser for phone extraction, continuing without phone")
+                get_phone = False
         
         try:
             for i, url in enumerate(listing_urls):
@@ -408,7 +476,10 @@ class OLXParser:
                     progress_callback(i + 1, total, url)
                 
                 try:
-                    data = self.parse_listing_with_driver(driver, url, get_phone)
+                    if get_phone and driver:
+                        data = self.parse_listing_with_driver(driver, url, get_phone=True)
+                    else:
+                        data = self.parse_listing_with_requests(url)
                     
                     if max_days and not self.is_listing_fresh(data.get('published_date'), max_days):
                         skipped_old += 1
@@ -431,7 +502,8 @@ class OLXParser:
                         'error': str(e)
                     })
         finally:
-            driver.quit()
+            if driver:
+                driver.quit()
         
         return {
             'total_found': total,
