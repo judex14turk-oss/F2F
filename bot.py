@@ -24,6 +24,7 @@ dp = Dispatcher(storage=storage)
 
 class RegistrationStates(StatesGroup):
     choosing_role = State()
+    buyer_deal_type = State()
     buyer_rooms = State()
     buyer_housing_type = State()
     buyer_district = State()
@@ -189,19 +190,60 @@ async def process_buyer_role(message: types.Message, state: FSMContext):
     
     keyboard = ReplyKeyboardMarkup(
         keyboard=[
-            [KeyboardButton(text="1"), KeyboardButton(text="2"), KeyboardButton(text="3")],
-            [KeyboardButton(text="4+"), KeyboardButton(text="Студия")],
+            [KeyboardButton(text="🏷 Купить")],
+            [KeyboardButton(text="🔑 Снять")],
             [KeyboardButton(text="⬅️ Назад")]
         ],
         resize_keyboard=True
     )
     
     await message.answer(
-        "🏠 Отлично! Давайте настроим ваши параметры поиска.\n\n"
-        "Сколько комнат вам нужно?",
+        "🏠 Отлично! Что вас интересует?",
         reply_markup=keyboard
     )
-    await state.set_state(RegistrationStates.buyer_rooms)
+    await state.set_state(RegistrationStates.buyer_deal_type)
+
+
+@dp.message(F.text == "⬅️ Назад", RegistrationStates.buyer_deal_type)
+async def back_to_role_from_deal(message: types.Message, state: FSMContext):
+    keyboard = ReplyKeyboardMarkup(
+        keyboard=[
+            [KeyboardButton(text="🏠 Я ищу недвижимость")],
+            [KeyboardButton(text="💼 Я хочу продать/сдать")]
+        ],
+        resize_keyboard=True
+    )
+    await message.answer("Выберите вашу роль:", reply_markup=keyboard)
+    await state.set_state(RegistrationStates.choosing_role)
+
+
+@dp.message(RegistrationStates.buyer_deal_type)
+async def process_buyer_deal_type(message: types.Message, state: FSMContext):
+    deal_map = {"🏷 купить": "sale", "🔑 снять": "rent"}
+    deal_type = deal_map.get(message.text.lower(), "sale")
+    await state.update_data(deal_type=deal_type)
+    
+    db = SessionLocal()
+    districts = db.query(District).all()
+    db.close()
+    
+    keyboard_buttons = []
+    row = []
+    for district in districts:
+        row.append(KeyboardButton(text=district.name))
+        if len(row) == 2:
+            keyboard_buttons.append(row)
+            row = []
+    if row:
+        keyboard_buttons.append(row)
+    keyboard_buttons.append([KeyboardButton(text="Любой район")])
+    keyboard_buttons.append([KeyboardButton(text="⬅️ Назад")])
+    
+    await message.answer(
+        "📍 Выберите район:",
+        reply_markup=ReplyKeyboardMarkup(keyboard=keyboard_buttons, resize_keyboard=True)
+    )
+    await state.set_state(RegistrationStates.buyer_district)
 
 
 @dp.message(F.text == "⬅️ Назад", RegistrationStates.buyer_rooms)
@@ -288,18 +330,17 @@ async def process_housing_type(message: types.Message, state: FSMContext):
 
 
 @dp.message(F.text == "⬅️ Назад", RegistrationStates.buyer_district)
-async def back_to_housing_type(message: types.Message, state: FSMContext):
+async def back_to_deal_type(message: types.Message, state: FSMContext):
     keyboard = ReplyKeyboardMarkup(
         keyboard=[
-            [KeyboardButton(text="🏗 Новостройка")],
-            [KeyboardButton(text="🏠 Вторичный рынок")],
-            [KeyboardButton(text="Любой тип")],
+            [KeyboardButton(text="🏷 Купить")],
+            [KeyboardButton(text="🔑 Снять")],
             [KeyboardButton(text="⬅️ Назад")]
         ],
         resize_keyboard=True
     )
-    await message.answer("🏠 Какой тип жилья вас интересует?", reply_markup=keyboard)
-    await state.set_state(RegistrationStates.buyer_housing_type)
+    await message.answer("🏠 Что вас интересует?", reply_markup=keyboard)
+    await state.set_state(RegistrationStates.buyer_deal_type)
 
 
 @dp.message(RegistrationStates.buyer_district)
@@ -308,15 +349,18 @@ async def process_district(message: types.Message, state: FSMContext):
     await state.update_data(district=district_name)
     
     keyboard = ReplyKeyboardMarkup(
-        keyboard=[[KeyboardButton(text="⬅️ Назад")]],
+        keyboard=[
+            [KeyboardButton(text="📱 Отправить номер", request_contact=True)],
+            [KeyboardButton(text="⬅️ Назад")]
+        ],
         resize_keyboard=True
     )
     
     await message.answer(
-        "💰 Какой у вас бюджет (в USD)?\n\nВведите максимальную сумму цифрами:",
+        "📞 Поделитесь номером телефона, чтобы продавцы могли с вами связаться:",
         reply_markup=keyboard
     )
-    await state.set_state(RegistrationStates.buyer_budget)
+    await state.set_state(RegistrationStates.buyer_phone)
 
 
 @dp.message(F.text == "⬅️ Назад", RegistrationStates.buyer_budget)
@@ -407,18 +451,28 @@ async def process_payment(message: types.Message, state: FSMContext):
 
 
 @dp.message(F.text == "⬅️ Назад", RegistrationStates.buyer_phone)
-async def back_to_payment(message: types.Message, state: FSMContext):
-    keyboard = ReplyKeyboardMarkup(
-        keyboard=[
-            [KeyboardButton(text="💵 Наличные")],
-            [KeyboardButton(text="🏦 Ипотека")],
-            [KeyboardButton(text="📄 Рассрочка")],
-            [KeyboardButton(text="⬅️ Назад")]
-        ],
-        resize_keyboard=True
+async def back_to_district_from_phone(message: types.Message, state: FSMContext):
+    db = SessionLocal()
+    districts = db.query(District).all()
+    db.close()
+    
+    keyboard_buttons = []
+    row = []
+    for district in districts:
+        row.append(KeyboardButton(text=district.name))
+        if len(row) == 2:
+            keyboard_buttons.append(row)
+            row = []
+    if row:
+        keyboard_buttons.append(row)
+    keyboard_buttons.append([KeyboardButton(text="Любой район")])
+    keyboard_buttons.append([KeyboardButton(text="⬅️ Назад")])
+    
+    await message.answer(
+        "📍 Выберите район:",
+        reply_markup=ReplyKeyboardMarkup(keyboard=keyboard_buttons, resize_keyboard=True)
     )
-    await message.answer("💳 Способ оплаты:", reply_markup=keyboard)
-    await state.set_state(RegistrationStates.buyer_payment)
+    await state.set_state(RegistrationStates.buyer_district)
 
 
 @dp.message(F.contact, RegistrationStates.buyer_phone)
@@ -430,11 +484,8 @@ async def process_buyer_phone_contact(message: types.Message, state: FSMContext)
     user = db.query(User).filter(User.telegram_id == message.from_user.id).first()
     if user:
         user.phone = phone
-        user.search_rooms = data.get("rooms", "")
-        user.search_housing_type = data.get("housing_type", "")
         user.search_district = data.get("district", "")
-        user.search_budget_max = data.get("budget", 0)
-        user.search_payment_type = data.get("payment", "cash")
+        user.search_deal_type = data.get("deal_type", "sale")
         db.commit()
     db.close()
     
@@ -455,11 +506,8 @@ async def process_buyer_phone_text(message: types.Message, state: FSMContext):
     user = db.query(User).filter(User.telegram_id == message.from_user.id).first()
     if user:
         user.phone = phone
-        user.search_rooms = data.get("rooms", "")
-        user.search_housing_type = data.get("housing_type", "")
         user.search_district = data.get("district", "")
-        user.search_budget_max = data.get("budget", 0)
-        user.search_payment_type = data.get("payment", "cash")
+        user.search_deal_type = data.get("deal_type", "sale")
         db.commit()
     db.close()
     
