@@ -1227,8 +1227,10 @@ async def show_property_card(message, property_id, state=None):
     prop.views_count += 1
     db.commit()
     
-    owner = db.query(User).filter(User.id == prop.owner_id).first()
-    owner_phone = owner.phone if owner and owner.phone else "Не указан"
+    contact_phone = prop.phone if prop.phone else None
+    if not contact_phone:
+        owner = db.query(User).filter(User.id == prop.owner_id).first()
+        contact_phone = owner.phone if owner and owner.phone else "Не указан"
     
     type_emoji = "🏷" if prop.property_type == PropertyType.SALE else "🔑"
     type_name = "Продажа" if prop.property_type == PropertyType.SALE else "Аренда"
@@ -1236,7 +1238,7 @@ async def show_property_card(message, property_id, state=None):
     
     text = (
         f"{type_emoji} {type_name} | ID: {prop.id}\n\n"
-        f"📞 <b><u>Контакт: {owner_phone}</u></b>\n\n"
+        f"📞 <b><u>Контакт: {contact_phone}</u></b>\n\n"
         f"📍 {prop.district or 'Район не указан'}\n"
         f"🚪 {prop.rooms} комн. | 📐 {prop.area} м²\n"
         f"🏢 Этаж {prop.floor}/{prop.total_floors}\n"
