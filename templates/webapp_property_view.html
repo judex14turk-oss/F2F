@@ -256,6 +256,10 @@
                 <span class="info-label">Ремонт</span>
                 <span class="info-value">{{ prop.renovation or '-' }}</span>
             </div>
+            <div class="info-row">
+                <span class="info-label">Планировка</span>
+                <span class="info-value">{{ prop.layout or '-' }}</span>
+            </div>
         </div>
         
         {% if prop.description %}

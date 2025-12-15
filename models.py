@@ -111,6 +111,7 @@ class Property(Base):
     
     building_type = Column(String(50))
     renovation = Column(String(50))
+    layout = Column(String(50))
     room_type = Column(String(50))
     bathroom_type = Column(String(50))
     has_furniture = Column(Boolean, default=False)

@@ -1572,6 +1572,7 @@ def webapp_parser_single():
             seller_name=listing.get('seller_name'),
             building_type=listing.get('building_type') or listing.get('property_type'),
             renovation=listing.get('renovation'),
+            layout=listing.get('layout'),
             source='olx',
             olx_id=olx_id,
             olx_url=url
@@ -1704,6 +1705,7 @@ def webapp_parser_run():
                 status=PropertyStatus.ACTIVE,
                 building_type=listing.get('building_type') or listing.get('property_type'),
                 renovation=listing.get('renovation'),
+                layout=listing.get('layout'),
                 phone=listing.get('phone'),
                 olx_url=listing.get('url'),
                 olx_id=olx_id,
