@@ -350,6 +350,27 @@ class OLXParser:
             
         return result
     
+    def _extract_phone_from_text(self, text):
+        if not text:
+            return None
+        phone_patterns = [
+            r'\+998[\s\-]?\d{2}[\s\-]?\d{3}[\s\-]?\d{2}[\s\-]?\d{2}',
+            r'\+998\d{9}',
+            r'998[\s\-]?\d{2}[\s\-]?\d{3}[\s\-]?\d{2}[\s\-]?\d{2}',
+            r'998\d{9}',
+            r'\d{2}[\s\-]?\d{3}[\s\-]?\d{2}[\s\-]?\d{2}',
+        ]
+        for pattern in phone_patterns:
+            match = re.search(pattern, text)
+            if match:
+                phone = match.group(0).replace(' ', '').replace('-', '')
+                if not phone.startswith('+') and not phone.startswith('998'):
+                    phone = '+998' + phone
+                elif phone.startswith('998') and not phone.startswith('+'):
+                    phone = '+' + phone
+                return phone
+        return None
+    
     def parse_listing_with_requests(self, url):
         result = {
             'url': url,
@@ -384,6 +405,7 @@ class OLXParser:
                 return result
             
             soup = BeautifulSoup(response.text, 'lxml')
+            page_text = response.text
             
             result['title'] = self._extract_title(soup)
             result['price'], result['currency'] = self._extract_price(soup)
@@ -407,6 +429,11 @@ class OLXParser:
             result['commission'] = params.get('Комиссионные')
             result['building_type'] = params.get('Тип строения')
             result['renovation'] = params.get('Ремонт')
+            
+            phone = self._extract_phone_from_text(result['description'])
+            if not phone:
+                phone = self._extract_phone_from_text(page_text)
+            result['phone'] = phone
             
             for district_key, district_name in self.TASHKENT_DISTRICTS.items():
                 if district_name and district_name in (result['location'] or ''):
