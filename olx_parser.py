@@ -286,6 +286,8 @@ class OLXParser:
             result['furnished'] = params.get('Меблирована')
             result['nearby'] = params.get('Рядом есть', '').split(', ') if params.get('Рядом есть') else []
             result['commission'] = params.get('Комиссионные')
+            result['building_type'] = params.get('Тип строения')
+            result['renovation'] = params.get('Ремонт')
             
             for district_key, district_name in self.TASHKENT_DISTRICTS.items():
                 if district_name and district_name in (result['location'] or ''):
@@ -502,6 +504,8 @@ class OLXParser:
             (r'Меблирована[:\s]+([^\n]+)', 'Меблирована'),
             (r'Рядом есть[:\s]+([^\n]+)', 'Рядом есть'),
             (r'Комиссионные[:\s]+([^\n]+)', 'Комиссионные'),
+            (r'Тип строения[:\s]+([^\n]+)', 'Тип строения'),
+            (r'Ремонт[:\s]+([^\n]+)', 'Ремонт'),
         ]
         
         for pattern, key in patterns:
