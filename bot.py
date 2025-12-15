@@ -1164,9 +1164,10 @@ async def view_properties(message: types.Message, state: FSMContext):
     skipped_ids_data = await state.get_data()
     skipped_ids = skipped_ids_data.get("skipped_ids", [])
     
+    from sqlalchemy import or_
     query = db.query(Property).filter(
         Property.status == PropertyStatus.ACTIVE,
-        Property.owner_id != user.id
+        or_(Property.owner_id != user.id, Property.source == 'olx')
     )
     
     if user.search_payment_type:
