@@ -1,0 +1,386 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Объекты недвижимости</title>
+    <script src="https://telegram.org/js/telegram-web-app.js"></script>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.0/font/bootstrap-icons.css" rel="stylesheet">
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            background: #0a0a0a;
+            color: #e5e5e5;
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            padding-bottom: 100px;
+        }
+        .header {
+            background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
+            padding: 20px 16px;
+            border-bottom: 1px solid #2a2a2a;
+        }
+        .header h1 {
+            font-size: 1.2rem;
+            font-weight: 600;
+            color: #fff;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        .header-role {
+            font-size: 0.8rem;
+            color: #888;
+            margin-top: 4px;
+        }
+        .stats-row {
+            display: flex;
+            gap: 6px;
+            margin-top: 12px;
+            flex-wrap: wrap;
+        }
+        .stat-badge {
+            background: rgba(255,255,255,0.08);
+            padding: 4px 8px;
+            border-radius: 6px;
+            font-size: 0.7rem;
+            color: #aaa;
+        }
+        .stat-badge.active { background: rgba(16, 185, 129, 0.2); color: #10b981; }
+        .stat-badge.moderation { background: rgba(245, 158, 11, 0.2); color: #f59e0b; }
+        .stat-badge.olx { background: rgba(59, 130, 246, 0.2); color: #3b82f6; }
+        .nav-tabs {
+            display: flex;
+            gap: 4px;
+            padding: 12px;
+            background: #111;
+            overflow-x: auto;
+        }
+        .nav-tab {
+            flex: 1;
+            text-align: center;
+            padding: 10px 8px;
+            background: #1a1a1a;
+            border-radius: 8px;
+            text-decoration: none;
+            color: #888;
+            font-size: 0.75rem;
+            white-space: nowrap;
+            border: 1px solid #2a2a2a;
+        }
+        .nav-tab.active {
+            background: #3b82f6;
+            color: white;
+            border-color: #3b82f6;
+        }
+        .filter-section {
+            padding: 12px;
+            background: #111;
+        }
+        .search-box {
+            display: flex;
+            gap: 8px;
+            margin-bottom: 10px;
+        }
+        .search-input {
+            flex: 1;
+            background: #1a1a1a;
+            border: 1px solid #2a2a2a;
+            border-radius: 8px;
+            padding: 10px 14px;
+            color: #e5e5e5;
+            font-size: 0.9rem;
+        }
+        .search-input::placeholder { color: #666; }
+        .btn-search {
+            background: #3b82f6;
+            border: none;
+            border-radius: 8px;
+            padding: 10px 16px;
+            color: white;
+            cursor: pointer;
+        }
+        .filters {
+            display: flex;
+            gap: 6px;
+            flex-wrap: wrap;
+        }
+        .filter-select {
+            flex: 1;
+            min-width: 70px;
+            background: #1a1a1a;
+            border: 1px solid #2a2a2a;
+            border-radius: 6px;
+            padding: 8px 6px;
+            color: #ccc;
+            font-size: 0.75rem;
+        }
+        .properties-list {
+            padding: 12px;
+        }
+        .property-card {
+            background: #151515;
+            border: 1px solid #252525;
+            border-radius: 12px;
+            margin-bottom: 10px;
+            overflow: hidden;
+        }
+        .property-header {
+            display: flex;
+            gap: 12px;
+            padding: 12px;
+        }
+        .property-photo {
+            width: 80px;
+            height: 80px;
+            border-radius: 8px;
+            object-fit: cover;
+            background: #222;
+        }
+        .property-photo-placeholder {
+            width: 80px;
+            height: 80px;
+            border-radius: 8px;
+            background: #222;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: #555;
+            font-size: 1.5rem;
+        }
+        .property-info {
+            flex: 1;
+        }
+        .property-title {
+            font-weight: 600;
+            font-size: 0.9rem;
+            color: #fff;
+            margin-bottom: 4px;
+        }
+        .property-location {
+            font-size: 0.75rem;
+            color: #888;
+            margin-bottom: 6px;
+        }
+        .property-price {
+            font-size: 1rem;
+            font-weight: 700;
+            color: #10b981;
+        }
+        .property-badges {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 4px;
+            margin-top: 6px;
+        }
+        .badge {
+            padding: 2px 6px;
+            border-radius: 4px;
+            font-size: 0.65rem;
+            font-weight: 500;
+        }
+        .badge-sale { background: rgba(16, 185, 129, 0.2); color: #10b981; }
+        .badge-rent { background: rgba(59, 130, 246, 0.2); color: #3b82f6; }
+        .badge-active { background: rgba(16, 185, 129, 0.2); color: #10b981; }
+        .badge-moderation { background: rgba(245, 158, 11, 0.2); color: #f59e0b; }
+        .badge-archive { background: rgba(107, 114, 128, 0.2); color: #9ca3af; }
+        .badge-olx { background: rgba(245, 158, 11, 0.2); color: #f59e0b; }
+        .badge-manual { background: rgba(107, 114, 128, 0.2); color: #9ca3af; }
+        .property-stats {
+            display: flex;
+            gap: 12px;
+            padding: 8px 12px;
+            background: #1a1a1a;
+            font-size: 0.75rem;
+            color: #888;
+        }
+        .property-stats span {
+            display: flex;
+            align-items: center;
+            gap: 4px;
+        }
+        .property-actions {
+            display: flex;
+            gap: 8px;
+            padding: 10px 12px;
+            background: #1a1a1a;
+            border-top: 1px solid #252525;
+        }
+        .btn-action {
+            flex: 1;
+            padding: 8px;
+            border: none;
+            border-radius: 6px;
+            font-size: 0.75rem;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 4px;
+        }
+        .btn-approve { background: #10b981; color: white; }
+        .btn-reject { background: #ef4444; color: white; }
+        .btn-view { background: #3b82f6; color: white; }
+        .btn-olx { background: #f59e0b; color: white; }
+        .empty-state {
+            text-align: center;
+            padding: 40px 20px;
+            color: #666;
+        }
+        .empty-state i {
+            font-size: 3rem;
+            margin-bottom: 12px;
+        }
+        .count-info {
+            text-align: center;
+            padding: 8px;
+            color: #888;
+            font-size: 0.8rem;
+            background: #111;
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <h1><i class="bi bi-building"></i> Объекты</h1>
+        <div class="header-role">{{ permissions.role_name }}</div>
+        <div class="stats-row">
+            <span class="stat-badge">Всего: {{ total_count }}</span>
+            <span class="stat-badge active">Активных: {{ active_count }}</span>
+            <span class="stat-badge moderation">Модерация: {{ moderation_count }}</span>
+            <span class="stat-badge olx">OLX: {{ olx_count }}</span>
+        </div>
+    </div>
+    
+    <div class="nav-tabs">
+        <a href="{{ url_for('webapp_admin', tg_id=tg_id) }}" class="nav-tab"><i class="bi bi-people"></i> Юзеры</a>
+        {% if permissions.can_view_admins %}
+        <a href="{{ url_for('webapp_admins', tg_id=tg_id) }}" class="nav-tab"><i class="bi bi-shield"></i> Админы</a>
+        {% endif %}
+        <a href="{{ url_for('webapp_stats', tg_id=tg_id) }}" class="nav-tab"><i class="bi bi-graph-up"></i> Стат.</a>
+        <a href="{{ url_for('webapp_properties', tg_id=tg_id) }}" class="nav-tab active"><i class="bi bi-building"></i> Объекты</a>
+        {% if permissions.can_edit_tariff %}
+        <a href="{{ url_for('webapp_tariff_settings', tg_id=tg_id) }}" class="nav-tab"><i class="bi bi-tag"></i> Тарифы</a>
+        {% endif %}
+        {% if permissions.can_parse %}
+        <a href="{{ url_for('webapp_parser', tg_id=tg_id) }}" class="nav-tab"><i class="bi bi-cloud-download"></i> Парсинг</a>
+        {% endif %}
+    </div>
+    
+    <div class="filter-section">
+        <form method="GET" action="{{ url_for('webapp_properties') }}">
+            <input type="hidden" name="tg_id" value="{{ tg_id }}">
+            <div class="search-box">
+                <input type="text" name="q" class="search-input" placeholder="Поиск по ID, названию..." value="{{ search_query }}">
+                <button type="submit" class="btn-search"><i class="bi bi-search"></i></button>
+            </div>
+            <div class="filters">
+                <select name="status" class="filter-select" onchange="this.form.submit()">
+                    <option value="all" {% if status_filter == 'all' %}selected{% endif %}>Статус</option>
+                    <option value="active" {% if status_filter == 'active' %}selected{% endif %}>Активные</option>
+                    <option value="moderation" {% if status_filter == 'moderation' %}selected{% endif %}>Модерация</option>
+                    <option value="archive" {% if status_filter == 'archive' %}selected{% endif %}>Архив</option>
+                </select>
+                <select name="type" class="filter-select" onchange="this.form.submit()">
+                    <option value="all" {% if type_filter == 'all' %}selected{% endif %}>Тип</option>
+                    <option value="sale" {% if type_filter == 'sale' %}selected{% endif %}>Продажа</option>
+                    <option value="rent" {% if type_filter == 'rent' %}selected{% endif %}>Аренда</option>
+                </select>
+                <select name="rooms" class="filter-select" onchange="this.form.submit()">
+                    <option value="all" {% if rooms_filter == 'all' %}selected{% endif %}>Комн.</option>
+                    <option value="1" {% if rooms_filter == '1' %}selected{% endif %}>1</option>
+                    <option value="2" {% if rooms_filter == '2' %}selected{% endif %}>2</option>
+                    <option value="3" {% if rooms_filter == '3' %}selected{% endif %}>3</option>
+                    <option value="4" {% if rooms_filter == '4' %}selected{% endif %}>4+</option>
+                </select>
+                <select name="source" class="filter-select" onchange="this.form.submit()">
+                    <option value="all" {% if source_filter == 'all' %}selected{% endif %}>Источник</option>
+                    <option value="olx" {% if source_filter == 'olx' %}selected{% endif %}>OLX</option>
+                    <option value="manual" {% if source_filter == 'manual' %}selected{% endif %}>Вручную</option>
+                </select>
+                {% if districts %}
+                <select name="district" class="filter-select" onchange="this.form.submit()">
+                    <option value="all">Район</option>
+                    {% for d in districts %}
+                    <option value="{{ d }}" {% if district_filter == d %}selected{% endif %}>{{ d[:15] }}</option>
+                    {% endfor %}
+                </select>
+                {% endif %}
+            </div>
+        </form>
+    </div>
+    
+    <div class="count-info">Показано: {{ properties|length }} объектов</div>
+    
+    <div class="properties-list">
+        {% for prop in properties %}
+        <div class="property-card">
+            <div class="property-header">
+                {% if prop.photos %}
+                {% set photo_list = prop.photos.split(',') %}
+                <img src="{{ photo_list[0] }}" alt="Фото" class="property-photo">
+                {% else %}
+                <div class="property-photo-placeholder"><i class="bi bi-image"></i></div>
+                {% endif %}
+                <div class="property-info">
+                    <div class="property-title">{{ prop.residential_complex or 'Объект' }}</div>
+                    <div class="property-location">
+                        {{ prop.district or '' }}{% if prop.rooms %} | {{ prop.rooms }} комн.{% endif %}{% if prop.area %} | {{ prop.area }}м²{% endif %}
+                    </div>
+                    <div class="property-price">${{ "{:,}".format(prop.price) }}</div>
+                    <div class="property-badges">
+                        {% if prop.property_type.value == 'sale' %}
+                        <span class="badge badge-sale">Продажа</span>
+                        {% else %}
+                        <span class="badge badge-rent">Аренда</span>
+                        {% endif %}
+                        {% if prop.status.value == 'active' %}
+                        <span class="badge badge-active">Активен</span>
+                        {% elif prop.status.value == 'moderation' %}
+                        <span class="badge badge-moderation">Модерация</span>
+                        {% else %}
+                        <span class="badge badge-archive">Архив</span>
+                        {% endif %}
+                        {% if prop.source == 'olx' %}
+                        <span class="badge badge-olx">OLX</span>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+            <div class="property-stats">
+                <span><i class="bi bi-eye"></i> {{ prop.views_count }}</span>
+                <span><i class="bi bi-heart"></i> {{ prop.likes_count }}</span>
+                <span><i class="bi bi-calendar"></i> {{ prop.created_at.strftime('%d.%m.%Y') }}</span>
+                <span>ID: {{ prop.unique_id or prop.id }}</span>
+            </div>
+            <div class="property-actions">
+                {% if prop.status.value == 'moderation' %}
+                <form method="POST" action="{{ url_for('webapp_approve_property', property_id=prop.id) }}" style="flex:1">
+                    <input type="hidden" name="tg_id" value="{{ tg_id }}">
+                    <button type="submit" class="btn-action btn-approve" style="width:100%"><i class="bi bi-check"></i> Одобрить</button>
+                </form>
+                <form method="POST" action="{{ url_for('webapp_reject_property', property_id=prop.id) }}" style="flex:1">
+                    <input type="hidden" name="tg_id" value="{{ tg_id }}">
+                    <button type="submit" class="btn-action btn-reject" style="width:100%"><i class="bi bi-x"></i> Отклонить</button>
+                </form>
+                {% endif %}
+                {% if prop.olx_url %}
+                <a href="{{ prop.olx_url }}" target="_blank" class="btn-action btn-olx"><i class="bi bi-box-arrow-up-right"></i> OLX</a>
+                {% endif %}
+            </div>
+        </div>
+        {% else %}
+        <div class="empty-state">
+            <i class="bi bi-inbox"></i>
+            <p>Объекты не найдены</p>
+        </div>
+        {% endfor %}
+    </div>
+    
+    <script>
+        if (window.Telegram && window.Telegram.WebApp) {
+            Telegram.WebApp.ready();
+            Telegram.WebApp.expand();
+        }
+    </script>
+</body>
+</html>

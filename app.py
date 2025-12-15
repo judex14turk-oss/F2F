@@ -1152,6 +1152,134 @@ def webapp_delete_promo(promo_id):
     return redirect(url_for('webapp_tariff_settings', tg_id=tg_id))
 
 
+@app.route('/webapp/admin/properties')
+def webapp_properties():
+    tg_id = request.args.get('tg_id')
+    
+    if not tg_id:
+        return "Telegram ID не указан", 400
+    
+    db = get_db()
+    admin_user = db.query(User).filter(User.telegram_id == int(tg_id)).first()
+    
+    if not admin_user or not admin_user.is_admin:
+        db.close()
+        return "Доступ запрещён", 403
+    
+    permissions = get_admin_permissions(admin_user.admin_role)
+    
+    status_filter = request.args.get('status', 'all')
+    type_filter = request.args.get('type', 'all')
+    district_filter = request.args.get('district', 'all')
+    rooms_filter = request.args.get('rooms', 'all')
+    source_filter = request.args.get('source', 'all')
+    search_query = request.args.get('q', '').strip()
+    
+    query = db.query(Property)
+    
+    if status_filter == 'active':
+        query = query.filter(Property.status == PropertyStatus.ACTIVE)
+    elif status_filter == 'moderation':
+        query = query.filter(Property.status == PropertyStatus.MODERATION)
+    elif status_filter == 'archive':
+        query = query.filter(Property.status == PropertyStatus.ARCHIVE)
+    
+    if type_filter == 'sale':
+        query = query.filter(Property.property_type == PropertyType.SALE)
+    elif type_filter == 'rent':
+        query = query.filter(Property.property_type == PropertyType.RENT)
+    
+    if district_filter != 'all':
+        query = query.filter(Property.district.ilike(f'%{district_filter}%'))
+    
+    if rooms_filter != 'all' and rooms_filter.isdigit():
+        query = query.filter(Property.rooms == int(rooms_filter))
+    
+    if source_filter == 'olx':
+        query = query.filter(Property.source == 'olx')
+    elif source_filter == 'manual':
+        query = query.filter(Property.source == 'manual')
+    
+    if search_query:
+        search_pattern = f"%{search_query}%"
+        query = query.filter(
+            (Property.unique_id.ilike(search_pattern)) |
+            (Property.residential_complex.ilike(search_pattern)) |
+            (Property.address.ilike(search_pattern)) |
+            (Property.olx_id.ilike(search_pattern))
+        )
+    
+    properties = query.order_by(Property.created_at.desc()).limit(100).all()
+    
+    all_districts = db.query(Property.district).distinct().filter(Property.district.isnot(None)).all()
+    districts = sorted([d[0] for d in all_districts if d[0]])
+    
+    total_count = db.query(Property).count()
+    active_count = db.query(Property).filter(Property.status == PropertyStatus.ACTIVE).count()
+    moderation_count = db.query(Property).filter(Property.status == PropertyStatus.MODERATION).count()
+    olx_count = db.query(Property).filter(Property.source == 'olx').count()
+    
+    db.close()
+    
+    return render_template('webapp_properties.html',
+        tg_id=tg_id,
+        permissions=permissions,
+        admin_user=admin_user,
+        properties=properties,
+        status_filter=status_filter,
+        type_filter=type_filter,
+        district_filter=district_filter,
+        rooms_filter=rooms_filter,
+        source_filter=source_filter,
+        search_query=search_query,
+        districts=districts,
+        total_count=total_count,
+        active_count=active_count,
+        moderation_count=moderation_count,
+        olx_count=olx_count
+    )
+
+
+@app.route('/webapp/admin/properties/<int:property_id>/approve', methods=['POST'])
+def webapp_approve_property(property_id):
+    tg_id = request.form.get('tg_id')
+    
+    db = get_db()
+    admin = db.query(User).filter(User.telegram_id == int(tg_id)).first() if tg_id else None
+    
+    if not admin or not admin.is_admin:
+        db.close()
+        return "Доступ запрещён", 403
+    
+    prop = db.query(Property).filter(Property.id == property_id).first()
+    if prop:
+        prop.status = PropertyStatus.ACTIVE
+        db.commit()
+    db.close()
+    
+    return redirect(url_for('webapp_properties', tg_id=tg_id))
+
+
+@app.route('/webapp/admin/properties/<int:property_id>/reject', methods=['POST'])
+def webapp_reject_property(property_id):
+    tg_id = request.form.get('tg_id')
+    
+    db = get_db()
+    admin = db.query(User).filter(User.telegram_id == int(tg_id)).first() if tg_id else None
+    
+    if not admin or not admin.is_admin:
+        db.close()
+        return "Доступ запрещён", 403
+    
+    prop = db.query(Property).filter(Property.id == property_id).first()
+    if prop:
+        prop.status = PropertyStatus.ARCHIVE
+        db.commit()
+    db.close()
+    
+    return redirect(url_for('webapp_properties', tg_id=tg_id))
+
+
 @app.route('/webapp/admin/parser')
 def webapp_parser():
     tg_id = request.args.get('tg_id')

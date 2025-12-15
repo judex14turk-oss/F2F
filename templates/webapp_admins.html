@@ -206,6 +206,9 @@
         <a href="{{ url_for('webapp_stats', tg_id=tg_id) }}" class="nav-tab">
             <i class="bi bi-graph-up"></i> Стат.
         </a>
+        <a href="{{ url_for('webapp_properties', tg_id=tg_id) }}" class="nav-tab">
+            <i class="bi bi-building"></i> Объекты
+        </a>
         {% if permissions.can_edit_tariff %}
         <a href="{{ url_for('webapp_tariff_settings', tg_id=tg_id) }}" class="nav-tab">
             <i class="bi bi-tag"></i> Тарифы

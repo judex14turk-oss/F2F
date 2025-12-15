@@ -410,6 +410,9 @@
         <a href="{{ url_for('webapp_tariff_settings', tg_id=tg_id) }}" class="nav-tab active">
             <i class="bi bi-tag"></i> Тарифы
         </a>
+        <a href="{{ url_for('webapp_properties', tg_id=tg_id) }}" class="nav-tab">
+            <i class="bi bi-building"></i> Объекты
+        </a>
         {% if permissions.can_parse %}
         <a href="{{ url_for('webapp_parser', tg_id=tg_id) }}" class="nav-tab">
             <i class="bi bi-cloud-download"></i> Парсинг
