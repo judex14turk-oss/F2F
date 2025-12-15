@@ -172,6 +172,25 @@
         }
         .btn-view { background: #3b82f6; color: white; }
         .btn-edit { background: #f59e0b; color: white; }
+        .btn-reactivate { background: #10b981; color: white; }
+        .timer-badge {
+            font-size: 0.65rem;
+            padding: 2px 6px;
+            border-radius: 4px;
+            display: inline-block;
+            margin-top: 4px;
+        }
+        .timer-active { background: rgba(16, 185, 129, 0.2); color: #10b981; }
+        .timer-archive { background: rgba(239, 68, 68, 0.2); color: #ef4444; }
+        .status-badge {
+            font-size: 0.65rem;
+            padding: 2px 6px;
+            border-radius: 4px;
+            display: inline-block;
+        }
+        .status-active { background: rgba(16, 185, 129, 0.2); color: #10b981; }
+        .status-moderation { background: rgba(245, 158, 11, 0.2); color: #f59e0b; }
+        .status-archive { background: rgba(107, 114, 128, 0.2); color: #6b7280; }
         .empty-state {
             text-align: center;
             padding: 40px 20px;
@@ -262,14 +281,45 @@
             {% else %}
             <div class="property-photo-placeholder"><i class="bi bi-image"></i></div>
             {% endif %}
-            <div class="property-id">ID: <strong>{{ prop.unique_id or prop.id }}</strong></div>
+            <div class="property-id">
+                ID: <strong>{{ prop.unique_id or prop.id }}</strong>
+                <br>
+                {% if prop.status.value == 'active' %}
+                <span class="status-badge status-active">Активно</span>
+                {% set days_active = ((now - prop.created_at).days if prop.created_at else 0) %}
+                {% set days_left = 30 - days_active %}
+                {% if days_left > 0 %}
+                <span class="timer-badge timer-active">⏰ {{ days_left }} дн.</span>
+                {% endif %}
+                {% elif prop.status.value == 'moderation' %}
+                <span class="status-badge status-moderation">Модерация</span>
+                {% elif prop.status.value == 'archive' %}
+                <span class="status-badge status-archive">Архив</span>
+                {% if prop.archived_at %}
+                {% set days_in_archive = ((now - prop.archived_at).days) %}
+                {% set days_left = 30 - days_in_archive %}
+                {% if days_left > 0 %}
+                <span class="timer-badge timer-archive">🗑 {{ days_left }} дн.</span>
+                {% endif %}
+                {% endif %}
+                {% endif %}
+            </div>
             <div class="property-actions">
                 <a href="{{ url_for('webapp_property_view', property_id=prop.id, tg_id=tg_id) }}" class="btn-action btn-view">
-                    <i class="bi bi-eye"></i> Просмотр
+                    <i class="bi bi-eye"></i>
                 </a>
+                {% if prop.status.value == 'archive' %}
+                <form method="POST" action="{{ url_for('webapp_reactivate_property', property_id=prop.id) }}" style="flex:1; display:flex;">
+                    <input type="hidden" name="tg_id" value="{{ tg_id }}">
+                    <button type="submit" class="btn-action btn-reactivate" style="width:100%;">
+                        <i class="bi bi-arrow-clockwise"></i> Актив.
+                    </button>
+                </form>
+                {% else %}
                 <a href="{{ url_for('webapp_property_edit', property_id=prop.id, tg_id=tg_id) }}" class="btn-action btn-edit">
-                    <i class="bi bi-pencil"></i> Редакт.
+                    <i class="bi bi-pencil"></i>
                 </a>
+                {% endif %}
             </div>
         </div>
         {% else %}
