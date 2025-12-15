@@ -448,13 +448,16 @@ def admin_properties():
     
     if search_query:
         search_pattern = f"%{search_query}%"
-        query = query.filter(
-            (Property.unique_id.ilike(search_pattern)) |
-            (Property.residential_complex.ilike(search_pattern)) |
-            (Property.address.ilike(search_pattern)) |
-            (Property.olx_id.ilike(search_pattern)) |
-            (Property.seller_name.ilike(search_pattern))
-        )
+        if search_query.isdigit():
+            query = query.filter(Property.id == int(search_query))
+        else:
+            query = query.filter(
+                (Property.unique_id.ilike(search_pattern)) |
+                (Property.residential_complex.ilike(search_pattern)) |
+                (Property.address.ilike(search_pattern)) |
+                (Property.olx_id.ilike(search_pattern)) |
+                (Property.seller_name.ilike(search_pattern))
+            )
     
     sort_columns = {
         'created_at': Property.created_at,
@@ -1241,12 +1244,15 @@ def webapp_properties():
     
     if search_query:
         search_pattern = f"%{search_query}%"
-        query = query.filter(
-            (Property.unique_id.ilike(search_pattern)) |
-            (Property.residential_complex.ilike(search_pattern)) |
-            (Property.address.ilike(search_pattern)) |
-            (Property.olx_id.ilike(search_pattern))
-        )
+        if search_query.isdigit():
+            query = query.filter(Property.id == int(search_query))
+        else:
+            query = query.filter(
+                (Property.unique_id.ilike(search_pattern)) |
+                (Property.residential_complex.ilike(search_pattern)) |
+                (Property.address.ilike(search_pattern)) |
+                (Property.olx_id.ilike(search_pattern))
+            )
     
     properties = query.order_by(Property.created_at.desc()).limit(100).all()
     

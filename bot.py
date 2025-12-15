@@ -1234,21 +1234,38 @@ async def show_property_card(message, property_id, state=None):
     
     type_emoji = "🏷" if prop.property_type == PropertyType.SALE else "🔑"
     type_name = "Продажа" if prop.property_type == PropertyType.SALE else "Аренда"
-    furniture = "Да" if prop.has_furniture else "Нет"
     
-    text = (
-        f"{type_emoji} {type_name} | ID: {prop.id}\n\n"
-        f"📞 <b><u>Контакт: {contact_phone}</u></b>\n\n"
-        f"📍 {prop.district or 'Район не указан'}\n"
-        f"🚪 {prop.rooms} комн. | 📐 {prop.area} м²\n"
-        f"🏢 Этаж {prop.floor}/{prop.total_floors}\n"
-        f"🏠 {prop.building_type or ''}\n"
-        f"🔨 {prop.renovation or ''}\n"
-        f"🛋 Мебель: {furniture}\n"
-        f"🚪 Комнаты: {prop.room_type or ''}\n"
-        f"🚿 Санузел: {prop.bathroom_type or ''}\n\n"
-        f"💰 ${prop.price:,}\n"
-    )
+    text = f"{type_emoji} {type_name} | ID: {prop.id}\n\n"
+    text += f"📞 <b><u>Контакт: {contact_phone}</u></b>\n\n"
+    
+    if prop.district:
+        text += f"📍 {prop.district}\n"
+    
+    info_parts = []
+    if prop.rooms:
+        info_parts.append(f"{prop.rooms} комн.")
+    if prop.area:
+        info_parts.append(f"{prop.area} м²")
+    if info_parts:
+        text += f"🏠 {' • '.join(info_parts)}\n"
+    
+    if prop.floor and prop.total_floors:
+        text += f"🏢 Этаж {prop.floor}/{prop.total_floors}\n"
+    elif prop.floor:
+        text += f"🏢 Этаж {prop.floor}\n"
+    
+    if prop.building_type:
+        text += f"🏗 {prop.building_type}\n"
+    if prop.renovation:
+        text += f"🔨 {prop.renovation}\n"
+    if prop.has_furniture:
+        text += f"🛋 С мебелью\n"
+    if prop.room_type:
+        text += f"🚪 {prop.room_type}\n"
+    if prop.bathroom_type:
+        text += f"🚿 {prop.bathroom_type}\n"
+    
+    text += f"\n💰 <b>${prop.price:,}</b>\n"
     
     if prop.description:
         text += f"\n📝 {prop.description}"
