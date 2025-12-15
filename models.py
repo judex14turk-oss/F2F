@@ -115,6 +115,7 @@ class Property(Base):
     likes_count = Column(Integer, default=0)
     created_at = Column(DateTime, default=get_tashkent_now)
     updated_at = Column(DateTime, default=get_tashkent_now, onupdate=get_tashkent_now)
+    archived_at = Column(DateTime, nullable=True)
     
     housing_type = Column(String(50))
     building_type = Column(String(50))
