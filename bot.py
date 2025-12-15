@@ -2024,11 +2024,14 @@ async def likes_received(message: types.Message):
             deal_type_emoji = "🔑" if prop.property_type == PropertyType.RENT else "🏠"
             deal_type_label = "Аренда" if prop.property_type == PropertyType.RENT else "Продажа"
             
+            bio_line = f"📝 {buyer.buyer_bio}\n" if buyer.buyer_bio else ""
+            
             text += (
                 f"{deal_type_emoji} Объект: {prop_id} ({deal_type_label})\n"
                 f"👤 {name} | {username}\n"
                 f"📞 {phone}\n"
                 f"💰 Бюджет: {budget}\n"
+                f"{bio_line}"
                 f"⏰ {time_str}\n"
                 f"{'─' * 20}\n\n"
             )
@@ -2653,6 +2656,7 @@ async def show_buyer_profile(message, user):
     
     payment_names = {"cash": "Наличные", "mortgage": "Ипотека", "installment": "Рассрочка"}
     budget = f"${user.search_budget_max:,}" if user.search_budget_max else "Не указан"
+    bio_line = f"📝 Описание: {user.buyer_bio}\n" if user.buyer_bio else ""
     
     text = (
         f"👤 Ваш профиль\n\n"
@@ -2661,6 +2665,7 @@ async def show_buyer_profile(message, user):
         f"📍 Район: {user.search_district or 'Любой'}\n"
         f"💰 Бюджет: до {budget}\n"
         f"💳 Оплата: {payment_names.get(user.search_payment_type, 'Не указано')}\n"
+        f"{bio_line}"
     )
     
     buttons = [[InlineKeyboardButton(text="💼 Перейти в режим продавца", callback_data="switch_to_seller")]]
@@ -2941,6 +2946,7 @@ class SearchSettingsStates(StatesGroup):
     rooms = State()
     district = State()
     budget = State()
+    bio = State()
 
 
 @dp.message(F.text == "⚙️ Настройки поиска")
@@ -3129,6 +3135,48 @@ async def settings_budget_entered(message: types.Message, state: FSMContext):
         await message.answer("❌ Введите корректный бюджет числом")
         return
     
+    await state.update_data(search_budget=int(budget))
+    
+    db = SessionLocal()
+    user = db.query(User).filter(User.telegram_id == message.from_user.id).first()
+    current_bio = user.buyer_bio or ""
+    db.close()
+    
+    keyboard = ReplyKeyboardMarkup(
+        keyboard=[
+            [KeyboardButton(text="Пропустить")],
+            [KeyboardButton(text="⬅️ Назад")]
+        ],
+        resize_keyboard=True
+    )
+    
+    bio_hint = f"\n\nТекущее описание: {current_bio}" if current_bio else ""
+    await message.answer(
+        f"📝 Добавьте описание к вашей анкете (до 320 символов):\n\n"
+        f"Например: \"Ищу для молодой семьи с ребёнком, желательно рядом с метро\"{bio_hint}",
+        reply_markup=keyboard
+    )
+    await state.set_state(SearchSettingsStates.bio)
+
+
+@dp.message(F.text == "⬅️ Назад", SearchSettingsStates.bio)
+async def settings_back_to_budget(message: types.Message, state: FSMContext):
+    keyboard = ReplyKeyboardMarkup(
+        keyboard=[[KeyboardButton(text="⬅️ Назад")]],
+        resize_keyboard=True
+    )
+    await message.answer("💰 Введите максимальный бюджет в долларах:\n\n(например: 50000)", reply_markup=keyboard)
+    await state.set_state(SearchSettingsStates.budget)
+
+
+@dp.message(SearchSettingsStates.bio)
+async def settings_bio_entered(message: types.Message, state: FSMContext):
+    bio = message.text.strip() if message.text != "Пропустить" else ""
+    
+    if len(bio) > 320:
+        await message.answer(f"❌ Описание слишком длинное ({len(bio)} символов). Максимум 320 символов.")
+        return
+    
     db = SessionLocal()
     user = db.query(User).filter(User.telegram_id == message.from_user.id).first()
     
@@ -3137,12 +3185,14 @@ async def settings_budget_entered(message: types.Message, state: FSMContext):
     prop_type = data.get("search_prop_type", "apartment")
     rooms = data.get("search_rooms", "any")
     district = data.get("search_district", "Любой")
+    budget = data.get("search_budget", 0)
     
     user.search_budget_max = int(budget)
     user.search_rooms = rooms
     user.search_district = district
     user.search_payment_type = f"{deal_type}_{prop_type}"
     user.search_deal_type = "sale" if deal_type == "buy" else "rent"
+    user.buyer_bio = bio if bio else None
     db.commit()
     db.close()
     
@@ -3153,12 +3203,13 @@ async def settings_budget_entered(message: types.Message, state: FSMContext):
     
     keyboard = get_buyer_menu()
     
+    bio_line = f"\n📝 Описание: {bio}" if bio else ""
     await message.answer(
         f"✅ Настройки обновлены!\n\n"
         f"🏷 Тип: {deal_names.get(deal_type, deal_type)} — {prop_names.get(prop_type, prop_type)}\n"
         f"🚪 Комнаты: {rooms if rooms != 'any' else 'Любые'}\n"
         f"📍 Район: {district}\n"
-        f"💰 Бюджет: до ${int(budget):,}",
+        f"💰 Бюджет: до ${int(budget):,}{bio_line}",
         reply_markup=keyboard
     )
 

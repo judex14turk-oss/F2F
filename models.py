@@ -75,6 +75,7 @@ class User(Base):
     search_payment_type = Column(String(50))
     search_housing_type = Column(String(50))
     search_deal_type = Column(String(20))
+    buyer_bio = Column(String(320))
     
     seller_type = Column(Enum(SellerType))
     company_name = Column(String(200))
