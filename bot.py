@@ -1401,10 +1401,28 @@ async def my_properties(message: types.Message):
         PropertyStatus.ARCHIVE: "В архиве"
     }
     
+    now = datetime.utcnow()
+    
     for prop in properties:
         emoji = status_emoji.get(prop.status, "⚪")
         status_name = status_names.get(prop.status, "")
         type_str = "Продажа" if prop.property_type == PropertyType.SALE else "Аренда"
+        
+        timer_info = ""
+        if prop.status == PropertyStatus.ACTIVE and prop.created_at:
+            days_active = (now - prop.created_at).days
+            days_left = 30 - days_active
+            if days_left > 0:
+                timer_info = f"⏰ До архива: {days_left} дн.\n"
+            else:
+                timer_info = f"⏰ Скоро в архив\n"
+        elif prop.status == PropertyStatus.ARCHIVE and prop.archived_at:
+            days_in_archive = (now - prop.archived_at).days
+            days_left = 30 - days_in_archive
+            if days_left > 0:
+                timer_info = f"⏰ До удаления: {days_left} дн.\n"
+            else:
+                timer_info = f"⏰ Скоро будет удалено\n"
         
         floor_info = ""
         if prop.floor and prop.total_floors:
@@ -1439,6 +1457,7 @@ async def my_properties(message: types.Message):
         text = (
             f"{emoji} <b>{prop.district or 'Объект'}</b> — {status_name}\n"
             f"🆔 <code>{prop_unique_id}</code>\n"
+            f"{timer_info}"
             f"━━━━━━━━━━━━━━━━━━━━\n"
             f"📋 {type_str} | {prop.rooms} комн. | <b>${prop.price:,}</b>\n"
             f"{area_info}"
@@ -3009,7 +3028,8 @@ async def settings_budget_entered(message: types.Message, state: FSMContext):
     )
 
 
-PROPERTY_LIFETIME_DAYS = 30
+PROPERTY_ACTIVE_DAYS = 30
+PROPERTY_ARCHIVE_DAYS = 30
 LIKE_LIFETIME_DAYS = 1
 
 
@@ -3043,21 +3063,62 @@ async def cleanup_old_likes():
             await asyncio.sleep(60)
 
 
-async def cleanup_old_properties():
-    """Фоновая задача для удаления объявлений старше 30 дней"""
+async def property_lifecycle_task():
+    """Фоновая задача для управления жизненным циклом объявлений:
+    - Через 30 дней активности -> архив
+    - Через 30 дней в архиве -> удаление
+    """
     while True:
         try:
             await asyncio.sleep(3600)
             
             db = SessionLocal()
-            cutoff_date = datetime.utcnow() - timedelta(days=PROPERTY_LIFETIME_DAYS)
+            now = datetime.utcnow()
             
-            old_properties = db.query(Property).filter(
-                Property.created_at < cutoff_date
+            archive_cutoff = now - timedelta(days=PROPERTY_ACTIVE_DAYS)
+            active_properties = db.query(Property).filter(
+                Property.status == PropertyStatus.ACTIVE,
+                Property.created_at < archive_cutoff
+            ).all()
+            
+            archived_count = 0
+            for prop in active_properties:
+                try:
+                    prop.status = PropertyStatus.ARCHIVE
+                    prop.archived_at = now
+                    archived_count += 1
+                    
+                    owner = db.query(User).filter(User.id == prop.owner_id).first()
+                    if owner and owner.telegram_id:
+                        try:
+                            await bot.send_message(
+                                owner.telegram_id,
+                                f"📦 Объявление перемещено в архив\n\n"
+                                f"📍 {prop.district or 'Объект'}\n"
+                                f"💰 ${prop.price:,}\n\n"
+                                f"Причина: прошло 30 дней с момента публикации.\n"
+                                f"У вас есть 30 дней, чтобы активировать его снова, иначе оно будет удалено.\n\n"
+                                f"Перейдите в '🏢 Мои объекты', чтобы активировать."
+                            )
+                        except:
+                            pass
+                except Exception as e:
+                    print(f"Error archiving property {prop.id}: {e}")
+                    continue
+            
+            if archived_count > 0:
+                db.commit()
+                print(f"Lifecycle: archived {archived_count} properties")
+            
+            delete_cutoff = now - timedelta(days=PROPERTY_ARCHIVE_DAYS)
+            old_archived = db.query(Property).filter(
+                Property.status == PropertyStatus.ARCHIVE,
+                Property.archived_at != None,
+                Property.archived_at < delete_cutoff
             ).all()
             
             deleted_count = 0
-            for prop in old_properties:
+            for prop in old_archived:
                 try:
                     owner = db.query(User).filter(User.id == prop.owner_id).first()
                     
@@ -3065,10 +3126,10 @@ async def cleanup_old_properties():
                         try:
                             await bot.send_message(
                                 owner.telegram_id,
-                                f"⏰ Объявление удалено автоматически\n\n"
+                                f"🗑 Объявление удалено\n\n"
                                 f"📍 {prop.district or 'Объект'}\n"
                                 f"💰 ${prop.price:,}\n\n"
-                                f"Причина: прошло 30 дней с момента публикации.\n"
+                                f"Причина: объявление находилось в архиве более 30 дней.\n"
                                 f"Вы можете добавить новое объявление."
                             )
                         except:
@@ -3083,12 +3144,12 @@ async def cleanup_old_properties():
             
             if deleted_count > 0:
                 db.commit()
-                print(f"Cleanup: deleted {deleted_count} old properties")
+                print(f"Lifecycle: deleted {deleted_count} old archived properties")
             
             db.close()
             
         except Exception as e:
-            print(f"Cleanup task error: {e}")
+            print(f"Property lifecycle task error: {e}")
             await asyncio.sleep(60)
 
 
@@ -3096,8 +3157,8 @@ async def main():
     print("Initializing database...")
     init_db()
     
-    print("Starting cleanup background tasks...")
-    asyncio.create_task(cleanup_old_properties())
+    print("Starting background tasks...")
+    asyncio.create_task(property_lifecycle_task())
     asyncio.create_task(cleanup_old_likes())
     
     print("Starting bot...")
