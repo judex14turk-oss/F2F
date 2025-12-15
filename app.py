@@ -1,8 +1,11 @@
 import os
+import requests
 from datetime import datetime, timedelta
 from functools import wraps
 
-from flask import Flask, render_template, request, jsonify, redirect, url_for, session
+from flask import Flask, render_template, request, jsonify, redirect, url_for, session, Response
+
+TELEGRAM_BOT_TOKEN = os.environ.get('TELEGRAM_BOT_TOKEN', '')
 from models import SessionLocal, User, Property, Like, Match, Offer, District, ResidentialComplex, PromoCode, TariffSettings
 from models import UserRole, SellerType, TariffType, PropertyType, PropertyStatus, AdminRole, init_db
 
@@ -68,6 +71,34 @@ def login():
 def logout():
     session.clear()
     return redirect(url_for('index'))
+
+
+@app.route('/telegram_photo/<path:file_id>')
+def telegram_photo(file_id):
+    """Proxy Telegram photos to display in web interface"""
+    if not TELEGRAM_BOT_TOKEN:
+        return "Bot token not configured", 500
+    
+    try:
+        get_file_url = f"https://api.telegram.org/bot{TELEGRAM_BOT_TOKEN}/getFile?file_id={file_id}"
+        response = requests.get(get_file_url, timeout=10)
+        data = response.json()
+        
+        if not data.get('ok'):
+            return "File not found", 404
+        
+        file_path = data['result']['file_path']
+        photo_url = f"https://api.telegram.org/file/bot{TELEGRAM_BOT_TOKEN}/{file_path}"
+        
+        photo_response = requests.get(photo_url, timeout=30)
+        if photo_response.status_code == 200:
+            return Response(
+                photo_response.content,
+                mimetype=photo_response.headers.get('Content-Type', 'image/jpeg')
+            )
+        return "Failed to fetch photo", 500
+    except Exception as e:
+        return f"Error: {str(e)}", 500
 
 
 @app.route('/webapp/auth')
@@ -507,7 +538,8 @@ def admin_property_detail(property_id):
     owner = db.query(User).filter(User.id == prop.owner_id).first()
     likes = db.query(Like).filter(Like.property_id == property_id).all()
     
-    photos = prop.photos.split(',') if prop.photos else []
+    photo_ids = prop.photos.split(',') if prop.photos else []
+    photos = [url_for('telegram_photo', file_id=pid) for pid in photo_ids if pid]
     
     db.close()
     return render_template('admin/property_detail.html', prop=prop, owner=owner, likes=likes, photos=photos)
@@ -1262,7 +1294,8 @@ def webapp_property_view(property_id):
         return "Объект не найден", 404
     
     owner = db.query(User).filter(User.id == prop.owner_id).first()
-    photos = prop.photos.split(',') if prop.photos else []
+    photo_ids = prop.photos.split(',') if prop.photos else []
+    photos = [url_for('telegram_photo', file_id=pid) for pid in photo_ids if pid]
     
     db.close()
     
@@ -1296,7 +1329,8 @@ def webapp_property_edit(property_id):
         db.close()
         return "Объект не найден", 404
     
-    photos = prop.photos.split(',') if prop.photos else []
+    photo_ids = prop.photos.split(',') if prop.photos else []
+    photos = [url_for('telegram_photo', file_id=pid) for pid in photo_ids if pid]
     
     db.close()
     
