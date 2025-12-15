@@ -2374,17 +2374,12 @@ async def find_buyer_prop_type(message: types.Message, state: FSMContext):
     
     keyboard = ReplyKeyboardMarkup(
         keyboard=[
-            [KeyboardButton(text="До $30,000")],
-            [KeyboardButton(text="$30,000 - $50,000")],
-            [KeyboardButton(text="$50,000 - $100,000")],
-            [KeyboardButton(text="$100,000 - $200,000")],
-            [KeyboardButton(text="Свыше $200,000")],
             [KeyboardButton(text="Любой бюджет")],
             [KeyboardButton(text="⬅️ Назад")]
         ],
         resize_keyboard=True
     )
-    await message.answer("💰 Под какой бюджет ищем покупателя?", reply_markup=keyboard)
+    await message.answer("💰 Введите максимальный бюджет клиента в долларах:\n\n(например: 50000)", reply_markup=keyboard)
     await state.set_state(FindBuyerStates.budget)
 
 
@@ -2405,22 +2400,17 @@ async def find_buyer_back_to_proptype(message: types.Message, state: FSMContext)
 
 @dp.message(FindBuyerStates.budget)
 async def find_buyer_show_results(message: types.Message, state: FSMContext):
-    budget_ranges = {
-        "До $30,000": (0, 30000),
-        "$30,000 - $50,000": (30000, 50000),
-        "$50,000 - $100,000": (50000, 100000),
-        "$100,000 - $200,000": (100000, 200000),
-        "Свыше $200,000": (200000, 999999999),
-        "Любой бюджет": (0, 999999999)
-    }
-    budget_range = budget_ranges.get(message.text)
-    if not budget_range:
-        return
+    if message.text == "Любой бюджет":
+        max_budget = 999999999
+    else:
+        max_budget = validate_number(message.text)
+        if max_budget is None or max_budget <= 0:
+            await message.answer("❌ Введите корректную сумму числом или нажмите 'Любой бюджет'")
+            return
     
     data = await state.get_data()
     prop_type = data.get("find_prop_type", "apartment")
     deal_type = data.get("find_deal_type", "sale")
-    min_budget, max_budget = budget_range
     
     await state.clear()
     
@@ -2436,8 +2426,6 @@ async def find_buyer_show_results(message: types.Message, state: FSMContext):
     else:
         query = query.filter(User.search_deal_type == "rent")
     
-    if min_budget > 0:
-        query = query.filter(User.search_budget_max >= min_budget)
     if max_budget < 999999999:
         query = query.filter(User.search_budget_max <= max_budget)
     
