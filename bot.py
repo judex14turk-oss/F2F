@@ -1233,42 +1233,47 @@ async def show_property_card(message, property_id, state=None):
         contact_phone = owner.phone if owner and owner.phone else "Не указан"
     
     type_emoji = "🏷" if prop.property_type == PropertyType.SALE else "🔑"
-    type_name = "Продажа" if prop.property_type == PropertyType.SALE else "Аренда"
+    type_name = "ПРОДАЖА" if prop.property_type == PropertyType.SALE else "АРЕНДА"
     
-    text = f"{type_emoji} {type_name} | ID: {prop.id}\n\n"
-    text += f"📞 <b><u>Контакт: {contact_phone}</u></b>\n\n"
+    text = f"{type_emoji} <b>{type_name}</b>  •  ID: {prop.id}\n"
+    text += "━━━━━━━━━━━━━━━━━━━━\n\n"
     
+    text += f"💰 <b>${prop.price:,}</b>\n\n"
+    
+    details = []
     if prop.district:
-        text += f"📍 {prop.district}\n"
-    
-    info_parts = []
+        details.append(f"📍 {prop.district}")
     if prop.rooms:
-        info_parts.append(f"{prop.rooms} комн.")
+        details.append(f"🚪 {prop.rooms} комн.")
     if prop.area:
-        info_parts.append(f"{prop.area} м²")
-    if info_parts:
-        text += f"🏠 {' • '.join(info_parts)}\n"
-    
+        details.append(f"📐 {prop.area} м²")
     if prop.floor and prop.total_floors:
-        text += f"🏢 Этаж {prop.floor}/{prop.total_floors}\n"
+        details.append(f"🏢 {prop.floor}/{prop.total_floors} этаж")
     elif prop.floor:
-        text += f"🏢 Этаж {prop.floor}\n"
+        details.append(f"🏢 {prop.floor} этаж")
     
+    if details:
+        text += "\n".join(details) + "\n"
+    
+    extras = []
     if prop.building_type:
-        text += f"🏗 {prop.building_type}\n"
+        extras.append(prop.building_type)
     if prop.renovation:
-        text += f"🔨 {prop.renovation}\n"
+        extras.append(prop.renovation)
     if prop.has_furniture:
-        text += f"🛋 С мебелью\n"
-    if prop.room_type:
-        text += f"🚪 {prop.room_type}\n"
+        extras.append("с мебелью")
     if prop.bathroom_type:
-        text += f"🚿 {prop.bathroom_type}\n"
+        extras.append(prop.bathroom_type)
     
-    text += f"\n💰 <b>${prop.price:,}</b>\n"
+    if extras:
+        text += f"\n🏠 {' • '.join(extras)}\n"
+    
+    text += "\n━━━━━━━━━━━━━━━━━━━━\n"
+    text += f"📞 <b><u>Контакт: {contact_phone}</u></b>\n"
     
     if prop.description:
-        text += f"\n📝 {prop.description}"
+        desc = prop.description[:300] + "..." if len(prop.description) > 300 else prop.description
+        text += f"\n💬 <i>{desc}</i>"
     
     search_keyboard = ReplyKeyboardMarkup(
         keyboard=[
