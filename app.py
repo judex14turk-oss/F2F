@@ -1556,6 +1556,9 @@ def webapp_parser_single():
         photos_list = listing.get('photos', [])
         photos_str = ','.join(photos_list[:10]) if photos_list else ''
         
+        furnished_val = listing.get('furnished')
+        has_furniture = furnished_val == 'Да' if furnished_val else False
+        
         new_property = Property(
             owner_id=admin_user_id,
             property_type=PropertyType.SALE,
@@ -1575,6 +1578,7 @@ def webapp_parser_single():
             building_type=listing.get('building_type'),
             renovation=listing.get('renovation'),
             layout=listing.get('layout'),
+            has_furniture=has_furniture,
             source='olx',
             olx_id=olx_id,
             olx_url=url
@@ -1698,6 +1702,9 @@ def webapp_parser_run():
             photos_list = listing.get('photos', [])
             photos_str = ','.join(photos_list[:10]) if photos_list else ''
             
+            furnished_val = listing.get('furnished')
+            has_furniture = furnished_val == 'Да' if furnished_val else False
+            
             new_property = Property(
                 owner_id=admin_user_id,
                 property_type=prop_type_enum,
@@ -1715,6 +1722,7 @@ def webapp_parser_run():
                 building_type=listing.get('building_type'),
                 renovation=listing.get('renovation'),
                 layout=listing.get('layout'),
+                has_furniture=has_furniture,
                 phone=listing.get('phone'),
                 olx_url=listing.get('url'),
                 olx_id=olx_id,
@@ -1882,6 +1890,9 @@ def webapp_parser_run_stream():
                         photos_list = data.get('photos', [])
                         photos_str = ','.join(photos_list[:10]) if photos_list else ''
                         
+                        furnished_val = data.get('furnished')
+                        has_furniture = furnished_val == 'Да' if furnished_val else False
+                        
                         new_property = Property(
                             owner_id=admin_user_id,
                             property_type=prop_type_enum,
@@ -1899,6 +1910,7 @@ def webapp_parser_run_stream():
                             building_type=data.get('building_type'),
                             renovation=data.get('renovation'),
                             layout=data.get('layout'),
+                            has_furniture=has_furniture,
                             phone=phone,
                             olx_url=data.get('url'),
                             olx_id=olx_id,
