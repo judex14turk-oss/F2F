@@ -67,6 +67,7 @@ class User(Base):
     search_budget_min = Column(Integer)
     search_budget_max = Column(Integer)
     search_payment_type = Column(String(50))
+    search_housing_type = Column(String(50))
     
     seller_type = Column(Enum(SellerType))
     company_name = Column(String(200))
@@ -109,6 +110,7 @@ class Property(Base):
     created_at = Column(DateTime, default=datetime.utcnow)
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
     
+    housing_type = Column(String(50))
     building_type = Column(String(50))
     renovation = Column(String(50))
     layout = Column(String(50))

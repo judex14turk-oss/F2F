@@ -236,6 +236,12 @@
         
         <div class="info-card">
             <div class="info-title"><i class="bi bi-house"></i> Характеристики</div>
+            {% if prop.property_type.value == 'sale' and prop.housing_type %}
+            <div class="info-row">
+                <span class="info-label">Тип жилья</span>
+                <span class="info-value">{{ prop.housing_type }}</span>
+            </div>
+            {% endif %}
             <div class="info-row">
                 <span class="info-label">Комнат</span>
                 <span class="info-value">{{ prop.rooms or '-' }}</span>

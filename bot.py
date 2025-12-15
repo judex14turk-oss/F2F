@@ -25,6 +25,7 @@ dp = Dispatcher(storage=storage)
 class RegistrationStates(StatesGroup):
     choosing_role = State()
     buyer_rooms = State()
+    buyer_housing_type = State()
     buyer_district = State()
     buyer_budget = State()
     buyer_payment = State()
@@ -222,6 +223,47 @@ async def process_rooms(message: types.Message, state: FSMContext):
     rooms = rooms_map.get(message.text.lower(), message.text)
     await state.update_data(rooms=rooms)
     
+    keyboard = ReplyKeyboardMarkup(
+        keyboard=[
+            [KeyboardButton(text="🏗 Новостройка")],
+            [KeyboardButton(text="🏠 Вторичный рынок")],
+            [KeyboardButton(text="Любой тип")],
+            [KeyboardButton(text="⬅️ Назад")]
+        ],
+        resize_keyboard=True
+    )
+    
+    await message.answer(
+        "🏠 Какой тип жилья вас интересует?",
+        reply_markup=keyboard
+    )
+    await state.set_state(RegistrationStates.buyer_housing_type)
+
+
+@dp.message(F.text == "⬅️ Назад", RegistrationStates.buyer_housing_type)
+async def back_to_rooms_from_housing(message: types.Message, state: FSMContext):
+    keyboard = ReplyKeyboardMarkup(
+        keyboard=[
+            [KeyboardButton(text="1"), KeyboardButton(text="2"), KeyboardButton(text="3")],
+            [KeyboardButton(text="4+"), KeyboardButton(text="Студия")],
+            [KeyboardButton(text="⬅️ Назад")]
+        ],
+        resize_keyboard=True
+    )
+    await message.answer("🚪 Сколько комнат вам нужно?", reply_markup=keyboard)
+    await state.set_state(RegistrationStates.buyer_rooms)
+
+
+@dp.message(RegistrationStates.buyer_housing_type)
+async def process_housing_type(message: types.Message, state: FSMContext):
+    housing_map = {
+        "🏗 новостройка": "Новостройка",
+        "🏠 вторичный рынок": "Вторичный рынок",
+        "любой тип": "Любой"
+    }
+    housing_type = housing_map.get(message.text.lower(), message.text)
+    await state.update_data(housing_type=housing_type)
+    
     db = SessionLocal()
     districts = db.query(District).all()
     db.close()
@@ -246,17 +288,18 @@ async def process_rooms(message: types.Message, state: FSMContext):
 
 
 @dp.message(F.text == "⬅️ Назад", RegistrationStates.buyer_district)
-async def back_to_rooms(message: types.Message, state: FSMContext):
+async def back_to_housing_type(message: types.Message, state: FSMContext):
     keyboard = ReplyKeyboardMarkup(
         keyboard=[
-            [KeyboardButton(text="1"), KeyboardButton(text="2"), KeyboardButton(text="3")],
-            [KeyboardButton(text="4+"), KeyboardButton(text="Студия")],
+            [KeyboardButton(text="🏗 Новостройка")],
+            [KeyboardButton(text="🏠 Вторичный рынок")],
+            [KeyboardButton(text="Любой тип")],
             [KeyboardButton(text="⬅️ Назад")]
         ],
         resize_keyboard=True
     )
-    await message.answer("🚪 Сколько комнат вам нужно?", reply_markup=keyboard)
-    await state.set_state(RegistrationStates.buyer_rooms)
+    await message.answer("🏠 Какой тип жилья вас интересует?", reply_markup=keyboard)
+    await state.set_state(RegistrationStates.buyer_housing_type)
 
 
 @dp.message(RegistrationStates.buyer_district)
@@ -388,6 +431,7 @@ async def process_buyer_phone_contact(message: types.Message, state: FSMContext)
     if user:
         user.phone = phone
         user.search_rooms = data.get("rooms", "")
+        user.search_housing_type = data.get("housing_type", "")
         user.search_district = data.get("district", "")
         user.search_budget_max = data.get("budget", 0)
         user.search_payment_type = data.get("payment", "cash")
@@ -412,6 +456,7 @@ async def process_buyer_phone_text(message: types.Message, state: FSMContext):
     if user:
         user.phone = phone
         user.search_rooms = data.get("rooms", "")
+        user.search_housing_type = data.get("housing_type", "")
         user.search_district = data.get("district", "")
         user.search_budget_max = data.get("budget", 0)
         user.search_payment_type = data.get("payment", "cash")
@@ -1113,6 +1158,9 @@ async def view_properties(message: types.Message, state: FSMContext):
         rooms_list = [int(r.strip()) for r in user.search_rooms.split(",") if r.strip().isdigit()]
         if rooms_list:
             query = query.filter(Property.rooms.in_(rooms_list))
+    
+    if user.search_housing_type and user.search_housing_type not in ["Любой", ""]:
+        query = query.filter(Property.housing_type.ilike(f"%{user.search_housing_type}%"))
     
     if user.search_district:
         districts = [d.strip() for d in user.search_district.split(",") if d.strip()]
