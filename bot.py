@@ -1227,12 +1227,16 @@ async def show_property_card(message, property_id, state=None):
     prop.views_count += 1
     db.commit()
     
+    owner = db.query(User).filter(User.id == prop.owner_id).first()
+    owner_phone = owner.phone if owner and owner.phone else "Не указан"
+    
     type_emoji = "🏷" if prop.property_type == PropertyType.SALE else "🔑"
     type_name = "Продажа" if prop.property_type == PropertyType.SALE else "Аренда"
     furniture = "Да" if prop.has_furniture else "Нет"
     
     text = (
         f"{type_emoji} {type_name} | ID: {prop.id}\n\n"
+        f"📞 <b><u>Контакт: {owner_phone}</u></b>\n\n"
         f"📍 {prop.district or 'Район не указан'}\n"
         f"🚪 {prop.rooms} комн. | 📐 {prop.area} м²\n"
         f"🏢 Этаж {prop.floor}/{prop.total_floors}\n"
@@ -1269,14 +1273,14 @@ async def show_property_card(message, property_id, state=None):
             media_group = []
             for i, photo_id in enumerate(photos[:10]):
                 if i == 0:
-                    media_group.append(InputMediaPhoto(media=photo_id, caption=text))
+                    media_group.append(InputMediaPhoto(media=photo_id, caption=text, parse_mode="HTML"))
                 else:
                     media_group.append(InputMediaPhoto(media=photo_id))
             await message.answer_media_group(media_group)
         else:
-            await message.answer_photo(photo=photos[0], caption=text, reply_markup=search_keyboard)
+            await message.answer_photo(photo=photos[0], caption=text, reply_markup=search_keyboard, parse_mode="HTML")
     else:
-        await message.answer(text, reply_markup=search_keyboard)
+        await message.answer(text, reply_markup=search_keyboard, parse_mode="HTML")
 
 
 @dp.message(F.text == "❤️ Нравится", SearchStates.viewing_properties)
