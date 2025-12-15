@@ -1737,6 +1737,204 @@ def webapp_parser_run():
         return jsonify({'error': str(e)}), 500
 
 
+@app.route('/webapp/admin/parser/run-stream')
+def webapp_parser_run_stream():
+    from olx_parser import OLXParser
+    import json
+    
+    tg_id = request.args.get('tg_id')
+    deal_type = request.args.get('deal_type', 'sale')
+    property_type_str = request.args.get('property_type', 'apartment')
+    district = request.args.get('district', 'all')
+    rooms = request.args.get('rooms', '')
+    housing_type = request.args.get('housing_type', 'all')
+    max_listings = int(request.args.get('max_listings', 50))
+    max_days = int(request.args.get('max_days', 7))
+    get_phone = request.args.get('get_phone', 'false') == 'true'
+    
+    if not tg_id:
+        def error_gen():
+            yield f"data: {json.dumps({'error': 'Telegram ID не указан'})}\n\n"
+        return Response(error_gen(), mimetype='text/event-stream')
+    
+    db = get_db()
+    admin_user = db.query(User).filter(User.telegram_id == int(tg_id)).first()
+    
+    if not admin_user or not admin_user.is_admin:
+        db.close()
+        def error_gen():
+            yield f"data: {json.dumps({'error': 'Доступ запрещён'})}\n\n"
+        return Response(error_gen(), mimetype='text/event-stream')
+    
+    permissions = get_admin_permissions(admin_user.admin_role)
+    
+    if not permissions['can_parse']:
+        db.close()
+        def error_gen():
+            yield f"data: {json.dumps({'error': 'У вас нет прав для парсинга'})}\n\n"
+        return Response(error_gen(), mimetype='text/event-stream')
+    
+    admin_user_id = admin_user.id
+    db.close()
+    
+    def generate():
+        parser = OLXParser()
+        results = []
+        skipped_old = 0
+        added_count = 0
+        skipped_count = 0
+        skipped_no_phone = 0
+        
+        try:
+            fetch_multiplier = 2 if max_days else 1.5
+            if district and district != 'all':
+                fetch_multiplier = 3
+            fetch_limit = int(max_listings * fetch_multiplier)
+            fetch_pages = max(25, (fetch_limit // 40) + 1)
+            
+            listing_urls = parser.get_listings_from_category(
+                deal_type=deal_type,
+                property_type=property_type_str,
+                district=district,
+                rooms=rooms if rooms else None,
+                housing_type=housing_type,
+                max_pages=fetch_pages,
+                max_listings=fetch_limit
+            )
+            
+            total = len(listing_urls)
+            district_name = parser.TASHKENT_DISTRICTS.get(district, '') if district else ''
+            
+            yield f"data: {json.dumps({'event': 'start', 'total': total, 'current': 0, 'added': 0})}\n\n"
+            
+            driver = None
+            if get_phone:
+                driver = parser.get_driver()
+            
+            prop_type_enum = PropertyType.SALE if deal_type == 'sale' else PropertyType.RENT
+            
+            try:
+                for i, url in enumerate(listing_urls):
+                    if len(results) >= max_listings:
+                        break
+                    
+                    try:
+                        if get_phone and driver:
+                            data = parser.parse_listing_with_driver(driver, url, get_phone=True)
+                        else:
+                            data = parser.parse_listing_with_requests(url)
+                        
+                        if max_days and not parser.is_listing_fresh(data.get('published_date'), max_days):
+                            skipped_old += 1
+                            yield f"data: {json.dumps({'event': 'progress', 'current': i + 1, 'total': total, 'added': added_count, 'skipped_old': skipped_old})}\n\n"
+                            continue
+                        
+                        if district and district != 'all' and district_name:
+                            location = data.get('location', '') or ''
+                            parsed_district = data.get('district', '') or ''
+                            if district_name not in location and district_name not in parsed_district:
+                                yield f"data: {json.dumps({'event': 'progress', 'current': i + 1, 'total': total, 'added': added_count})}\n\n"
+                                continue
+                        
+                        phone = data.get('phone')
+                        if not phone:
+                            skipped_no_phone += 1
+                            yield f"data: {json.dumps({'event': 'progress', 'current': i + 1, 'total': total, 'added': added_count})}\n\n"
+                            continue
+                        
+                        olx_id = data.get('olx_id')
+                        db_check = get_db()
+                        if olx_id:
+                            existing = db_check.query(Property).filter(Property.olx_id == olx_id).first()
+                            if existing:
+                                skipped_count += 1
+                                db_check.close()
+                                yield f"data: {json.dumps({'event': 'progress', 'current': i + 1, 'total': total, 'added': added_count, 'skipped_duplicates': skipped_count})}\n\n"
+                                continue
+                        
+                        try:
+                            price_str = data.get('price', '0')
+                            price = int(price_str.replace(' ', '').replace(',', '')) if price_str else 0
+                        except:
+                            price = 0
+                        
+                        try:
+                            rooms_count = int(data.get('rooms')) if data.get('rooms') else None
+                        except:
+                            rooms_count = None
+                        
+                        try:
+                            area_val = float(data.get('total_area')) if data.get('total_area') else None
+                        except:
+                            area_val = None
+                        
+                        try:
+                            floor_val = int(data.get('floor')) if data.get('floor') else None
+                        except:
+                            floor_val = None
+                        
+                        try:
+                            total_floors_val = int(data.get('total_floors')) if data.get('total_floors') else None
+                        except:
+                            total_floors_val = None
+                        
+                        photos_list = data.get('photos', [])
+                        photos_str = ','.join(photos_list[:10]) if photos_list else ''
+                        
+                        new_property = Property(
+                            owner_id=admin_user_id,
+                            property_type=prop_type_enum,
+                            district=data.get('district') or data.get('location'),
+                            address=data.get('location'),
+                            rooms=rooms_count,
+                            floor=floor_val,
+                            total_floors=total_floors_val,
+                            area=area_val,
+                            price=price if price > 0 else 1,
+                            description=data.get('description'),
+                            photos=photos_str,
+                            status=PropertyStatus.ACTIVE,
+                            housing_type=data.get('property_type'),
+                            building_type=data.get('building_type'),
+                            renovation=data.get('renovation'),
+                            layout=data.get('layout'),
+                            phone=phone,
+                            olx_url=data.get('url'),
+                            olx_id=olx_id,
+                            source='olx',
+                            seller_name=data.get('seller_name')
+                        )
+                        
+                        db_check.add(new_property)
+                        db_check.commit()
+                        db_check.close()
+                        
+                        added_count += 1
+                        results.append(data)
+                        
+                        yield f"data: {json.dumps({'event': 'progress', 'current': i + 1, 'total': total, 'added': added_count})}\n\n"
+                        
+                        if not get_phone:
+                            time.sleep(0.3)
+                        
+                    except Exception as e:
+                        yield f"data: {json.dumps({'event': 'progress', 'current': i + 1, 'total': total, 'added': added_count, 'error': str(e)})}\n\n"
+                        
+            finally:
+                if driver:
+                    driver.quit()
+            
+            yield f"data: {json.dumps({'event': 'complete', 'parsed': len(results), 'added_to_db': added_count, 'skipped_duplicates': skipped_count, 'skipped_old': skipped_old, 'skipped_no_phone': skipped_no_phone, 'total_found': total, 'listings': results})}\n\n"
+            
+        except Exception as e:
+            yield f"data: {json.dumps({'event': 'error', 'error': str(e)})}\n\n"
+    
+    return Response(generate(), mimetype='text/event-stream', headers={
+        'Cache-Control': 'no-cache',
+        'X-Accel-Buffering': 'no'
+    })
+
+
 @app.route('/webapp/admin/stats')
 def webapp_stats():
     tg_id = request.args.get('tg_id')
