@@ -179,16 +179,16 @@
     <div class="info-section">
         <div class="owner-card">
             <div class="info-title"><i class="bi bi-person"></i> Владелец / Контакт</div>
-            {% if owner %}
-            <div class="owner-name">{{ owner.first_name }} {{ owner.last_name or '' }}</div>
-            {% elif prop.seller_name %}
+            {% if prop.source == 'olx' and prop.seller_name %}
             <div class="owner-name">{{ prop.seller_name }}</div>
+            {% elif owner %}
+            <div class="owner-name">{{ owner.first_name }} {{ owner.last_name or '' }}</div>
             {% endif %}
             <div class="owner-phone">
                 <i class="bi bi-telephone"></i>
                 {% if prop.phone %}
                 <a href="tel:{{ prop.phone }}">{{ prop.phone }}</a>
-                {% elif owner and owner.phone %}
+                {% elif prop.source != 'olx' and owner and owner.phone %}
                 <a href="tel:{{ owner.phone }}">{{ owner.phone }}</a>
                 {% else %}
                 Не указан
