@@ -3142,6 +3142,7 @@ async def settings_budget_entered(message: types.Message, state: FSMContext):
     user.search_rooms = rooms
     user.search_district = district
     user.search_payment_type = f"{deal_type}_{prop_type}"
+    user.search_deal_type = "sale" if deal_type == "buy" else "rent"
     db.commit()
     db.close()
     
