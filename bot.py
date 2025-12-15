@@ -1596,10 +1596,13 @@ async def toggle_property_status(callback: types.CallbackQuery):
     
     if prop.status == PropertyStatus.ACTIVE:
         prop.status = PropertyStatus.ARCHIVE
+        prop.archived_at = datetime.utcnow()
         new_status = "В архиве"
     else:
         prop.status = PropertyStatus.ACTIVE
-        new_status = "Активно"
+        prop.created_at = datetime.utcnow()
+        prop.archived_at = None
+        new_status = "Активно (таймер сброшен)"
     
     db.commit()
     db.close()
