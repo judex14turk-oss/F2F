@@ -472,20 +472,35 @@ async def show_buyer_menu(message, user_id):
     properties_count = db.query(Property).filter(Property.status == PropertyStatus.ACTIVE).count()
     db.close()
     
-    keyboard = ReplyKeyboardMarkup(
-        keyboard=[
-            [KeyboardButton(text="🏠 Смотреть квартиры")],
-            [KeyboardButton(text="❤️ Мои лайки"), KeyboardButton(text="💬 Мэтчи")],
-            [KeyboardButton(text="👤 Профиль"), KeyboardButton(text="⚙️ Настройки поиска")]
-        ],
-        resize_keyboard=True
-    )
+    keyboard = get_buyer_menu()
     
     await message.answer(
         f"✅ Регистрация завершена!\n\n"
         f"📊 Сейчас доступно {properties_count} квартир.\n\n"
         f"Нажмите '🏠 Смотреть квартиры', чтобы начать поиск!",
         reply_markup=keyboard
+    )
+
+
+def get_buyer_menu():
+    return ReplyKeyboardMarkup(
+        keyboard=[
+            [KeyboardButton(text="🏠 Смотреть квартиры")],
+            [KeyboardButton(text="⚙️ Настройки поиска")],
+            [KeyboardButton(text="👤 Профиль")]
+        ],
+        resize_keyboard=True
+    )
+
+
+def get_buyer_profile_menu():
+    return ReplyKeyboardMarkup(
+        keyboard=[
+            [KeyboardButton(text="💼 Войти в режим продавца")],
+            [KeyboardButton(text="❤️ Лайки"), KeyboardButton(text="💬 Переписка")],
+            [KeyboardButton(text="⬅️ Назад")]
+        ],
+        resize_keyboard=True
     )
 
 
@@ -1319,14 +1334,7 @@ async def process_back_reply(message: types.Message, state: FSMContext):
     db.close()
     
     if user and user.role == UserRole.BUYER:
-        keyboard = ReplyKeyboardMarkup(
-            keyboard=[
-                [KeyboardButton(text="🏠 Смотреть квартиры")],
-                [KeyboardButton(text="❤️ Мои лайки"), KeyboardButton(text="💬 Мэтчи")],
-                [KeyboardButton(text="👤 Профиль"), KeyboardButton(text="⚙️ Настройки поиска")]
-            ],
-            resize_keyboard=True
-        )
+        keyboard = get_buyer_menu()
     else:
         keyboard = get_seller_menu()
     
@@ -1343,14 +1351,7 @@ async def show_next_property_reply(message, state):
         user = db.query(User).filter(User.telegram_id == message.from_user.id).first()
         db.close()
         
-        keyboard = ReplyKeyboardMarkup(
-            keyboard=[
-                [KeyboardButton(text="🏠 Смотреть квартиры")],
-                [KeyboardButton(text="❤️ Мои лайки"), KeyboardButton(text="💬 Мэтчи")],
-                [KeyboardButton(text="👤 Профиль"), KeyboardButton(text="⚙️ Настройки поиска")]
-            ],
-            resize_keyboard=True
-        )
+        keyboard = get_buyer_menu()
         
         await message.answer(
             "🎉 Вы просмотрели все доступные квартиры!\n\n"
@@ -2453,7 +2454,8 @@ async def profile(message: types.Message):
         keyboard = get_seller_profile_menu()
         await message.answer("📂 Раздел профиля:", reply_markup=keyboard)
     else:
-        await show_buyer_profile(message, user)
+        keyboard = get_buyer_profile_menu()
+        await message.answer("👤 Профиль", reply_markup=keyboard)
 
 
 @dp.message(F.text == "👤 Мой профиль")
@@ -2474,14 +2476,7 @@ async def back_to_main_menu(message: types.Message):
     if user.role == UserRole.SELLER:
         keyboard = get_seller_menu()
     else:
-        keyboard = ReplyKeyboardMarkup(
-            keyboard=[
-                [KeyboardButton(text="🏠 Смотреть квартиры")],
-                [KeyboardButton(text="❤️ Мои лайки"), KeyboardButton(text="💬 Мэтчи")],
-                [KeyboardButton(text="👤 Профиль"), KeyboardButton(text="⚙️ Настройки поиска")]
-            ],
-            resize_keyboard=True
-        )
+        keyboard = get_buyer_menu()
     
     await message.answer("🏠 Главное меню", reply_markup=keyboard)
 
@@ -2568,14 +2563,7 @@ async def switch_to_buyer(callback: types.CallbackQuery, state: FSMContext):
     await callback.answer("Режим изменён на покупателя")
     await callback.message.delete()
     
-    keyboard = ReplyKeyboardMarkup(
-        keyboard=[
-            [KeyboardButton(text="🏠 Смотреть квартиры")],
-            [KeyboardButton(text="❤️ Мои лайки"), KeyboardButton(text="💬 Мэтчи")],
-            [KeyboardButton(text="👤 Профиль"), KeyboardButton(text="⚙️ Настройки поиска")]
-        ],
-        resize_keyboard=True
-    )
+    keyboard = get_buyer_menu()
     
     await callback.message.answer(
         "🏠 Вы теперь в режиме покупателя!\n\n"
@@ -2606,6 +2594,105 @@ async def switch_to_seller(callback: types.CallbackQuery, state: FSMContext):
         f"🔥 Прямо сейчас в боте {buyers_count} человек ищут квартиру!",
         reply_markup=keyboard
     )
+
+
+@dp.message(F.text == "💼 Войти в режим продавца")
+async def buyer_switch_to_seller(message: types.Message, state: FSMContext):
+    db = SessionLocal()
+    user = db.query(User).filter(User.telegram_id == message.from_user.id).first()
+    
+    if user:
+        user.role = UserRole.SELLER
+        db.commit()
+    
+    buyers_count = db.query(User).filter(User.role == UserRole.BUYER).count()
+    db.close()
+    
+    keyboard = get_seller_menu()
+    
+    await message.answer(
+        f"💼 Вы теперь в режиме продавца!\n\n"
+        f"🔥 Прямо сейчас в боте {buyers_count} человек ищут квартиру!",
+        reply_markup=keyboard
+    )
+
+
+@dp.message(F.text == "❤️ Лайки")
+async def buyer_likes(message: types.Message):
+    db = SessionLocal()
+    user = db.query(User).filter(User.telegram_id == message.from_user.id).first()
+    likes = db.query(Like).filter(Like.user_id == user.id).order_by(Like.created_at.desc()).all()
+    db.close()
+    
+    if not likes:
+        await message.answer("Вы еще не лайкнули ни одной квартиры.", reply_markup=get_buyer_profile_menu())
+        return
+    
+    text = "❤️ Ваши лайки:\n\n"
+    
+    for like in likes[:20]:
+        db = SessionLocal()
+        prop = db.query(Property).filter(Property.id == like.property_id).first()
+        db.close()
+        
+        if prop:
+            status = "🟢 Мэтч!" if like.is_matched else "⏳ Ожидание"
+            text += (
+                f"{status} {prop.district or 'Объект'}\n"
+                f"   {prop.rooms} комн. | ${prop.price:,}\n\n"
+            )
+    
+    await message.answer(text, reply_markup=get_buyer_profile_menu())
+
+
+@dp.message(F.text == "💬 Переписка")
+async def buyer_messages(message: types.Message):
+    db = SessionLocal()
+    user = db.query(User).filter(User.telegram_id == message.from_user.id).first()
+    
+    matches = db.query(Like).filter(
+        Like.user_id == user.id,
+        Like.is_matched == True
+    ).order_by(Like.created_at.desc()).all()
+    db.close()
+    
+    if not matches:
+        await message.answer(
+            "💬 У вас пока нет контактов.\n\n"
+            "Лайкайте квартиры и ждите, когда продавец откроет контакт!",
+            reply_markup=get_buyer_profile_menu()
+        )
+        return
+    
+    text = f"💬 Ваши контакты ({len(matches)}):\n\n"
+    
+    for match in matches[:20]:
+        db = SessionLocal()
+        prop = db.query(Property).filter(Property.id == match.property_id).first()
+        if prop:
+            seller = db.query(User).filter(User.id == prop.owner_id).first()
+            text += (
+                f"📍 {prop.district or 'Объект'}\n"
+                f"   {prop.rooms} комн. | ${prop.price:,}\n"
+                f"   📞 {seller.phone if seller else 'Не указан'}\n\n"
+            )
+        db.close()
+    
+    await message.answer(text, reply_markup=get_buyer_profile_menu())
+
+
+@dp.message(F.text == "⬅️ Назад")
+async def buyer_profile_back(message: types.Message, state: FSMContext):
+    db = SessionLocal()
+    user = db.query(User).filter(User.telegram_id == message.from_user.id).first()
+    db.close()
+    
+    if user and user.role == UserRole.BUYER:
+        keyboard = get_buyer_menu()
+        await message.answer("🏠 Главное меню", reply_markup=keyboard)
+    else:
+        keyboard = get_seller_menu()
+        await message.answer("🏠 Главное меню", reply_markup=keyboard)
 
 
 @dp.message(F.text == "💳 Тарифы")
@@ -2706,14 +2793,7 @@ async def search_settings(message: types.Message, state: FSMContext):
 @dp.message(F.text == "⬅️ Назад", SearchSettingsStates.deal_type)
 async def settings_back_to_menu(message: types.Message, state: FSMContext):
     await state.clear()
-    keyboard = ReplyKeyboardMarkup(
-        keyboard=[
-            [KeyboardButton(text="🏠 Смотреть квартиры")],
-            [KeyboardButton(text="❤️ Мои лайки"), KeyboardButton(text="💬 Мэтчи")],
-            [KeyboardButton(text="👤 Профиль"), KeyboardButton(text="⚙️ Настройки поиска")]
-        ],
-        resize_keyboard=True
-    )
+    keyboard = get_buyer_menu()
     await message.answer("Вы вернулись в главное меню", reply_markup=keyboard)
 
 
@@ -2904,14 +2984,7 @@ async def settings_budget_entered(message: types.Message, state: FSMContext):
     deal_names = {"buy": "Покупка", "rent": "Аренда"}
     prop_names = {"apartment": "Квартира", "house": "Дом/Участок", "commercial": "Коммерческая"}
     
-    keyboard = ReplyKeyboardMarkup(
-        keyboard=[
-            [KeyboardButton(text="🏠 Смотреть квартиры")],
-            [KeyboardButton(text="❤️ Мои лайки"), KeyboardButton(text="💬 Мэтчи")],
-            [KeyboardButton(text="👤 Профиль"), KeyboardButton(text="⚙️ Настройки поиска")]
-        ],
-        resize_keyboard=True
-    )
+    keyboard = get_buyer_menu()
     
     await message.answer(
         f"✅ Настройки обновлены!\n\n"
