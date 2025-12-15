@@ -1,4 +1,5 @@
 import os
+import time
 import requests
 from datetime import datetime, timedelta
 from functools import wraps
@@ -7,7 +8,7 @@ from flask import Flask, render_template, request, jsonify, redirect, url_for, s
 
 TELEGRAM_BOT_TOKEN = os.environ.get('TELEGRAM_BOT_TOKEN', '')
 from models import SessionLocal, User, Property, Like, Match, Offer, District, ResidentialComplex, PromoCode, TariffSettings
-from models import UserRole, SellerType, TariffType, PropertyType, PropertyStatus, AdminRole, init_db
+from models import UserRole, SellerType, TariffType, PropertyType, PropertyStatus, AdminRole, init_db, get_tashkent_now
 
 app = Flask(__name__)
 app.secret_key = os.environ.get('SESSION_SECRET', 'real-estate-bot-secret-key')
@@ -216,7 +217,7 @@ def webapp_register():
             user.email = email
             user.password = password
             user.tariff = tariff
-            user.trial_ends_at = datetime.utcnow() + timedelta(days=14)
+            user.trial_ends_at = get_tashkent_now() + timedelta(days=14)
         else:
             user = User(
                 telegram_id=int(tg_id) if tg_id else 0,
@@ -228,7 +229,7 @@ def webapp_register():
                 email=email,
                 password=password,
                 tariff=tariff,
-                trial_ends_at=datetime.utcnow() + timedelta(days=14)
+                trial_ends_at=get_tashkent_now() + timedelta(days=14)
             )
             db.add(user)
         
@@ -388,7 +389,7 @@ def update_user_tariff(user_id):
         }
         user.tariff = tariff_map.get(tariff, TariffType.FREE)
         if tariff != 'free':
-            user.tariff_expires = datetime.utcnow() + timedelta(days=30)
+            user.tariff_expires = get_tashkent_now() + timedelta(days=30)
         else:
             user.tariff_expires = None
         db.commit()
@@ -565,7 +566,7 @@ def admin_matches():
 def admin_stats():
     db = get_db()
     
-    today = datetime.utcnow().date()
+    today = get_tashkent_now().date()
     week_ago = today - timedelta(days=7)
     month_ago = today - timedelta(days=30)
     
@@ -838,7 +839,7 @@ def webapp_update_tariff(user_id):
         old_tariff = user.tariff
         user.tariff = tariff_map.get(tariff, TariffType.FREE)
         if tariff != 'free':
-            user.tariff_expires = datetime.utcnow() + timedelta(days=30)
+            user.tariff_expires = get_tashkent_now() + timedelta(days=30)
         else:
             user.tariff_expires = None
         db.commit()
@@ -939,7 +940,7 @@ def webapp_user_save(user_id):
             }
             user.tariff = tariff_map.get(tariff, TariffType.FREE)
             if tariff != 'free':
-                user.tariff_expires = datetime.utcnow() + timedelta(days=30)
+                user.tariff_expires = get_tashkent_now() + timedelta(days=30)
             else:
                 user.tariff_expires = None
         
@@ -1139,7 +1140,7 @@ def webapp_create_promo():
             tariff=tariff,
             discount_percent=int(discount_percent),
             max_uses=int(max_uses),
-            expires_at=datetime.utcnow() + timedelta(days=int(days_valid)),
+            expires_at=get_tashkent_now() + timedelta(days=int(days_valid)),
             description=description,
             is_active=True
         )
@@ -1952,7 +1953,7 @@ def webapp_stats():
     
     permissions = get_admin_permissions(admin_user.admin_role)
     
-    now = datetime.utcnow()
+    now = get_tashkent_now()
     period_map = {
         '1h': timedelta(hours=1),
         '24h': timedelta(hours=24),
@@ -2091,7 +2092,7 @@ def check_promo():
         db.close()
         return jsonify({'valid': False, 'message': 'Промокод не найден или истёк'})
     
-    if promo.expires_at and promo.expires_at < datetime.utcnow():
+    if promo.expires_at and promo.expires_at < get_tashkent_now():
         db.close()
         return jsonify({'valid': False, 'message': 'Срок действия промокода истёк'})
     
