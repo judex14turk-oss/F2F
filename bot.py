@@ -791,8 +791,11 @@ async def add_property_start(message: types.Message, state: FSMContext):
     user = db.query(User).filter(User.telegram_id == message.from_user.id).first()
     
     if not user or user.role != UserRole.SELLER:
-        await message.answer("Эта функция доступна только для продавцов.")
         db.close()
+        if user and user.role == UserRole.BUYER:
+            await message.answer("🏠 Главное меню покупателя\n\nВыберите действие:", reply_markup=get_buyer_menu())
+        else:
+            await message.answer("Нажмите /start чтобы начать.")
         return
     
     limits = get_tariff_limits(user.tariff, user.is_admin)
@@ -2218,8 +2221,11 @@ async def find_buyers(message: types.Message, state: FSMContext):
     user = db.query(User).filter(User.telegram_id == message.from_user.id).first()
     db.close()
     
-    if user.role != UserRole.SELLER:
-        await message.answer("Эта функция доступна только для продавцов.")
+    if not user or user.role != UserRole.SELLER:
+        if user and user.role == UserRole.BUYER:
+            await message.answer("🏠 Главное меню покупателя\n\nВыберите действие:", reply_markup=get_buyer_menu())
+        else:
+            await message.answer("Нажмите /start чтобы начать.")
         return
     
     limits = get_tariff_limits(user.tariff, user.is_admin)
