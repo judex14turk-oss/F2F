@@ -1,0 +1,359 @@
+# Alliance_Home:
+# ToKEN: 8570917796:AAG-kMqDbuxJw6HEZ0DZd4CL_r-Yimh9Cz0
+# Админ chat_ID: -5053048849
+
+# квартиры:  -1003462239522
+# дома: -1003396335581
+# аренда: -1003342124143
+
+# DB: "alliance_home"
+
+import time
+import re
+import json
+import psycopg2
+import requests
+import base64
+import telebot
+from telebot.types import InputMediaPhoto
+from playwright.sync_api import sync_playwright
+
+# --- 1. НАСТРОЙКИ ---
+BOT_TOKEN = "___________"          # --- необходимо указать телеграм токен 
+ADMIN_GROUP_ID = -5053042849          # --- необходимо указать chatId админского канала 
+
+CHANNELS = {
+    "sale_flat": -1003464539522,    # --- chatId канала для продажи квартир 
+    "sale_house": -1003336335581,   # --- chatId канала для домов и участков
+    "rent_flat": -1003346424143     # --- chatId канала для аренды
+}
+
+OWNER_ID = 0  
+LIMIT = 3   # Тест
+
+CATEGORIES = {
+    "sale_flat": "https://www.olx.uz/nedvizhimost/kvartiry/prodazha/tashkent/"  # --- ссылка на парсинг квартир
+}
+
+DB_PARAMS = {
+    "dbname": "home_bot",              # --- название базы данных
+    "user": "postgres",                     # --- пользователь базы данных
+    "password": "password",               # --- пароль базы данных
+    "host": "localhost",
+    "port": "5432"
+}
+
+bot = telebot.TeleBot(BOT_TOKEN)
+
+# --- ФУНКЦИИ ---
+
+def clean_price(price_str):
+    if not price_str: return 0
+    clean = re.sub(r'\D', '', price_str)
+    return int(clean) if clean else 0
+
+def image_to_base64(url):
+    try:
+        response = requests.get(url, timeout=10)
+        if response.status_code == 200:
+            return base64.b64encode(response.content).decode('utf-8')
+    except: pass
+    return None
+
+def extract_phone_aggressive(page):
+    """Ядерный метод добычи телефона (v13.0)"""
+    phone = "Не указан"
+    try:
+        # 1. Ищем кнопку по ТЕКСТУ (самый надежный вариант)
+        # Ищем любую кнопку, содержащую "показать", "позвонить" или "show" (независимо от регистра)
+        btn = page.locator('button').filter(has_text=re.compile(r"(показать|позвонить|show|raqam)", re.IGNORECASE)).first
+        
+        # Если не нашли, пробуем стандартный селектор OLX
+        if not btn.is_visible():
+            btn = page.locator('[data-testid="contact-phone"]').first
+
+        if btn.is_visible():
+            print("      📞 Кнопка найдена. Навожу мышь...")
+            
+            # Эмуляция человека: Скролл -> Наведение -> Пауза -> Клик
+            btn.scroll_into_view_if_needed()
+            btn.hover()
+            time.sleep(0.5)
+            btn.click(force=True)
+            
+            # Ждем прогрузки номера (до 3 секунд)
+            time.sleep(2) 
+
+            # --- МЕТОД 1: Сканируем область вокруг кнопки ---
+            # После клика текст кнопки должен измениться на номер. 
+            # Или рядом появится ссылка.
+            
+            # Берем текст кнопки сейчас
+            btn_text = btn.inner_text().strip()
+            
+            # Берем родительский блок (весь блок контактов)
+            parent_text = btn.locator("..").inner_text() 
+
+            # Ищем номер с помощью Regex (ищем паттерн 998 xx xxx xx xx)
+            # Этот паттерн найдет номер где угодно в тексте
+            match = re.search(r'(998\s?\d{2}\s?\d{3}\s?\d{2}\s?\d{2})', parent_text + " " + btn_text)
+            
+            if match:
+                raw_num = match.group(1)
+                # Чистим от пробелов
+                clean_num = re.sub(r'\D', '', raw_num)
+                return f"+{clean_num}"
+
+            # --- МЕТОД 2: Ссылка tel: ---
+            if link := page.locator('a[href^="tel:"]').first:
+                 if link.is_visible():
+                     return link.inner_text().strip()
+
+    except Exception as e:
+        print(f"      ⚠️ Ошибка добычи телефона: {e}")
+    
+    return phone
+
+def get_full_details(page, url):
+    data = {
+        "floor": 0, "total_floors": 0, "area": 0.0, 
+        "repair": "Не указано", "plan": "Не указано", 
+        "build_type": "Не указано", "phone": "Не указан", 
+        "desc": "Нет описания"
+    }
+    photos_base64 = []
+
+    try:
+        page.goto(url, timeout=90000, wait_until="domcontentloaded")
+        time.sleep(1)
+
+        # 1. ТЕЛЕФОН
+        data["phone"] = extract_phone_aggressive(page)
+
+        # 2. ПАРАМЕТРЫ
+        try:
+            items = page.locator("li, p").all()
+            for item in items:
+                text = item.inner_text().strip()
+                if not text: continue
+                low = text.lower()
+
+                if "этаж:" in low and "этажность" not in low:
+                    if m := re.search(r'(\d+)', text): data["floor"] = int(m.group(1))
+                elif "этажность" in low:
+                    if m := re.search(r'(\d+)', text): data["total_floors"] = int(m.group(1))
+                elif "общая площадь" in low or "площадь:" in low:
+                    if m := re.search(r'(\d+[.,]?\d*)', text): 
+                        val = float(m.group(1).replace(',', '.'))
+                        if val > 5: data["area"] = val
+                elif "тип строения" in low:
+                    if ":" in text: data["build_type"] = text.split(":")[-1].strip()
+                elif "планировка" in low:
+                    if ":" in text: data["plan"] = text.split(":")[-1].strip()
+                elif "ремонт" in low:
+                    if ":" in text: data["repair"] = text.split(":")[-1].strip()
+        except: pass
+
+        # 3. ОПИСАНИЕ
+        try:
+            if d := page.locator('[data-cy="ad_description"]').first:
+                if d.is_visible(): data["desc"] = d.inner_text()
+            else:
+                if header := page.locator('h3').filter(has_text="Описание").first:
+                    data["desc"] = page.locator('h3:has-text("Описание") + div').first.inner_text()
+        except: pass
+
+        # 4. ФОТО
+        try:
+            imgs = page.locator('.swiper-slide img').all()
+            count = 0
+            for img in imgs:
+                if count >= 8: break
+                src = img.get_attribute('src') or img.get_attribute('data-src')
+                if src and "http" in src and ("image" in src or ".jpg" in src):
+                    b64 = image_to_base64(src)
+                    if b64:
+                        photos_base64.append(b64)
+                        count += 1
+        except: pass
+
+    except Exception as e: 
+        print(f"   ⚠️ Сбой страницы: {e}")
+    
+    return data, photos_base64
+
+def broadcast_to_telegram(data, new_id, final_caption, olx_url):
+    try:
+        media_admin = []
+        media_public = []
+        bot_username = bot.get_me().username
+        
+        caption_admin = final_caption + f'\n\n🔗 <a href="{olx_url}">Перейти на объявление (OLX)</a>'
+        caption_public = final_caption 
+
+        photos = json.loads(data['photos_json'])
+        
+        for idx, b64 in enumerate(photos):
+            photo_bytes = base64.b64decode(b64)
+            if idx == 0:
+                media_admin.append(InputMediaPhoto(photo_bytes, caption=caption_admin, parse_mode="HTML"))
+                media_public.append(InputMediaPhoto(photo_bytes, caption=caption_public, parse_mode="HTML"))
+            else:
+                p = InputMediaPhoto(photo_bytes)
+                media_admin.append(p)
+                media_public.append(p)
+        
+        bot.send_media_group(ADMIN_GROUP_ID, media_admin)
+        print("   📤 Отправлено Админу")
+        
+        target = CHANNELS.get(data['cat'])
+        if target:
+            bot.send_media_group(target, media_public)
+            print(f"   📤 Отправлено в Канал")
+        
+        time.sleep(5) 
+    except Exception as e: 
+        print(f"   ❌ Ошибка Телеграм: {e}")
+
+def save_to_db(data):
+    if not data['photos']: return False
+
+    p = data['params']
+    phone = p['phone']
+    
+    # Финальная чистка номера
+    # Если парсер нашел номер, но он "грязный", чистим его
+    if phone != "Не указан":
+        clean_digits = re.sub(r'\D', '', phone) # Оставляем только цифры
+        if len(clean_digits) > 7:
+            phone = f"+{clean_digits}"
+        else:
+            phone = "Не указан (Скрыт)"
+
+    desc_text = p.get('desc', 'Нет описания')
+
+    caption_template = (
+        f"<b>Номер анкеты ID: (AUTO)</b>\n"
+        f"#{data['loc']} {data['rooms']}/{p['floor']}/{p['total_floors']} {p['area']}м2\n"
+        f"<b>⚡️💥Цена: {data['price']} $💥⚡️</b>\n"
+        f"___________________________\n"
+        f"#Комнат{data['rooms']}\n"
+        f"Этаж: {p['floor']}\n"
+        f"Этажность: {p['total_floors']}\n"
+        f"Тип строения: {p['build_type']}\n"
+        f"Планировка: {p['plan']}\n"
+        f"Ремонт: {p['repair']}\n"
+        f"____________________________\n"
+        f"<b>ТЕЛЕФОН:</b>\n"
+        f"<b>{phone}</b>\n\n"
+        f"📝 <i>Описание:</i>\n{desc_text[:300]}..." 
+    )
+
+    try:
+        conn = psycopg2.connect(**DB_PARAMS)
+        cur = conn.cursor()
+        
+        cur.execute("SELECT id FROM listings WHERE url=%s", (data['url'],))
+        if cur.fetchone():
+            print(f"⏩ Дубликат: {data['title'][:20]}")
+            return False
+
+        photos_json = json.dumps(data['photos'])
+        
+        sql = """
+            INSERT INTO listings 
+            (owner_id, source, status, category, district, rooms, floor, total_floors, area, price, description, photos_base64, url)
+            VALUES (%s, 'olx', 'active', %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+            RETURNING id;
+        """
+        cur.execute(sql, (
+            OWNER_ID, data['cat'], data['loc'], data['rooms'], p['floor'], 
+            p['total_floors'], p['area'], data['price'], caption_template, photos_json, data['url']
+        ))
+        
+        new_id = cur.fetchone()[0]
+        
+        final_caption = caption_template.replace("(AUTO)", str(new_id))
+        cur.execute("UPDATE listings SET description=%s WHERE id=%s", (final_caption, new_id))
+        
+        conn.commit()
+        print(f"✅ [ID: {new_id}] Сохранено: {data['title'][:20]}")
+        
+        tg_data = {'cat': data['cat'], 'photos_json': photos_json}
+        broadcast_to_telegram(tg_data, new_id, final_caption, data['url'])
+        
+        return True
+    except Exception as e: 
+        print(f"❌ DB Error: {e}")
+        return False
+    finally:
+        if conn: conn.close()
+
+def run():
+    with sync_playwright() as p:
+        print(f"🚀 Парсер v13.0 (Nuclear) запущен...")
+        browser = p.chromium.launch(headless=False) 
+        context = browser.new_context()
+        page = context.new_page()
+
+        total_saved = 0
+        base_url = CATEGORIES["sale_flat"]
+        
+        for page_num in range(1, 10): 
+            if total_saved >= LIMIT: break
+            
+            try:
+                print(f"\n📄 Страница {page_num}")
+                page.goto(f"{base_url}?page={page_num}", timeout=60000, wait_until="domcontentloaded")
+                time.sleep(3)
+                
+                cards = page.locator('[data-cy="l-card"]').all()
+                print(f"   Найдено на странице: {len(cards)}")
+                
+                for card in cards:
+                    if total_saved >= LIMIT: break
+                    try:
+                        if not card.locator("a").first.is_visible(): continue
+                        
+                        link_el = card.locator("a").first
+                        href = link_el.get_attribute("href")
+                        url = "https://www.olx.uz" + href if href.startswith("/") else href
+                        
+                        title = "Без названия"
+                        if card.locator("h4").first.is_visible():
+                            title = card.locator("h4").first.inner_text()
+                        
+                        price = 0
+                        if card.locator('[data-testid="ad-price"]').count() > 0:
+                            price = clean_price(card.locator('[data-testid="ad-price"]').inner_text())
+                        
+                        loc = "Tashkent"
+                        if card.locator('[data-testid="location-date"]').count() > 0:
+                            raw_loc = card.locator('[data-testid="location-date"]').inner_text()
+                            loc = raw_loc.split(" - ")[0].replace("Ташкент, ", "")
+
+                        rooms = 1
+                        if m := re.search(r'(\d+)\s*комн', title): rooms = int(m.group(1))
+                        
+                        print(f"🔎 {title[:30]}...")
+                        
+                        params, photos = get_full_details(page, url)
+                        
+                        saved = save_to_db({
+                            'cat': 'sale_flat', 'loc': loc, 'rooms': rooms, 
+                            'price': price, 'params': params, 'photos': photos, 
+                            'title': title, 'url': url
+                        })
+                        
+                        if saved: total_saved += 1
+                        
+                    except Exception as e: 
+                        print(f"   ⚠️ Пропуск: {e}")
+                        continue
+            except Exception as e: print(f"Err page: {e}")
+            
+        browser.close()
+        print("\n🏁 Готово!")
+
+if __name__ == "__main__":
+    run()

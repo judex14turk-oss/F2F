@@ -253,7 +253,12 @@
         <div class="property-card">
             {% if prop.photos %}
             {% set photo_list = prop.photos.split(',') %}
-            <img src="{{ url_for('telegram_photo', file_id=photo_list[0]) }}" alt="Фото" class="property-photo">
+            {% set first_photo = photo_list[0] %}
+            {% if first_photo.startswith('http://') or first_photo.startswith('https://') %}
+            <img src="{{ first_photo }}" alt="Фото" class="property-photo">
+            {% else %}
+            <img src="{{ url_for('telegram_photo', file_id=first_photo) }}" alt="Фото" class="property-photo">
+            {% endif %}
             {% else %}
             <div class="property-photo-placeholder"><i class="bi bi-image"></i></div>
             {% endif %}

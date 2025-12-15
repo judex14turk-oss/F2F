@@ -539,7 +539,13 @@ def admin_property_detail(property_id):
     likes = db.query(Like).filter(Like.property_id == property_id).all()
     
     photo_ids = prop.photos.split(',') if prop.photos else []
-    photos = [url_for('telegram_photo', file_id=pid) for pid in photo_ids if pid]
+    photos = []
+    for pid in photo_ids:
+        if pid:
+            if pid.startswith('http://') or pid.startswith('https://'):
+                photos.append(pid)
+            else:
+                photos.append(url_for('telegram_photo', file_id=pid))
     
     db.close()
     return render_template('admin/property_detail.html', prop=prop, owner=owner, likes=likes, photos=photos)
@@ -1295,7 +1301,13 @@ def webapp_property_view(property_id):
     
     owner = db.query(User).filter(User.id == prop.owner_id).first()
     photo_ids = prop.photos.split(',') if prop.photos else []
-    photos = [url_for('telegram_photo', file_id=pid) for pid in photo_ids if pid]
+    photos = []
+    for pid in photo_ids:
+        if pid:
+            if pid.startswith('http://') or pid.startswith('https://'):
+                photos.append(pid)
+            else:
+                photos.append(url_for('telegram_photo', file_id=pid))
     
     db.close()
     
@@ -1330,7 +1342,13 @@ def webapp_property_edit(property_id):
         return "Объект не найден", 404
     
     photo_ids = prop.photos.split(',') if prop.photos else []
-    photos = [url_for('telegram_photo', file_id=pid) for pid in photo_ids if pid]
+    photos = []
+    for pid in photo_ids:
+        if pid:
+            if pid.startswith('http://') or pid.startswith('https://'):
+                photos.append(pid)
+            else:
+                photos.append(url_for('telegram_photo', file_id=pid))
     
     db.close()
     
