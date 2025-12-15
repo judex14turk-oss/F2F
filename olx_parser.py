@@ -244,21 +244,62 @@ class OLXParser:
             
             if get_phone:
                 try:
-                    phone_buttons = driver.find_elements(By.XPATH, 
-                        "//button[contains(text(), 'Показать') or contains(text(), 'показать') or contains(text(), 'телефон')]")
+                    phone_selectors = [
+                        "//button[contains(text(), 'Показать')]",
+                        "//button[contains(text(), 'показать')]",
+                        "//button[contains(text(), 'телефон')]",
+                        "//button[contains(text(), 'Телефон')]",
+                        "//button[contains(text(), 'номер')]",
+                        "//button[contains(@class, 'phone')]",
+                        "//a[contains(@class, 'phone')]",
+                        "//*[contains(@data-cy, 'phone')]",
+                        "//*[contains(@data-testid, 'phone')]",
+                    ]
                     
-                    for btn in phone_buttons:
+                    clicked = False
+                    for selector in phone_selectors:
                         try:
-                            btn.click()
-                            time.sleep(1.5)
-                            break
+                            elements = driver.find_elements(By.XPATH, selector)
+                            for el in elements:
+                                try:
+                                    el.click()
+                                    time.sleep(2)
+                                    clicked = True
+                                    break
+                                except:
+                                    continue
+                            if clicked:
+                                break
                         except:
                             continue
                     
-                    phone_elements = driver.find_elements(By.XPATH, "//a[starts-with(@href, 'tel:')]")
-                    if phone_elements:
-                        phone_href = phone_elements[0].get_attribute('href')
-                        result['phone'] = phone_href.replace('tel:', '').strip()
+                    phone_patterns = [
+                        "//a[starts-with(@href, 'tel:')]",
+                        "//*[contains(@class, 'phone-number')]",
+                        "//*[contains(@data-testid, 'phone')]//a",
+                    ]
+                    
+                    for pattern in phone_patterns:
+                        try:
+                            phone_elements = driver.find_elements(By.XPATH, pattern)
+                            if phone_elements:
+                                phone_text = phone_elements[0].get_attribute('href')
+                                if phone_text and phone_text.startswith('tel:'):
+                                    result['phone'] = phone_text.replace('tel:', '').strip()
+                                    break
+                                else:
+                                    phone_text = phone_elements[0].text.strip()
+                                    if phone_text and re.match(r'^[\d\+\-\s\(\)]+$', phone_text):
+                                        result['phone'] = phone_text
+                                        break
+                        except:
+                            continue
+                    
+                    if not result['phone']:
+                        page_text = driver.page_source
+                        phone_match = re.search(r'\+998[\s\-]?\d{2}[\s\-]?\d{3}[\s\-]?\d{2}[\s\-]?\d{2}', page_text)
+                        if phone_match:
+                            result['phone'] = phone_match.group(0).replace(' ', '').replace('-', '')
                         
                 except Exception as e:
                     result['phone_error'] = str(e)
