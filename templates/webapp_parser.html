@@ -300,6 +300,27 @@
     </div>
     
     <div class="content">
+        <div class="filter-card" style="margin-bottom: 16px;">
+            <div class="filter-title"><i class="bi bi-link-45deg"></i> Парсинг по ссылке</div>
+            
+            <div class="filter-group">
+                <label class="filter-label">Вставьте ссылку на объявление OLX</label>
+                <input type="text" class="filter-select" id="singleUrl" placeholder="https://www.olx.uz/d/obyavlenie/..." style="margin-bottom: 8px;">
+            </div>
+            
+            <div class="filter-group">
+                <label class="filter-label" style="display: flex; align-items: center; gap: 8px;">
+                    <input type="checkbox" id="singleGetPhone"> Получить телефон
+                </label>
+            </div>
+            
+            <div class="error-msg" id="singleErrorMsg"></div>
+            
+            <button class="btn-parse" id="singleParseBtn" onclick="parseSingleListing()" style="background: #3b82f6;">
+                <i class="bi bi-download"></i> Спарсить объявление
+            </button>
+        </div>
+        
         <div class="filter-card">
             <div class="filter-title"><i class="bi bi-funnel"></i> Фильтры</div>
             
@@ -587,6 +608,61 @@
             });
             
             section.scrollIntoView({ behavior: 'smooth' });
+        }
+        
+        async function parseSingleListing() {
+            const btn = document.getElementById('singleParseBtn');
+            const overlay = document.getElementById('loadingOverlay');
+            const errorMsg = document.getElementById('singleErrorMsg');
+            const url = document.getElementById('singleUrl').value.trim();
+            
+            if (!url) {
+                errorMsg.textContent = 'Введите ссылку на объявление';
+                errorMsg.classList.add('visible');
+                return;
+            }
+            
+            if (!url.includes('olx.uz')) {
+                errorMsg.textContent = 'Ссылка должна быть с сайта olx.uz';
+                errorMsg.classList.add('visible');
+                return;
+            }
+            
+            btn.disabled = true;
+            overlay.classList.add('visible');
+            errorMsg.classList.remove('visible');
+            document.getElementById('loadingText').textContent = 'Парсинг объявления...';
+            document.getElementById('loadingProgress').textContent = '';
+            
+            const data = {
+                tg_id: '{{ tg_id }}',
+                url: url,
+                get_phone: document.getElementById('singleGetPhone').checked
+            };
+            
+            try {
+                const response = await fetch('/webapp/admin/parser/single', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(data)
+                });
+                
+                const result = await response.json();
+                
+                if (result.error) {
+                    errorMsg.textContent = result.error;
+                    errorMsg.classList.add('visible');
+                } else {
+                    document.getElementById('singleUrl').value = '';
+                    displayResults(result);
+                }
+            } catch (err) {
+                errorMsg.textContent = 'Ошибка: ' + err.message;
+                errorMsg.classList.add('visible');
+            } finally {
+                btn.disabled = false;
+                overlay.classList.remove('visible');
+            }
         }
     </script>
 </body>

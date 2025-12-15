@@ -1479,6 +1479,119 @@ def webapp_parser():
     )
 
 
+@app.route('/webapp/admin/parser/single', methods=['POST'])
+def webapp_parser_single():
+    from olx_parser import OLXParser
+    
+    data = request.get_json()
+    tg_id = data.get('tg_id')
+    url = data.get('url', '')
+    get_phone = data.get('get_phone', False)
+    
+    if not tg_id:
+        return jsonify({'error': 'Telegram ID не указан'}), 400
+    
+    if not url or 'olx.uz' not in url:
+        return jsonify({'error': 'Неверная ссылка OLX'}), 400
+    
+    db = get_db()
+    admin_user = db.query(User).filter(User.telegram_id == int(tg_id)).first()
+    
+    if not admin_user or not admin_user.is_admin:
+        db.close()
+        return jsonify({'error': 'Доступ запрещён'}), 403
+    
+    permissions = get_admin_permissions(admin_user.admin_role)
+    
+    if not permissions['can_parse']:
+        db.close()
+        return jsonify({'error': 'У вас нет прав для парсинга'}), 403
+    
+    admin_user_id = admin_user.id
+    db.close()
+    
+    try:
+        parser = OLXParser()
+        listing = parser.parse_listing(url, get_phone=get_phone)
+        
+        if listing.get('error') and not listing.get('title'):
+            return jsonify({'error': f"Ошибка парсинга: {listing.get('error')}"}), 400
+        
+        db = get_db()
+        
+        olx_id = listing.get('olx_id')
+        if olx_id:
+            existing = db.query(Property).filter(Property.olx_id == olx_id).first()
+            if existing:
+                db.close()
+                return jsonify({'error': 'Это объявление уже есть в базе', 'parsed': 1, 'added_to_db': 0, 'skipped_duplicates': 1, 'listings': [listing]}), 200
+        
+        try:
+            price_str = listing.get('price', '0')
+            price = int(price_str.replace(' ', '').replace(',', '')) if price_str else 0
+        except:
+            price = 0
+        
+        try:
+            rooms_count = int(listing.get('rooms')) if listing.get('rooms') else None
+        except:
+            rooms_count = None
+        
+        try:
+            area_val = float(listing.get('total_area')) if listing.get('total_area') else None
+        except:
+            area_val = None
+        
+        try:
+            floor_val = int(listing.get('floor')) if listing.get('floor') else None
+        except:
+            floor_val = None
+        
+        try:
+            total_floors_val = int(listing.get('total_floors')) if listing.get('total_floors') else None
+        except:
+            total_floors_val = None
+        
+        photos_list = listing.get('photos', [])
+        photos_str = ','.join(photos_list[:10]) if photos_list else ''
+        
+        new_property = Property(
+            owner_id=admin_user_id,
+            property_type=PropertyType.SALE,
+            district=listing.get('district') or listing.get('location'),
+            address=listing.get('location'),
+            rooms=rooms_count,
+            floor=floor_val,
+            total_floors=total_floors_val,
+            area=area_val,
+            price=price,
+            photos=photos_str,
+            description=listing.get('description'),
+            status=PropertyStatus.ACTIVE,
+            phone=listing.get('phone'),
+            seller_name=listing.get('seller_name'),
+            building_type=listing.get('property_type'),
+            source='olx',
+            olx_id=olx_id,
+            olx_url=url
+        )
+        
+        db.add(new_property)
+        db.commit()
+        db.close()
+        
+        return jsonify({
+            'parsed': 1,
+            'added_to_db': 1,
+            'skipped_duplicates': 0,
+            'skipped_old': 0,
+            'listings': [listing]
+        })
+        
+    except Exception as e:
+        return jsonify({'error': f'Ошибка: {str(e)}'}), 500
+
+
 @app.route('/webapp/admin/parser/run', methods=['POST'])
 def webapp_parser_run():
     from olx_parser import OLXParser
