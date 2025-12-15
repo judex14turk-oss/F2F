@@ -1240,6 +1240,123 @@ def webapp_properties():
     )
 
 
+@app.route('/webapp/admin/properties/<int:property_id>/view')
+def webapp_property_view(property_id):
+    tg_id = request.args.get('tg_id')
+    
+    if not tg_id:
+        return "Telegram ID не указан", 400
+    
+    db = get_db()
+    admin_user = db.query(User).filter(User.telegram_id == int(tg_id)).first()
+    
+    if not admin_user or not admin_user.is_admin:
+        db.close()
+        return "Доступ запрещён", 403
+    
+    permissions = get_admin_permissions(admin_user.admin_role)
+    prop = db.query(Property).filter(Property.id == property_id).first()
+    
+    if not prop:
+        db.close()
+        return "Объект не найден", 404
+    
+    owner = db.query(User).filter(User.id == prop.owner_id).first()
+    photos = prop.photos.split(',') if prop.photos else []
+    
+    db.close()
+    
+    return render_template('webapp_property_view.html',
+        tg_id=tg_id,
+        permissions=permissions,
+        prop=prop,
+        owner=owner,
+        photos=photos
+    )
+
+
+@app.route('/webapp/admin/properties/<int:property_id>/edit')
+def webapp_property_edit(property_id):
+    tg_id = request.args.get('tg_id')
+    
+    if not tg_id:
+        return "Telegram ID не указан", 400
+    
+    db = get_db()
+    admin_user = db.query(User).filter(User.telegram_id == int(tg_id)).first()
+    
+    if not admin_user or not admin_user.is_admin:
+        db.close()
+        return "Доступ запрещён", 403
+    
+    permissions = get_admin_permissions(admin_user.admin_role)
+    prop = db.query(Property).filter(Property.id == property_id).first()
+    
+    if not prop:
+        db.close()
+        return "Объект не найден", 404
+    
+    photos = prop.photos.split(',') if prop.photos else []
+    
+    db.close()
+    
+    return render_template('webapp_property_edit.html',
+        tg_id=tg_id,
+        permissions=permissions,
+        prop=prop,
+        photos=photos
+    )
+
+
+@app.route('/webapp/admin/properties/<int:property_id>/update', methods=['POST'])
+def webapp_property_update(property_id):
+    tg_id = request.form.get('tg_id')
+    
+    db = get_db()
+    admin = db.query(User).filter(User.telegram_id == int(tg_id)).first() if tg_id else None
+    
+    if not admin or not admin.is_admin:
+        db.close()
+        return "Доступ запрещён", 403
+    
+    prop = db.query(Property).filter(Property.id == property_id).first()
+    if prop:
+        prop.residential_complex = request.form.get('residential_complex', prop.residential_complex)
+        prop.district = request.form.get('district', prop.district)
+        prop.address = request.form.get('address', prop.address)
+        prop.rooms = int(request.form.get('rooms', prop.rooms or 0)) if request.form.get('rooms') else prop.rooms
+        prop.area = float(request.form.get('area', prop.area or 0)) if request.form.get('area') else prop.area
+        prop.floor = int(request.form.get('floor', prop.floor or 0)) if request.form.get('floor') else prop.floor
+        prop.total_floors = int(request.form.get('total_floors', prop.total_floors or 0)) if request.form.get('total_floors') else prop.total_floors
+        prop.price = int(request.form.get('price', prop.price)) if request.form.get('price') else prop.price
+        prop.description = request.form.get('description', prop.description)
+        prop.phone = request.form.get('phone', prop.phone)
+        db.commit()
+    db.close()
+    
+    return redirect(url_for('webapp_property_view', property_id=property_id, tg_id=tg_id))
+
+
+@app.route('/webapp/admin/properties/<int:property_id>/delete', methods=['POST'])
+def webapp_property_delete(property_id):
+    tg_id = request.form.get('tg_id')
+    
+    db = get_db()
+    admin = db.query(User).filter(User.telegram_id == int(tg_id)).first() if tg_id else None
+    
+    if not admin or not admin.is_admin:
+        db.close()
+        return "Доступ запрещён", 403
+    
+    prop = db.query(Property).filter(Property.id == property_id).first()
+    if prop:
+        db.delete(prop)
+        db.commit()
+    db.close()
+    
+    return redirect(url_for('webapp_properties', tg_id=tg_id))
+
+
 @app.route('/webapp/admin/properties/<int:property_id>/approve', methods=['POST'])
 def webapp_approve_property(property_id):
     tg_id = request.form.get('tg_id')
