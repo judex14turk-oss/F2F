@@ -458,6 +458,143 @@ class OLXParser:
     def parse_listing_with_phone(self, url):
         return self.parse_listing(url, get_phone=True)
     
+    def parse_generator(self, deal_type='sale', property_type='apartment', district='all',
+                        rooms=None, housing_type='all', max_listings=50, 
+                        get_phone=False, max_days=None):
+        """
+        Unified generator that yields parsed listings one by one.
+        Used by both batch and streaming endpoints.
+        
+        Yields dict with:
+            - 'event': 'start' | 'listing' | 'skip' | 'error' | 'complete'
+            - 'data': parsed listing data (for 'listing' event)
+            - 'skip_reason': reason for skip (for 'skip' event)
+            - 'current': current index
+            - 'total': total URLs found
+            - 'added': number of successfully parsed listings
+            - 'stats': final stats (for 'complete' event)
+        """
+        fetch_multiplier = 2 if max_days else 1.5
+        if district and district != 'all':
+            fetch_multiplier = 3
+        fetch_limit = int(max_listings * fetch_multiplier)
+        fetch_pages = max(25, (fetch_limit // 40) + 1)
+        
+        listing_urls = self.get_listings_from_category(
+            deal_type=deal_type,
+            property_type=property_type,
+            district=district,
+            rooms=rooms,
+            housing_type=housing_type,
+            max_pages=fetch_pages,
+            max_listings=fetch_limit
+        )
+        
+        total = len(listing_urls)
+        district_name = self.TASHKENT_DISTRICTS.get(district, '') if district else ''
+        
+        yield {
+            'event': 'start',
+            'total': total,
+            'current': 0,
+            'added': 0
+        }
+        
+        driver = None
+        if get_phone:
+            driver = self.get_driver()
+            if not driver:
+                print("Warning: Could not initialize browser, falling back to requests")
+        
+        results = []
+        skipped_old = 0
+        skipped_district = 0
+        
+        try:
+            for i, url in enumerate(listing_urls):
+                if len(results) >= max_listings:
+                    break
+                
+                try:
+                    if get_phone and driver:
+                        data = self.parse_listing_with_driver(driver, url, get_phone=True)
+                    else:
+                        data = self.parse_listing_with_requests(url)
+                    
+                    # Filter by date
+                    if max_days and not self.is_listing_fresh(data.get('published_date'), max_days):
+                        skipped_old += 1
+                        yield {
+                            'event': 'skip',
+                            'skip_reason': 'old',
+                            'current': i + 1,
+                            'total': total,
+                            'added': len(results),
+                            'skipped_old': skipped_old
+                        }
+                        continue
+                    
+                    # Filter by district
+                    if district and district != 'all' and district_name:
+                        location = data.get('location', '') or ''
+                        parsed_district = data.get('district', '') or ''
+                        if district_name not in location and district_name not in parsed_district:
+                            skipped_district += 1
+                            yield {
+                                'event': 'skip',
+                                'skip_reason': 'district',
+                                'current': i + 1,
+                                'total': total,
+                                'added': len(results),
+                                'skipped_district': skipped_district
+                            }
+                            continue
+                    
+                    results.append(data)
+                    
+                    yield {
+                        'event': 'listing',
+                        'data': data,
+                        'current': i + 1,
+                        'total': total,
+                        'added': len(results),
+                        'skipped_old': skipped_old,
+                        'skipped_district': skipped_district
+                    }
+                    
+                    if not get_phone:
+                        time.sleep(0.3)
+                    
+                except Exception as e:
+                    yield {
+                        'event': 'error',
+                        'error': str(e),
+                        'url': url,
+                        'current': i + 1,
+                        'total': total,
+                        'added': len(results)
+                    }
+        finally:
+            if driver:
+                driver.quit()
+        
+        yield {
+            'event': 'complete',
+            'total': total,
+            'parsed': len(results),
+            'skipped_old': skipped_old,
+            'skipped_district': skipped_district,
+            'listings': results,
+            'filters': {
+                'deal_type': deal_type,
+                'property_type': property_type,
+                'district': district,
+                'rooms': rooms,
+                'housing_type': housing_type,
+                'max_days': max_days
+            }
+        }
+    
     def bulk_parse(self, deal_type='sale', property_type='apartment', district='all',
                    rooms=None, housing_type='all', max_pages=2, max_listings=20, 
                    get_phone=False, progress_callback=None, max_days=None):
