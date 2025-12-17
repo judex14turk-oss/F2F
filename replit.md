@@ -8,7 +8,20 @@ The platform has two main user interfaces:
 1. **Telegram Bot** - Primary interface for buyers (swipe-based property discovery) and sellers (property management)
 2. **Web Admin/CRM Panel** - Flask-based dashboard for sellers to manage listings and track deals, plus admin functionality for platform management
 
-## Recent Changes (December 15, 2025)
+## Recent Changes (December 17, 2025)
+
+- **Рекламная система**: добавлена полноценная система рекламы в боте
+  - Модель Advertisement в базе данных (title, description, media, media_type, views_count)
+  - Админ-панель для управления рекламой (добавление, редактирование, удаление)
+  - Лимит 30 рекламных постов
+  - Показ случайной рекламы каждые 10 объявлений для покупателей
+  - Поддержка фото и видео (до 10 файлов)
+  - Счётчик показов для каждого поста
+  - Права доступа can_manage_ads для Super Admin и Admin
+  - Раздел "Реклама" на странице тарифов с ценой 100,000 сум/мес
+  - Информация о 25,000+ пользователях бота
+
+## Previous Changes (December 15, 2025)
 
 - **Унифицированный парсер OLX**: создан единый `parse_generator()` в olx_parser.py
   - Вся логика парсинга (фильтрация по дате, району, обход страниц) теперь в одном месте
