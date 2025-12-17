@@ -10,8 +10,9 @@ from aiogram.fsm.context import FSMContext
 from aiogram.fsm.state import State, StatesGroup
 from aiogram.fsm.storage.memory import MemoryStorage
 
-from models import SessionLocal, User, Property, Like, Match, Offer, District, ResidentialComplex
+from models import SessionLocal, User, Property, Like, Match, Offer, District, ResidentialComplex, Advertisement
 from models import UserRole, SellerType, TariffType, PropertyType, PropertyStatus, init_db
+import random
 
 BOT_TOKEN = os.environ.get('TELEGRAM_BOT_TOKEN')
 ADMIN_USERNAME = os.environ.get('ADMIN_USERNAME', 'InvictumMurad')
@@ -58,6 +59,7 @@ class PropertyStates(StatesGroup):
 class SearchStates(StatesGroup):
     viewing_properties = State()
     current_index = State()
+    viewing_ad = State()
 
 
 def validate_number(text):
@@ -1438,10 +1440,69 @@ async def process_back_reply(message: types.Message, state: FSMContext):
     await message.answer("Вы вернулись в меню", reply_markup=keyboard)
 
 
+async def show_advertisement(message, ad, state):
+    """Показывает рекламный пост"""
+    text = "📢 <b>РЕКЛАМА</b>\n"
+    text += "━━━━━━━━━━━━━━━━━━━━\n\n"
+    
+    if ad.title:
+        text += f"📌 <b>{ad.title}</b>\n\n"
+    
+    if ad.description:
+        text += f"{ad.description}\n"
+    
+    text += "\n━━━━━━━━━━━━━━━━━━━━"
+    
+    ad_keyboard = ReplyKeyboardMarkup(
+        keyboard=[
+            [KeyboardButton(text="➡️ Далее")],
+            [KeyboardButton(text="🔙 Назад")]
+        ],
+        resize_keyboard=True
+    )
+    
+    photos = [p.strip() for p in (ad.media.split(",") if ad.media else []) if p.strip()]
+    
+    if photos and ad.media_type == 'photo':
+        from aiogram.types import InputMediaPhoto
+        if len(photos) > 1:
+            await message.answer("📢", reply_markup=ad_keyboard)
+            media_group = []
+            for i, photo_id in enumerate(photos[:10]):
+                if i == 0:
+                    media_group.append(InputMediaPhoto(media=photo_id, caption=text, parse_mode="HTML"))
+                else:
+                    media_group.append(InputMediaPhoto(media=photo_id))
+            try:
+                await message.answer_media_group(media_group)
+            except:
+                await message.answer(text, reply_markup=ad_keyboard, parse_mode="HTML")
+        else:
+            try:
+                await message.answer_photo(photo=photos[0], caption=text, reply_markup=ad_keyboard, parse_mode="HTML")
+            except:
+                await message.answer(text, reply_markup=ad_keyboard, parse_mode="HTML")
+    elif photos and ad.media_type == 'video':
+        try:
+            await message.answer_video(video=photos[0], caption=text, reply_markup=ad_keyboard, parse_mode="HTML")
+        except:
+            await message.answer(text, reply_markup=ad_keyboard, parse_mode="HTML")
+    else:
+        await message.answer(text, reply_markup=ad_keyboard, parse_mode="HTML")
+    
+    db = SessionLocal()
+    ad_to_update = db.query(Advertisement).filter(Advertisement.id == ad.id).first()
+    if ad_to_update:
+        ad_to_update.views_count += 1
+        db.commit()
+    db.close()
+
+
 async def show_next_property_reply(message, state):
     data = await state.get_data()
     properties = data.get("properties", [])
     current_index = data.get("current_index", 0) + 1
+    viewed_count = data.get("viewed_count", 0) + 1
     
     if current_index >= len(properties):
         db = SessionLocal()
@@ -1458,8 +1519,58 @@ async def show_next_property_reply(message, state):
         await state.clear()
         return
     
-    await state.update_data(current_index=current_index)
+    if viewed_count > 0 and viewed_count % 10 == 0:
+        db = SessionLocal()
+        active_ads = db.query(Advertisement).filter(Advertisement.is_active == True).all()
+        db.close()
+        
+        if active_ads:
+            random_ad = random.choice(active_ads)
+            await state.update_data(current_index=current_index, viewed_count=viewed_count, showing_ad=True)
+            await show_advertisement(message, random_ad, state)
+            await state.set_state(SearchStates.viewing_ad)
+            return
+    
+    await state.update_data(current_index=current_index, viewed_count=viewed_count)
     await show_property_card(message, properties[current_index], state)
+
+
+@dp.message(F.text == "➡️ Далее", SearchStates.viewing_ad)
+async def continue_after_ad(message: types.Message, state: FSMContext):
+    """Продолжить просмотр после рекламы"""
+    data = await state.get_data()
+    properties = data.get("properties", [])
+    current_index = data.get("current_index", 0)
+    
+    if current_index >= len(properties):
+        keyboard = get_buyer_menu()
+        await message.answer(
+            "🎉 Вы просмотрели все доступные квартиры!\n\n"
+            "Новые объекты появляются каждый день. Заходите позже!",
+            reply_markup=keyboard
+        )
+        await state.clear()
+        return
+    
+    await state.set_state(SearchStates.viewing_properties)
+    await show_property_card(message, properties[current_index], state)
+
+
+@dp.message(F.text == "🔙 Назад", SearchStates.viewing_ad)
+async def back_from_ad(message: types.Message, state: FSMContext):
+    """Вернуться в меню из рекламы"""
+    await state.clear()
+    
+    db = SessionLocal()
+    user = db.query(User).filter(User.telegram_id == message.from_user.id).first()
+    db.close()
+    
+    if user and user.role == UserRole.BUYER:
+        keyboard = get_buyer_menu()
+    else:
+        keyboard = get_seller_menu()
+    
+    await message.answer("Вы вернулись в меню", reply_markup=keyboard)
 
 
 @dp.message(F.text == "🏢 Мои объекты")
