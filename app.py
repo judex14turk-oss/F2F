@@ -7,7 +7,7 @@ from functools import wraps
 from flask import Flask, render_template, request, jsonify, redirect, url_for, session, Response
 
 TELEGRAM_BOT_TOKEN = os.environ.get('TELEGRAM_BOT_TOKEN', '')
-from models import SessionLocal, User, Property, Like, Match, Offer, District, ResidentialComplex, PromoCode, TariffSettings
+from models import SessionLocal, User, Property, Like, Match, Offer, District, ResidentialComplex, PromoCode, TariffSettings, Advertisement
 from models import UserRole, SellerType, TariffType, PropertyType, PropertyStatus, AdminRole, init_db, get_tashkent_now
 
 app = Flask(__name__)
@@ -685,6 +685,7 @@ def get_admin_permissions(admin_role):
             'can_manage_admins': True,
             'can_delete_users': True,
             'can_parse': True,
+            'can_manage_ads': True,
             'role_name': 'Старший администратор'
         }
     elif admin_role == AdminRole.ADMIN:
@@ -694,6 +695,7 @@ def get_admin_permissions(admin_role):
             'can_manage_admins': False,
             'can_delete_users': False,
             'can_parse': False,
+            'can_manage_ads': True,
             'role_name': 'Администратор'
         }
     elif admin_role == AdminRole.OPERATOR:
@@ -703,6 +705,7 @@ def get_admin_permissions(admin_role):
             'can_manage_admins': False,
             'can_delete_users': False,
             'can_parse': False,
+            'can_manage_ads': False,
             'role_name': 'Оператор'
         }
     return {
@@ -711,6 +714,7 @@ def get_admin_permissions(admin_role):
         'can_manage_admins': False,
         'can_delete_users': False,
         'can_parse': False,
+        'can_manage_ads': False,
         'role_name': 'Нет доступа'
     }
 
@@ -2121,6 +2125,181 @@ def check_promo():
         'discount': promo.discount_percent,
         'bonus_days': promo.bonus_days
     })
+
+
+@app.route('/webapp/admin/ads')
+def webapp_ads():
+    tg_id = request.args.get('tg_id')
+    if not tg_id:
+        return "Telegram ID не указан", 400
+    
+    db = get_db()
+    admin_user = db.query(User).filter(User.telegram_id == int(tg_id)).first()
+    
+    if not admin_user or not admin_user.is_admin:
+        db.close()
+        return "Доступ запрещён", 403
+    
+    permissions = get_admin_permissions(admin_user.admin_role)
+    if not permissions.get('can_manage_ads'):
+        db.close()
+        return "У вас нет прав для управления рекламой", 403
+    
+    ads = db.query(Advertisement).order_by(Advertisement.created_at.desc()).all()
+    ads_count = len(ads)
+    
+    db.close()
+    
+    return render_template('webapp_ads.html',
+        ads=ads,
+        ads_count=ads_count,
+        tg_id=tg_id,
+        permissions=permissions,
+        admin_user=admin_user
+    )
+
+
+@app.route('/webapp/admin/ads/add', methods=['GET', 'POST'])
+def webapp_ads_add():
+    tg_id = request.args.get('tg_id') or request.form.get('tg_id')
+    if not tg_id:
+        return "Telegram ID не указан", 400
+    
+    db = get_db()
+    admin_user = db.query(User).filter(User.telegram_id == int(tg_id)).first()
+    
+    if not admin_user or not admin_user.is_admin:
+        db.close()
+        return "Доступ запрещён", 403
+    
+    permissions = get_admin_permissions(admin_user.admin_role)
+    if not permissions.get('can_manage_ads'):
+        db.close()
+        return "У вас нет прав для управления рекламой", 403
+    
+    if request.method == 'POST':
+        ads_count = db.query(Advertisement).count()
+        if ads_count >= 30:
+            db.close()
+            return "Достигнут лимит в 30 рекламных постов", 400
+        
+        title = request.form.get('title', '')
+        description = request.form.get('description', '')
+        media = request.form.get('media', '')
+        media_type = request.form.get('media_type', 'photo')
+        
+        ad = Advertisement(
+            title=title,
+            description=description,
+            media=media,
+            media_type=media_type,
+            is_active=True
+        )
+        db.add(ad)
+        db.commit()
+        db.close()
+        
+        return redirect(url_for('webapp_ads', tg_id=tg_id))
+    
+    db.close()
+    return render_template('webapp_ads_edit.html',
+        ad=None,
+        tg_id=tg_id,
+        permissions=permissions,
+        admin_user=admin_user
+    )
+
+
+@app.route('/webapp/admin/ads/<int:ad_id>/edit', methods=['GET', 'POST'])
+def webapp_ads_edit(ad_id):
+    tg_id = request.args.get('tg_id') or request.form.get('tg_id')
+    if not tg_id:
+        return "Telegram ID не указан", 400
+    
+    db = get_db()
+    admin_user = db.query(User).filter(User.telegram_id == int(tg_id)).first()
+    
+    if not admin_user or not admin_user.is_admin:
+        db.close()
+        return "Доступ запрещён", 403
+    
+    permissions = get_admin_permissions(admin_user.admin_role)
+    if not permissions.get('can_manage_ads'):
+        db.close()
+        return "У вас нет прав для управления рекламой", 403
+    
+    ad = db.query(Advertisement).filter(Advertisement.id == ad_id).first()
+    if not ad:
+        db.close()
+        return "Реклама не найдена", 404
+    
+    if request.method == 'POST':
+        ad.title = request.form.get('title', '')
+        ad.description = request.form.get('description', '')
+        ad.media = request.form.get('media', '')
+        ad.media_type = request.form.get('media_type', 'photo')
+        ad.is_active = request.form.get('is_active') == 'on'
+        db.commit()
+        db.close()
+        
+        return redirect(url_for('webapp_ads', tg_id=tg_id))
+    
+    db.close()
+    return render_template('webapp_ads_edit.html',
+        ad=ad,
+        tg_id=tg_id,
+        permissions=permissions,
+        admin_user=admin_user
+    )
+
+
+@app.route('/webapp/admin/ads/<int:ad_id>/delete', methods=['POST'])
+def webapp_ads_delete(ad_id):
+    tg_id = request.form.get('tg_id')
+    if not tg_id:
+        return "Telegram ID не указан", 400
+    
+    db = get_db()
+    admin_user = db.query(User).filter(User.telegram_id == int(tg_id)).first()
+    
+    if not admin_user or not admin_user.is_admin:
+        db.close()
+        return "Доступ запрещён", 403
+    
+    permissions = get_admin_permissions(admin_user.admin_role)
+    if not permissions.get('can_manage_ads'):
+        db.close()
+        return "У вас нет прав для управления рекламой", 403
+    
+    ad = db.query(Advertisement).filter(Advertisement.id == ad_id).first()
+    if ad:
+        db.delete(ad)
+        db.commit()
+    db.close()
+    
+    return redirect(url_for('webapp_ads', tg_id=tg_id))
+
+
+@app.route('/webapp/admin/ads/<int:ad_id>/toggle', methods=['POST'])
+def webapp_ads_toggle(ad_id):
+    tg_id = request.form.get('tg_id')
+    if not tg_id:
+        return "Telegram ID не указан", 400
+    
+    db = get_db()
+    admin_user = db.query(User).filter(User.telegram_id == int(tg_id)).first()
+    
+    if not admin_user or not admin_user.is_admin:
+        db.close()
+        return "Доступ запрещён", 403
+    
+    ad = db.query(Advertisement).filter(Advertisement.id == ad_id).first()
+    if ad:
+        ad.is_active = not ad.is_active
+        db.commit()
+    db.close()
+    
+    return redirect(url_for('webapp_ads', tg_id=tg_id))
 
 
 if __name__ == '__main__':

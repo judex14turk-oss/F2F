@@ -1,0 +1,318 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Реклама</title>
+    <script src="https://telegram.org/js/telegram-web-app.js"></script>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.0/font/bootstrap-icons.css" rel="stylesheet">
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        
+        body {
+            background: #0a0a0a;
+            color: #e5e5e5;
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            padding-bottom: 100px;
+        }
+        
+        .header {
+            background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
+            padding: 20px 16px;
+            border-bottom: 1px solid #2a2a2a;
+        }
+        
+        .header h1 {
+            font-size: 1.2rem;
+            font-weight: 600;
+            color: #fff;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        
+        .header-sub {
+            font-size: 0.8rem;
+            color: #888;
+            margin-top: 4px;
+        }
+        
+        .stats-row {
+            display: flex;
+            gap: 8px;
+            margin-top: 12px;
+        }
+        
+        .stat-badge {
+            background: rgba(255,255,255,0.08);
+            padding: 5px 10px;
+            border-radius: 6px;
+            font-size: 0.75rem;
+            color: #aaa;
+        }
+        
+        .stat-badge.warning {
+            background: rgba(245,158,11,0.2);
+            color: #fbbf24;
+        }
+        
+        .nav-tabs {
+            display: flex;
+            gap: 4px;
+            padding: 12px;
+            background: #111;
+            overflow-x: auto;
+        }
+        
+        .nav-tab {
+            flex: 1;
+            text-align: center;
+            padding: 10px 8px;
+            background: #1a1a1a;
+            border-radius: 8px;
+            text-decoration: none;
+            color: #888;
+            font-size: 0.75rem;
+            white-space: nowrap;
+            border: 1px solid #2a2a2a;
+        }
+        
+        .nav-tab.active {
+            background: #f59e0b;
+            color: white;
+            border-color: #f59e0b;
+        }
+        
+        .content {
+            padding: 16px;
+        }
+        
+        .add-btn {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+            background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%);
+            color: white;
+            padding: 14px 20px;
+            border-radius: 12px;
+            text-decoration: none;
+            font-weight: 600;
+            margin-bottom: 16px;
+        }
+        
+        .ads-list {
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+        }
+        
+        .ad-card {
+            background: #151515;
+            border: 1px solid #252525;
+            border-radius: 12px;
+            padding: 16px;
+        }
+        
+        .ad-card.inactive {
+            opacity: 0.5;
+        }
+        
+        .ad-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            margin-bottom: 10px;
+        }
+        
+        .ad-title {
+            font-weight: 600;
+            font-size: 1rem;
+            color: #fff;
+        }
+        
+        .ad-status {
+            padding: 4px 8px;
+            border-radius: 4px;
+            font-size: 0.65rem;
+            font-weight: 500;
+        }
+        
+        .ad-status.active {
+            background: rgba(34,197,94,0.2);
+            color: #4ade80;
+        }
+        
+        .ad-status.inactive {
+            background: rgba(239,68,68,0.2);
+            color: #f87171;
+        }
+        
+        .ad-description {
+            font-size: 0.85rem;
+            color: #888;
+            margin-bottom: 12px;
+            display: -webkit-box;
+            -webkit-line-clamp: 2;
+            -webkit-box-orient: vertical;
+            overflow: hidden;
+        }
+        
+        .ad-stats {
+            display: flex;
+            gap: 12px;
+            font-size: 0.75rem;
+            color: #666;
+            margin-bottom: 12px;
+        }
+        
+        .ad-stats span {
+            display: flex;
+            align-items: center;
+            gap: 4px;
+        }
+        
+        .ad-actions {
+            display: flex;
+            gap: 8px;
+        }
+        
+        .btn {
+            flex: 1;
+            padding: 10px;
+            border-radius: 8px;
+            font-size: 0.8rem;
+            text-align: center;
+            text-decoration: none;
+            border: none;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 4px;
+        }
+        
+        .btn-edit {
+            background: #2563eb;
+            color: white;
+        }
+        
+        .btn-toggle {
+            background: #374151;
+            color: white;
+        }
+        
+        .btn-delete {
+            background: #dc2626;
+            color: white;
+        }
+        
+        .empty-state {
+            text-align: center;
+            padding: 60px 20px;
+            color: #666;
+        }
+        
+        .empty-state i {
+            font-size: 3rem;
+            margin-bottom: 15px;
+            color: #333;
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <h1><i class="bi bi-megaphone"></i> Управление рекламой</h1>
+        <div class="header-sub">Рекламные посты показываются искателям квартир</div>
+        <div class="stats-row">
+            <span class="stat-badge">{{ ads_count }} / 30 постов</span>
+            {% if ads_count >= 25 %}
+            <span class="stat-badge warning">Почти лимит!</span>
+            {% endif %}
+        </div>
+    </div>
+    
+    <div class="nav-tabs">
+        <a href="{{ url_for('webapp_admin', tg_id=tg_id) }}" class="nav-tab">
+            <i class="bi bi-people"></i> Юзеры
+        </a>
+        {% if permissions.can_view_admins %}
+        <a href="{{ url_for('webapp_admins', tg_id=tg_id) }}" class="nav-tab">
+            <i class="bi bi-shield"></i> Админы
+        </a>
+        {% endif %}
+        <a href="{{ url_for('webapp_stats', tg_id=tg_id) }}" class="nav-tab">
+            <i class="bi bi-graph-up"></i> Стат.
+        </a>
+        <a href="{{ url_for('webapp_properties', tg_id=tg_id) }}" class="nav-tab">
+            <i class="bi bi-building"></i> Объекты
+        </a>
+        {% if permissions.can_manage_ads %}
+        <a href="{{ url_for('webapp_ads', tg_id=tg_id) }}" class="nav-tab active">
+            <i class="bi bi-megaphone"></i> Реклама
+        </a>
+        {% endif %}
+    </div>
+    
+    <div class="content">
+        {% if ads_count < 30 %}
+        <a href="{{ url_for('webapp_ads_add', tg_id=tg_id) }}" class="add-btn">
+            <i class="bi bi-plus-lg"></i> Добавить рекламу
+        </a>
+        {% endif %}
+        
+        {% if ads %}
+        <div class="ads-list">
+            {% for ad in ads %}
+            <div class="ad-card {% if not ad.is_active %}inactive{% endif %}">
+                <div class="ad-header">
+                    <div class="ad-title">{{ ad.title or 'Без названия' }}</div>
+                    <span class="ad-status {% if ad.is_active %}active{% else %}inactive{% endif %}">
+                        {% if ad.is_active %}Активна{% else %}Неактивна{% endif %}
+                    </span>
+                </div>
+                
+                <div class="ad-description">{{ ad.description or 'Нет описания' }}</div>
+                
+                <div class="ad-stats">
+                    <span><i class="bi bi-eye"></i> {{ ad.views_count }} показов</span>
+                    <span><i class="bi bi-image"></i> {{ ad.media_type }}</span>
+                    <span><i class="bi bi-calendar"></i> {{ ad.created_at.strftime('%d.%m.%Y') if ad.created_at else '-' }}</span>
+                </div>
+                
+                <div class="ad-actions">
+                    <a href="{{ url_for('webapp_ads_edit', ad_id=ad.id, tg_id=tg_id) }}" class="btn btn-edit">
+                        <i class="bi bi-pencil"></i> Изменить
+                    </a>
+                    <form method="POST" action="{{ url_for('webapp_ads_toggle', ad_id=ad.id) }}" style="flex:1; margin:0;">
+                        <input type="hidden" name="tg_id" value="{{ tg_id }}">
+                        <button type="submit" class="btn btn-toggle" style="width:100%;">
+                            <i class="bi bi-{% if ad.is_active %}pause{% else %}play{% endif %}"></i>
+                        </button>
+                    </form>
+                    <form method="POST" action="{{ url_for('webapp_ads_delete', ad_id=ad.id) }}" style="margin:0;" onsubmit="return confirm('Удалить рекламу?')">
+                        <input type="hidden" name="tg_id" value="{{ tg_id }}">
+                        <button type="submit" class="btn btn-delete">
+                            <i class="bi bi-trash"></i>
+                        </button>
+                    </form>
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+        {% else %}
+        <div class="empty-state">
+            <i class="bi bi-megaphone"></i>
+            <p>Рекламных постов пока нет</p>
+            <p style="font-size: 0.8rem; margin-top: 8px;">Добавьте первый пост!</p>
+        </div>
+        {% endif %}
+    </div>
+    
+    <script>
+        const tg = window.Telegram.WebApp;
+        tg.ready();
+        tg.expand();
+    </script>
+</body>
+</html>

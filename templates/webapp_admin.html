@@ -278,6 +278,11 @@
             <i class="bi bi-cloud-download"></i> Парсинг
         </a>
         {% endif %}
+        {% if permissions.can_manage_ads %}
+        <a href="{{ url_for('webapp_ads', tg_id=tg_id) }}" class="nav-tab">
+            <i class="bi bi-megaphone"></i> Реклама
+        </a>
+        {% endif %}
     </div>
     
     <div class="search-section">
