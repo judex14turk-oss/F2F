@@ -1,0 +1,254 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Реклама в боте</title>
+    <script src="https://telegram.org/js/telegram-web-app.js"></script>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        
+        body {
+            background: #0a0a0a;
+            color: #e5e5e5;
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            padding: 20px;
+            padding-bottom: 100px;
+        }
+        
+        .header {
+            text-align: center;
+            margin-bottom: 24px;
+        }
+        
+        .header-icon {
+            width: 70px;
+            height: 70px;
+            background: linear-gradient(135deg, #ec4899 0%, #be185d 100%);
+            border-radius: 20px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin: 0 auto 16px;
+            font-size: 32px;
+        }
+        
+        .header h1 {
+            font-size: 1.5rem;
+            font-weight: 700;
+            margin-bottom: 8px;
+        }
+        
+        .header .price {
+            font-size: 2rem;
+            font-weight: 700;
+            color: #ec4899;
+        }
+        
+        .header .price span {
+            font-size: 1rem;
+            color: #888;
+            font-weight: 400;
+        }
+        
+        .stats-card {
+            background: linear-gradient(135deg, rgba(236, 72, 153, 0.15) 0%, rgba(190, 24, 93, 0.1) 100%);
+            border: 1px solid rgba(236, 72, 153, 0.3);
+            border-radius: 16px;
+            padding: 24px;
+            text-align: center;
+            margin-bottom: 24px;
+        }
+        
+        .stats-number {
+            font-size: 3rem;
+            font-weight: 800;
+            color: #fff;
+            line-height: 1;
+        }
+        
+        .stats-label {
+            font-size: 0.9rem;
+            color: #888;
+            margin-top: 8px;
+        }
+        
+        .benefits-section {
+            margin-bottom: 24px;
+        }
+        
+        .benefits-section h2 {
+            font-size: 1.1rem;
+            font-weight: 600;
+            margin-bottom: 16px;
+            color: #fff;
+        }
+        
+        .benefit-item {
+            display: flex;
+            align-items: flex-start;
+            gap: 14px;
+            padding: 16px;
+            background: #151515;
+            border: 1px solid #252525;
+            border-radius: 12px;
+            margin-bottom: 10px;
+        }
+        
+        .benefit-icon {
+            width: 40px;
+            height: 40px;
+            background: rgba(236, 72, 153, 0.15);
+            border-radius: 10px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.2rem;
+            flex-shrink: 0;
+        }
+        
+        .benefit-content h3 {
+            font-size: 0.95rem;
+            font-weight: 600;
+            color: #fff;
+            margin-bottom: 4px;
+        }
+        
+        .benefit-content p {
+            font-size: 0.8rem;
+            color: #888;
+            line-height: 1.4;
+        }
+        
+        .audience-section {
+            background: #151515;
+            border: 1px solid #252525;
+            border-radius: 16px;
+            padding: 20px;
+            margin-bottom: 24px;
+        }
+        
+        .audience-section h2 {
+            font-size: 1rem;
+            font-weight: 600;
+            margin-bottom: 14px;
+            color: #fff;
+        }
+        
+        .audience-tags {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+        }
+        
+        .audience-tag {
+            background: rgba(236, 72, 153, 0.1);
+            border: 1px solid rgba(236, 72, 153, 0.3);
+            color: #ec4899;
+            padding: 8px 14px;
+            border-radius: 20px;
+            font-size: 0.8rem;
+        }
+        
+        .contact-section {
+            background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
+            border-radius: 16px;
+            padding: 24px;
+            text-align: center;
+        }
+        
+        .contact-section h3 {
+            font-size: 1.1rem;
+            font-weight: 600;
+            margin-bottom: 8px;
+        }
+        
+        .contact-section p {
+            font-size: 0.85rem;
+            color: #888;
+            margin-bottom: 16px;
+        }
+        
+        .contact-btn {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            background: linear-gradient(135deg, #ec4899 0%, #be185d 100%);
+            color: white;
+            padding: 14px 28px;
+            border-radius: 12px;
+            text-decoration: none;
+            font-weight: 600;
+            font-size: 0.95rem;
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <div class="header-icon">📢</div>
+        <h1>Реклама в боте</h1>
+        <div class="price">100 000 <span>сум/мес</span></div>
+    </div>
+    
+    <div class="stats-card">
+        <div class="stats-number">25 000+</div>
+        <div class="stats-label">активных пользователей бота</div>
+    </div>
+    
+    <div class="benefits-section">
+        <h2>Преимущества</h2>
+        
+        <div class="benefit-item">
+            <div class="benefit-icon">🎯</div>
+            <div class="benefit-content">
+                <h3>Целевая аудитория</h3>
+                <p>Ваша реклама показывается людям, которые активно ищут недвижимость</p>
+            </div>
+        </div>
+        
+        <div class="benefit-item">
+            <div class="benefit-icon">📊</div>
+            <div class="benefit-content">
+                <h3>Статистика показов</h3>
+                <p>Отслеживайте эффективность рекламы в реальном времени</p>
+            </div>
+        </div>
+        
+        <div class="benefit-item">
+            <div class="benefit-icon">💰</div>
+            <div class="benefit-content">
+                <h3>Доступная цена</h3>
+                <p>Низкая стоимость за охват тысяч потенциальных клиентов</p>
+            </div>
+        </div>
+    </div>
+    
+    <div class="audience-section">
+        <h2>Идеально для:</h2>
+        <div class="audience-tags">
+            <span class="audience-tag">Ремонт квартир</span>
+            <span class="audience-tag">Мебель</span>
+            <span class="audience-tag">Застройщики</span>
+            <span class="audience-tag">Банки (ипотека)</span>
+            <span class="audience-tag">Страхование</span>
+            <span class="audience-tag">Клининг</span>
+            <span class="audience-tag">Переезды</span>
+        </div>
+    </div>
+    
+    <div class="contact-section">
+        <h3>Разместить рекламу</h3>
+        <p>Свяжитесь с администратором для размещения рекламы</p>
+        <a href="https://t.me/InvictumMurad" class="contact-btn">
+            <span>💬</span>
+            <span>Написать @InvictumMurad</span>
+        </a>
+    </div>
+    
+    <script>
+        const tg = window.Telegram.WebApp;
+        tg.ready();
+        tg.expand();
+    </script>
+</body>
+</html>

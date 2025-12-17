@@ -676,6 +676,11 @@ def webapp_tariffs():
     return render_template('tariffs.html')
 
 
+@app.route('/webapp/advertising')
+def webapp_advertising():
+    return render_template('advertising.html')
+
+
 def get_admin_permissions(admin_role):
     """Возвращает права доступа для роли администратора"""
     if admin_role == AdminRole.SUPER_ADMIN:

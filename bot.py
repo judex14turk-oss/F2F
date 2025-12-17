@@ -2384,8 +2384,8 @@ def get_seller_profile_menu():
     return ReplyKeyboardMarkup(
         keyboard=[
             [KeyboardButton(text="❤️ Меня лайкнули"), KeyboardButton(text="💬 Сделки")],
-            [KeyboardButton(text="🏢 Мои объекты"), KeyboardButton(text="💳 Тарифы")],
-            [KeyboardButton(text="👤 Мой профиль")],
+            [KeyboardButton(text="🏢 Мои объекты"), KeyboardButton(text="👤 Мой профиль")],
+            [KeyboardButton(text="💳 Тарифы"), KeyboardButton(text="📢 Реклама")],
             [KeyboardButton(text="🔙 Главное меню")]
         ],
         resize_keyboard=True
@@ -3055,6 +3055,43 @@ async def tariffs(message: types.Message):
             "• Приоритетный показ\n\n"
             "━━━━━━━━━━━━━━━━━━\n"
             "Для оплаты: @InvictumMurad"
+        )
+        await message.answer(text)
+
+
+@dp.message(F.text == "📢 Реклама")
+async def advertising(message: types.Message):
+    webapp_url = WEBAPP_BASE_URL or os.environ.get('REPLIT_DEV_DOMAIN', '')
+    if webapp_url and not webapp_url.startswith('https://'):
+        webapp_url = f"https://{webapp_url}"
+    
+    if webapp_url:
+        keyboard = InlineKeyboardMarkup(inline_keyboard=[
+            [InlineKeyboardButton(
+                text="📢 Разместить рекламу",
+                web_app=WebAppInfo(url=f"{webapp_url}/webapp/advertising")
+            )],
+            [InlineKeyboardButton(
+                text="💬 Связаться с администратором",
+                url="https://t.me/InvictumMurad"
+            )]
+        ])
+        
+        await message.answer(
+            "📢 Реклама в боте\n\n"
+            "Разместите рекламу для 25,000+ активных пользователей!\n\n"
+            "Нажмите кнопку ниже для подробностей:",
+            reply_markup=keyboard
+        )
+    else:
+        text = (
+            "📢 Реклама в боте\n\n"
+            "💰 100 000 сум/месяц\n"
+            "👥 25 000+ активных пользователей\n\n"
+            "✅ Целевая аудитория — искатели недвижимости\n"
+            "✅ Статистика показов\n"
+            "✅ Доступная цена\n\n"
+            "Для размещения: @InvictumMurad"
         )
         await message.answer(text)
 
