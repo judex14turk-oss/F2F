@@ -229,6 +229,21 @@ class TariffSettings(Base):
     updated_at = Column(DateTime, default=get_tashkent_now, onupdate=get_tashkent_now)
 
 
+class Advertisement(Base):
+    __tablename__ = 'advertisements'
+    
+    id = Column(Integer, primary_key=True)
+    title = Column(String(200))
+    description = Column(Text)
+    media = Column(Text)
+    media_type = Column(String(20), default='photo')
+    is_active = Column(Boolean, default=True)
+    views_count = Column(Integer, default=0)
+    clicks_count = Column(Integer, default=0)
+    created_at = Column(DateTime, default=get_tashkent_now)
+    updated_at = Column(DateTime, default=get_tashkent_now, onupdate=get_tashkent_now)
+
+
 def init_db():
     Base.metadata.create_all(engine)
     
