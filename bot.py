@@ -3588,13 +3588,14 @@ async def catch_all_handler(message: types.Message, state: FSMContext):
 
 @dp.message(F.photo)
 async def handle_photo_for_file_id(message: types.Message):
-    """Возвращает file_id фото для админов"""
+    """Возвращает file_id фото для старших админов"""
+    from models import AdminRole
     db = SessionLocal()
     user = db.query(User).filter(User.telegram_id == message.from_user.id).first()
-    is_admin = user and user.is_admin if user else False
+    is_senior_admin = user and (user.is_admin or user.admin_role in [AdminRole.SUPER_ADMIN, AdminRole.ADMIN]) if user else False
     db.close()
     
-    if is_admin:
+    if is_senior_admin:
         photo = message.photo[-1]
         await message.reply(
             f"<b>file_id из отвеченного медиа:</b>\n"
@@ -3606,13 +3607,14 @@ async def handle_photo_for_file_id(message: types.Message):
 
 @dp.message(F.video)
 async def handle_video_for_file_id(message: types.Message):
-    """Возвращает file_id видео для админов"""
+    """Возвращает file_id видео для старших админов"""
+    from models import AdminRole
     db = SessionLocal()
     user = db.query(User).filter(User.telegram_id == message.from_user.id).first()
-    is_admin = user and user.is_admin if user else False
+    is_senior_admin = user and (user.is_admin or user.admin_role in [AdminRole.SUPER_ADMIN, AdminRole.ADMIN]) if user else False
     db.close()
     
-    if is_admin:
+    if is_senior_admin:
         video = message.video
         await message.reply(
             f"<b>file_id из отвеченного медиа:</b>\n"
