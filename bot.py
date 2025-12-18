@@ -3567,6 +3567,42 @@ async def catch_all_handler(message: types.Message, state: FSMContext):
         )
 
 
+@dp.message(F.photo)
+async def handle_photo_for_file_id(message: types.Message):
+    """Возвращает file_id фото для админов"""
+    db = SessionLocal()
+    user = db.query(User).filter(User.telegram_id == message.from_user.id).first()
+    is_admin = user and user.is_admin if user else False
+    db.close()
+    
+    if is_admin:
+        photo = message.photo[-1]
+        await message.reply(
+            f"<b>file_id из отвеченного медиа:</b>\n"
+            f"• photo:\n<code>{photo.file_id}</code>\n"
+            f"• unique_id: <code>{photo.file_unique_id}</code>",
+            parse_mode="HTML"
+        )
+
+
+@dp.message(F.video)
+async def handle_video_for_file_id(message: types.Message):
+    """Возвращает file_id видео для админов"""
+    db = SessionLocal()
+    user = db.query(User).filter(User.telegram_id == message.from_user.id).first()
+    is_admin = user and user.is_admin if user else False
+    db.close()
+    
+    if is_admin:
+        video = message.video
+        await message.reply(
+            f"<b>file_id из отвеченного медиа:</b>\n"
+            f"• video:\n<code>{video.file_id}</code>\n"
+            f"• unique_id: <code>{video.file_unique_id}</code>",
+            parse_mode="HTML"
+        )
+
+
 async def main():
     print("Initializing database...")
     init_db()
