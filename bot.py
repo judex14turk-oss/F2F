@@ -1263,7 +1263,26 @@ async def view_properties(message: types.Message, state: FSMContext):
         query = query.filter(Property.id.notin_(liked_ids))
     if skipped_ids:
         query = query.filter(Property.id.notin_(skipped_ids))
-    properties = query.order_by(Property.created_at.desc()).all()
+    
+    from sqlalchemy import case
+    tariff_priority = case(
+        (User.tariff == TariffType.PREMIUM, 1),
+        (User.tariff == TariffType.DEVELOPER_PRO, 1),
+        (User.tariff == TariffType.PRO, 2),
+        (User.tariff == TariffType.AGENCY_START, 2),
+        (User.tariff == TariffType.FREE, 3),
+        else_=4
+    )
+    source_priority = case(
+        (Property.source == 'olx', 5),
+        else_=0
+    )
+    
+    properties = query.join(User, Property.owner_id == User.id).order_by(
+        source_priority.asc(),
+        tariff_priority.asc(),
+        Property.created_at.desc()
+    ).all()
     
     db.close()
     
