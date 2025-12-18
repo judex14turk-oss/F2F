@@ -173,8 +173,8 @@ async def cmd_start(message: types.Message, state: FSMContext):
     )
     
     await message.answer(
-        "👋 Добро пожаловать в Real Estate Bot!\n\n"
-        "Это \"Tinder для недвижимости\" — находите покупателей или квартиры одним свайпом.\n\n"
+        "👋 Добро пожаловать в F2F!\n\n"
+        "Находите покупателей или квартиры одним свайпом.\n\n"
         "Выберите вашу роль:",
         reply_markup=keyboard
     )
