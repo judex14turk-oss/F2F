@@ -1463,9 +1463,17 @@ async def show_advertisement(message, ad, state):
     
     photos = [p.strip() for p in (ad.media.split(",") if ad.media else []) if p.strip()]
     
-    if photos and ad.media_type == 'photo':
+    if photos:
         from aiogram.types import InputMediaPhoto
-        if len(photos) > 1:
+        media_type = ad.media_type or 'photo'
+        
+        if media_type == 'video':
+            try:
+                await message.answer_video(video=photos[0], caption=text, reply_markup=ad_keyboard, parse_mode="HTML")
+            except Exception as e:
+                print(f"Video error: {e}")
+                await message.answer(text, reply_markup=ad_keyboard, parse_mode="HTML")
+        elif len(photos) > 1:
             await message.answer("📢", reply_markup=ad_keyboard)
             media_group = []
             for i, photo_id in enumerate(photos[:10]):
@@ -1475,18 +1483,15 @@ async def show_advertisement(message, ad, state):
                     media_group.append(InputMediaPhoto(media=photo_id))
             try:
                 await message.answer_media_group(media_group)
-            except:
+            except Exception as e:
+                print(f"Media group error: {e}")
                 await message.answer(text, reply_markup=ad_keyboard, parse_mode="HTML")
         else:
             try:
                 await message.answer_photo(photo=photos[0], caption=text, reply_markup=ad_keyboard, parse_mode="HTML")
-            except:
+            except Exception as e:
+                print(f"Photo error: {e}, file_id: {photos[0]}")
                 await message.answer(text, reply_markup=ad_keyboard, parse_mode="HTML")
-    elif photos and ad.media_type == 'video':
-        try:
-            await message.answer_video(video=photos[0], caption=text, reply_markup=ad_keyboard, parse_mode="HTML")
-        except:
-            await message.answer(text, reply_markup=ad_keyboard, parse_mode="HTML")
     else:
         await message.answer(text, reply_markup=ad_keyboard, parse_mode="HTML")
     
@@ -1519,7 +1524,7 @@ async def show_next_property_reply(message, state):
         await state.clear()
         return
     
-    if viewed_count > 0 and viewed_count % 10 == 0:
+    if viewed_count > 0 and viewed_count % 5 == 0:
         db = SessionLocal()
         active_ads = db.query(Advertisement).filter(Advertisement.is_active == True).all()
         db.close()
