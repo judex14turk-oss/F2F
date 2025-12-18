@@ -38,7 +38,9 @@ class OLXParser:
         'shaykhantakhur': 'Шайхантахурский',
         'uchtepa': 'Учтепинский',
         'yashnabad': 'Яшнабадский',
-        'olmazor': 'Олмазорский'
+        'olmazor': 'Олмазорский',
+        'yangihayot': 'Янгихаётский',
+        'noviy_tashkent': 'Новый Ташкент'
     }
     
     DISTRICT_IDS = {
@@ -53,7 +55,9 @@ class OLXParser:
         'shaykhantakhur': 21,
         'uchtepa': 22,
         'yashnabad': 23,
-        'olmazor': 16
+        'olmazor': 16,
+        'yangihayot': 26,
+        'noviy_tashkent': 27
     }
     
     ROOMS = {
