@@ -22,10 +22,6 @@ author = "agent"
 task = "workflow.run"
 args = "Web App"
 
-[[workflows.workflow.tasks]]
-task = "workflow.run"
-args = "Telegram Bot"
-
 [[workflows.workflow]]
 name = "Web App"
 author = "agent"
@@ -37,17 +33,6 @@ waitForPort = 5000
 
 [workflows.workflow.metadata]
 outputType = "webview"
-
-[[workflows.workflow]]
-name = "Telegram Bot"
-author = "agent"
-
-[[workflows.workflow.tasks]]
-task = "shell.exec"
-args = "python bot.py"
-
-[workflows.workflow.metadata]
-outputType = "console"
 
 [[ports]]
 localPort = 5000
