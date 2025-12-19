@@ -1355,7 +1355,7 @@ async def show_property_card(message, property_id, state=None):
     text += f"📞 <b><u>Контакт: {contact_phone}</u></b>\n"
     
     if prop.description:
-        desc = prop.description[:300] + "..." if len(prop.description) > 300 else prop.description
+        desc = prop.description[:1000] + "..." if len(prop.description) > 1000 else prop.description
         text += f"\n💬 <i>{desc}</i>"
     
     search_keyboard = ReplyKeyboardMarkup(
