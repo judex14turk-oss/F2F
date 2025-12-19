@@ -20,23 +20,7 @@ author = "agent"
 
 [[workflows.workflow.tasks]]
 task = "workflow.run"
-args = "Web App"
-
-[[workflows.workflow.tasks]]
-task = "workflow.run"
 args = "Telegram Bot"
-
-[[workflows.workflow]]
-name = "Web App"
-author = "agent"
-
-[[workflows.workflow.tasks]]
-task = "shell.exec"
-args = "python app.py"
-waitForPort = 5000
-
-[workflows.workflow.metadata]
-outputType = "webview"
 
 [[workflows.workflow]]
 name = "Telegram Bot"
