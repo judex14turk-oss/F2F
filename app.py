@@ -1512,23 +1512,38 @@ def webapp_approve_payment(request_id):
     promo_req = db.query(PromoRequest).filter(PromoRequest.id == request_id).first()
     if promo_req and promo_req.status == 'pending':
         user = db.query(User).filter(User.id == promo_req.user_id).first()
-        promo = db.query(PromoCode).filter(PromoCode.id == promo_req.promo_code_id).first()
+        promo = db.query(PromoCode).filter(PromoCode.id == promo_req.promo_code_id).first() if promo_req.promo_code_id else None
         
-        if user and promo:
-            if promo.bonus_days and promo.bonus_days > 0:
+        if user:
+            promo_text = promo_req.promo_code_text or ''
+            if promo_text.startswith('Оплата Про:'):
+                user.tariff = TariffType.PRO
                 if user.tariff_expires and user.tariff_expires > get_tashkent_now():
-                    user.tariff_expires = user.tariff_expires + timedelta(days=promo.bonus_days)
+                    user.tariff_expires = user.tariff_expires + timedelta(days=30)
                 else:
-                    user.tariff_expires = get_tashkent_now() + timedelta(days=promo.bonus_days)
-            if promo.tariff:
-                tariff_map = {'free': TariffType.FREE, 'pro': TariffType.PRO, 'premium': TariffType.PREMIUM}
-                if promo.tariff.lower() in tariff_map:
-                    user.tariff = tariff_map[promo.tariff.lower()]
-            if promo.bonus_properties and promo.bonus_properties > 0:
-                user.bonus_properties = (user.bonus_properties or 0) + promo.bonus_properties
-            if promo.bonus_likes and promo.bonus_likes > 0:
-                user.bonus_likes = (user.bonus_likes or 0) + promo.bonus_likes
-            promo.current_uses += 1
+                    user.tariff_expires = get_tashkent_now() + timedelta(days=30)
+            elif promo_text.startswith('Оплата Премиум:'):
+                user.tariff = TariffType.PREMIUM
+                if user.tariff_expires and user.tariff_expires > get_tashkent_now():
+                    user.tariff_expires = user.tariff_expires + timedelta(days=30)
+                else:
+                    user.tariff_expires = get_tashkent_now() + timedelta(days=30)
+            
+            if promo:
+                if promo.bonus_days and promo.bonus_days > 0:
+                    if user.tariff_expires and user.tariff_expires > get_tashkent_now():
+                        user.tariff_expires = user.tariff_expires + timedelta(days=promo.bonus_days)
+                    else:
+                        user.tariff_expires = get_tashkent_now() + timedelta(days=promo.bonus_days)
+                if promo.tariff:
+                    tariff_map = {'free': TariffType.FREE, 'pro': TariffType.PRO, 'premium': TariffType.PREMIUM}
+                    if promo.tariff.lower() in tariff_map:
+                        user.tariff = tariff_map[promo.tariff.lower()]
+                if promo.bonus_properties and promo.bonus_properties > 0:
+                    user.bonus_properties = (user.bonus_properties or 0) + promo.bonus_properties
+                if promo.bonus_likes and promo.bonus_likes > 0:
+                    user.bonus_likes = (user.bonus_likes or 0) + promo.bonus_likes
+                promo.current_uses += 1
         
         promo_req.status = 'approved'
         promo_req.processed_at = get_tashkent_now()
