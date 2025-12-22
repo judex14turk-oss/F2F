@@ -747,6 +747,26 @@ def webapp_user_stats():
         else:
             days_left = 0
     
+    top_properties = db.query(Property).filter(
+        Property.owner_id == user.id,
+        Property.likes_count > 0
+    ).order_by(Property.likes_count.desc()).limit(10).all()
+    
+    top_properties_data = []
+    for prop in top_properties:
+        photo_id = None
+        if prop.photos:
+            photo_id = prop.photos.split(',')[0].strip()
+        top_properties_data.append({
+            'id': prop.id,
+            'property_type': prop.property_type or 'Квартира',
+            'rooms': prop.rooms,
+            'district': prop.district,
+            'price': prop.price,
+            'likes_count': prop.likes_count or 0,
+            'photo_id': photo_id
+        })
+    
     db.close()
     
     return render_template('webapp_user_stats.html',
@@ -764,7 +784,8 @@ def webapp_user_stats():
         base_properties=base_properties,
         bonus_properties=bonus,
         max_properties=max_properties,
-        days_left=days_left
+        days_left=days_left,
+        top_properties=top_properties_data
     )
 
 
