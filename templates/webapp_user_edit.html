@@ -300,6 +300,28 @@
                     <option value="premium" {% if user.tariff and user.tariff.value|lower == 'premium' %}selected{% endif %}>Premium</option>
                 </select>
             </div>
+            
+            <div class="form-group">
+                <label class="form-label">До конца тарифа</label>
+                <div style="padding: 12px; background: #1a1a1a; border-radius: 10px; border: 1px solid #2a2a2a; color: {% if user.tariff and user.tariff.value|lower == 'free' %}#888{% elif tariff_days_left and tariff_days_left > 0 %}#22c55e{% else %}#ef4444{% endif %};">
+                    {% if user.tariff and user.tariff.value|lower == 'free' %}
+                        ♾ Безлимит
+                    {% elif tariff_days_left is not none %}
+                        {% if tariff_days_left > 0 %}
+                            📅 {{ tariff_days_left }} дн. (до {{ tariff_expires_date }})
+                        {% else %}
+                            ⏰ Истёк
+                        {% endif %}
+                    {% else %}
+                        Не установлено
+                    {% endif %}
+                </div>
+            </div>
+            
+            <div class="form-group">
+                <label class="form-label">Добавить дней к тарифу</label>
+                <input type="number" name="add_days" class="form-select" placeholder="Количество дней" min="0" value="">
+            </div>
             {% endif %}
         </div>
         

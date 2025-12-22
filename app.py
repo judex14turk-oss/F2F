@@ -914,6 +914,14 @@ def webapp_user_edit(user_id):
         return "Пользователь не найден", 404
     
     properties = db.query(Property).filter(Property.owner_id == user.id).order_by(Property.created_at.desc()).all()
+    
+    tariff_days_left = None
+    tariff_expires_date = None
+    if user.tariff_expires:
+        now = get_tashkent_now()
+        tariff_days_left = (user.tariff_expires - now).days
+        tariff_expires_date = user.tariff_expires.strftime('%d.%m.%Y')
+    
     db.close()
     
     return render_template('webapp_user_edit.html',
@@ -921,7 +929,9 @@ def webapp_user_edit(user_id):
         tg_id=tg_id,
         permissions=permissions,
         admin_user=admin,
-        properties=properties
+        properties=properties,
+        tariff_days_left=tariff_days_left,
+        tariff_expires_date=tariff_expires_date
     )
 
 
@@ -957,11 +967,21 @@ def webapp_user_save(user_id):
                 'pro': TariffType.PRO,
                 'premium': TariffType.PREMIUM
             }
-            user.tariff = tariff_map.get(tariff, TariffType.FREE)
-            if tariff != 'free':
-                user.tariff_expires = get_tashkent_now() + timedelta(days=30)
-            else:
+            old_tariff = user.tariff
+            new_tariff = tariff_map.get(tariff, TariffType.FREE)
+            user.tariff = new_tariff
+            
+            add_days = request.form.get('add_days')
+            if add_days and add_days.isdigit() and int(add_days) > 0:
+                days_to_add = int(add_days)
+                if user.tariff_expires and user.tariff_expires > get_tashkent_now():
+                    user.tariff_expires = user.tariff_expires + timedelta(days=days_to_add)
+                else:
+                    user.tariff_expires = get_tashkent_now() + timedelta(days=days_to_add)
+            elif tariff == 'free':
                 user.tariff_expires = None
+            elif old_tariff == TariffType.FREE and new_tariff != TariffType.FREE:
+                user.tariff_expires = get_tashkent_now() + timedelta(days=30)
         
         db.commit()
     db.close()
