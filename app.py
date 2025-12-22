@@ -922,6 +922,8 @@ def webapp_user_edit(user_id):
         tariff_days_left = (user.tariff_expires - now).days
         tariff_expires_date = user.tariff_expires.strftime('%d.%m.%Y')
     
+    promo_codes = db.query(PromoCode).filter(PromoCode.is_active == True).all()
+    
     db.close()
     
     return render_template('webapp_user_edit.html',
@@ -931,7 +933,8 @@ def webapp_user_edit(user_id):
         admin_user=admin,
         properties=properties,
         tariff_days_left=tariff_days_left,
-        tariff_expires_date=tariff_expires_date
+        tariff_expires_date=tariff_expires_date,
+        promo_codes=promo_codes
     )
 
 
@@ -972,7 +975,21 @@ def webapp_user_save(user_id):
             user.tariff = new_tariff
             
             add_days = request.form.get('add_days')
-            if add_days and add_days.isdigit() and int(add_days) > 0:
+            promo_code = request.form.get('promo_code')
+            
+            if promo_code:
+                promo = db.query(PromoCode).filter(PromoCode.code == promo_code, PromoCode.is_active == True).first()
+                if promo:
+                    if promo.bonus_days and promo.bonus_days > 0:
+                        if user.tariff_expires and user.tariff_expires > get_tashkent_now():
+                            user.tariff_expires = user.tariff_expires + timedelta(days=promo.bonus_days)
+                        else:
+                            user.tariff_expires = get_tashkent_now() + timedelta(days=promo.bonus_days)
+                    if promo.tariff:
+                        promo_tariff_map = {'free': TariffType.FREE, 'pro': TariffType.PRO, 'premium': TariffType.PREMIUM}
+                        if promo.tariff.lower() in promo_tariff_map:
+                            user.tariff = promo_tariff_map[promo.tariff.lower()]
+            elif add_days and add_days.isdigit() and int(add_days) > 0:
                 days_to_add = int(add_days)
                 if user.tariff_expires and user.tariff_expires > get_tashkent_now():
                     user.tariff_expires = user.tariff_expires + timedelta(days=days_to_add)

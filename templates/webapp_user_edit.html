@@ -294,12 +294,22 @@
                 <label class="form-label">Тариф</label>
                 <select name="tariff" class="form-select">
                     <option value="free" {% if user.tariff and user.tariff.value|lower == 'free' %}selected{% endif %}>Бесплатный</option>
-                    <option value="agency_start" {% if user.tariff and user.tariff.value|lower == 'agency_start' %}selected{% endif %}>Агентство</option>
-                    <option value="developer_pro" {% if user.tariff and user.tariff.value|lower == 'developer_pro' %}selected{% endif %}>Застройщик</option>
                     <option value="pro" {% if user.tariff and user.tariff.value|lower == 'pro' %}selected{% endif %}>PRO</option>
                     <option value="premium" {% if user.tariff and user.tariff.value|lower == 'premium' %}selected{% endif %}>Premium</option>
                 </select>
             </div>
+            
+            {% if promo_codes %}
+            <div class="form-group">
+                <label class="form-label">Активные промокоды</label>
+                <select name="promo_code" class="form-select">
+                    <option value="">-- Не применять --</option>
+                    {% for promo in promo_codes %}
+                    <option value="{{ promo.code }}">{{ promo.code }} {% if promo.bonus_days %}(+{{ promo.bonus_days }} дней){% endif %} {% if promo.tariff %}→ {{ promo.tariff }}{% endif %}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            {% endif %}
             
             <div class="form-group">
                 <label class="form-label">До конца тарифа</label>
