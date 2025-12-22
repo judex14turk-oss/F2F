@@ -1072,10 +1072,17 @@ def webapp_user_likes():
             if prop.photos:
                 photo_id = prop.photos.split(',')[0].strip()
             
+            property_type_name = 'Квартира'
+            if prop.property_type:
+                if prop.property_type.name == 'SALE':
+                    property_type_name = 'Продажа'
+                elif prop.property_type.name == 'RENT':
+                    property_type_name = 'Аренда'
+            
             likes_data.append({
                 'id': like.id,
                 'property_id': prop.id,
-                'property_type': prop.property_type or 'Квартира',
+                'property_type': property_type_name,
                 'rooms': prop.rooms,
                 'district': prop.district,
                 'price': prop.price,
