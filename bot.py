@@ -2864,6 +2864,24 @@ async def show_seller_profile_info(message, user):
     if not webapp_url:
         webapp_url = os.environ.get('REPLIT_DOMAINS', '').split(',')[0] if os.environ.get('REPLIT_DOMAINS') else ''
     
+    db = SessionLocal()
+    active_properties_count = db.query(Property).filter(Property.owner_id == user.id).count()
+    db.close()
+    
+    tariff_limits = get_tariff_limits(user.tariff, user.is_admin)
+    max_properties = tariff_limits.get("properties", 2)
+    remaining_properties = max(0, max_properties - active_properties_count)
+    
+    if user.tariff == TariffType.FREE or user.tariff_expires is None:
+        days_left_text = "♾ Безлимит"
+    else:
+        now = get_tashkent_now()
+        if user.tariff_expires > now:
+            days_left = (user.tariff_expires - now).days
+            days_left_text = f"📅 {days_left} дн."
+        else:
+            days_left_text = "⏰ Истёк"
+    
     type_names = {
         SellerType.OWNER: "Собственник",
         SellerType.REALTOR: "Риелтор",
@@ -2885,6 +2903,8 @@ async def show_seller_profile_info(message, user):
         f"👤 Менеджер: {user.manager_name or 'Не указан'}\n"
         f"📞 Телефон: {user.phone or 'Не указан'}\n"
         f"💳 Тариф: {tariff_names.get(user.tariff, 'Бесплатный')}\n"
+        f"🏠 Объявления: {active_properties_count}/{max_properties} (осталось: {remaining_properties})\n"
+        f"⏳ До конца тарифа: {days_left_text}\n"
     )
     
     lang = get_user_lang(user)
