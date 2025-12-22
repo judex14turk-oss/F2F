@@ -762,6 +762,8 @@ def webapp_user_stats():
         properties_by_status=properties_by_status,
         type_name=type_names.get(user.seller_type, 'Не указан'),
         tariff_name=tariff_names.get(user.tariff, 'Бесплатный'),
+        base_properties=base_properties,
+        bonus_properties=bonus,
         max_properties=max_properties,
         days_left=days_left
     )

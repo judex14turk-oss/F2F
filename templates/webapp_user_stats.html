@@ -311,18 +311,55 @@
             <span class="tariff-badge">Безлимит</span>
             {% endif %}
         </div>
-        <div class="tariff-details">
-            <div class="tariff-detail">
-                <div class="tariff-detail-label">Всего объявлений</div>
-                <div class="tariff-detail-value">{{ total_properties }}</div>
+        
+        <div class="properties-status" style="margin: 12px 0 0 0; background: transparent; border: none; padding: 0;">
+            <div class="status-row">
+                <span class="status-label">
+                    <i class="bi bi-calendar3" style="color: #3b82f6;"></i>
+                    Дней до конца тарифа
+                </span>
+                <span class="status-value">
+                    {% if days_left is not none %}
+                        {% if days_left > 0 %}{{ days_left }}{% else %}0{% endif %}
+                    {% else %}
+                        Безлимит
+                    {% endif %}
+                </span>
             </div>
-            <div class="tariff-detail">
-                <div class="tariff-detail-label">Лимит</div>
-                <div class="tariff-detail-value">{{ max_properties }}</div>
+            <div class="status-row">
+                <span class="status-label">
+                    <i class="bi bi-box" style="color: #10b981;"></i>
+                    Объявлений по тарифу
+                </span>
+                <span class="status-value">{{ base_properties }}</span>
             </div>
-            <div class="tariff-detail">
-                <div class="tariff-detail-label">Осталось</div>
-                <div class="tariff-detail-value">{{ max_properties - active_properties }}</div>
+            <div class="status-row">
+                <span class="status-label">
+                    <i class="bi bi-gift" style="color: #f59e0b;"></i>
+                    Бонус (промокод)
+                </span>
+                <span class="status-value">+{{ bonus_properties }}</span>
+            </div>
+            <div class="status-row">
+                <span class="status-label">
+                    <i class="bi bi-calculator" style="color: #8b5cf6;"></i>
+                    Общий лимит
+                </span>
+                <span class="status-value">{{ max_properties }}</span>
+            </div>
+            <div class="status-row">
+                <span class="status-label">
+                    <i class="bi bi-check-circle" style="color: #06b6d4;"></i>
+                    Активных сейчас
+                </span>
+                <span class="status-value">{{ active_properties }}</span>
+            </div>
+            <div class="status-row">
+                <span class="status-label">
+                    <i class="bi bi-plus-circle" style="color: #22c55e;"></i>
+                    Можно добавить
+                </span>
+                <span class="status-value">{{ max_properties - active_properties }}</span>
             </div>
         </div>
     </div>
