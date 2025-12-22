@@ -12,7 +12,7 @@ from aiogram.fsm.storage.memory import MemoryStorage
 from typing import Callable, Dict, Any, Awaitable
 
 from models import SessionLocal, User, Property, Like, Match, Offer, District, ResidentialComplex, Advertisement
-from models import UserRole, SellerType, TariffType, PropertyType, PropertyStatus, init_db
+from models import UserRole, SellerType, TariffType, PropertyType, PropertyStatus, init_db, get_tashkent_now
 from translations import get_text, get_user_lang
 import random
 
