@@ -149,6 +149,10 @@ TRANSLATIONS = {
         'looking_for_purchase': "🏠 Ищут покупку",
         'looking_for_rent': "🔑 Ищут аренду",
         'find_buyer_title': "🎯 Найти покупателя\n\n🏷 Каких клиентов ищем?",
+        'switched_to_buyer': "🏠 Вы теперь в режиме покупателя!\n\nНажмите '🏠 Смотреть квартиры', чтобы начать поиск.",
+        'switched_to_buyer_callback': "Режим изменён на покупателя",
+        'switched_to_seller': "💼 Вы теперь в режиме продавца!\n\n🔥 Прямо сейчас в боте {count} человек ищут квартиру!",
+        'switched_to_seller_callback': "Режим изменён на продавца",
     },
     'uz': {
         'welcome': "👋 F2F ga xush kelibsiz!\n\nXaridorlar yoki kvartiralarni bitta svaypda toping.\n\nRolingizni tanlang:",
@@ -300,6 +304,10 @@ TRANSLATIONS = {
         'looking_for_purchase': "🏠 Sotib olish qidirmoqda",
         'looking_for_rent': "🔑 Ijaraga olish qidirmoqda",
         'find_buyer_title': "🎯 Xaridor topish\n\n🏷 Qanday mijozlarni qidiramiz?",
+        'switched_to_buyer': "🏠 Siz endi xaridor rejimidisiz!\n\nQidirishni boshlash uchun '🏠 Kvartiralarni ko'rish' tugmasini bosing.",
+        'switched_to_buyer_callback': "Rejim xaridorga o'zgartirildi",
+        'switched_to_seller': "💼 Siz endi sotuvchi rejimidisiz!\n\n🔥 Hozir botda {count} kishi kvartira qidirmoqda!",
+        'switched_to_seller_callback': "Rejim sotuvchiga o'zgartirildi",
     }
 }
 

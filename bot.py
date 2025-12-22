@@ -2910,20 +2910,20 @@ async def show_buyer_profile(message, user):
 async def switch_to_buyer(callback: types.CallbackQuery, state: FSMContext):
     db = SessionLocal()
     user = db.query(User).filter(User.telegram_id == callback.from_user.id).first()
+    lang = get_user_lang(user)
     
     if user:
         user.role = UserRole.BUYER
         db.commit()
     db.close()
     
-    await callback.answer("Режим изменён на покупателя")
+    await callback.answer(get_text('switched_to_buyer_callback', lang))
     await callback.message.delete()
     
-    keyboard = get_buyer_menu()
+    keyboard = get_buyer_menu(lang)
     
     await callback.message.answer(
-        "🏠 Вы теперь в режиме покупателя!\n\n"
-        "Нажмите '🏠 Смотреть квартиры', чтобы начать поиск.",
+        get_text('switched_to_buyer', lang),
         reply_markup=keyboard
     )
 
@@ -2932,6 +2932,7 @@ async def switch_to_buyer(callback: types.CallbackQuery, state: FSMContext):
 async def switch_to_seller(callback: types.CallbackQuery, state: FSMContext):
     db = SessionLocal()
     user = db.query(User).filter(User.telegram_id == callback.from_user.id).first()
+    lang = get_user_lang(user)
     
     if user:
         user.role = UserRole.SELLER
@@ -2940,14 +2941,13 @@ async def switch_to_seller(callback: types.CallbackQuery, state: FSMContext):
     buyers_count = db.query(User).filter(User.role == UserRole.BUYER).count()
     db.close()
     
-    await callback.answer("Режим изменён на продавца")
+    await callback.answer(get_text('switched_to_seller_callback', lang))
     await callback.message.delete()
     
-    keyboard = get_seller_menu()
+    keyboard = get_seller_menu(lang)
     
     await callback.message.answer(
-        f"💼 Вы теперь в режиме продавца!\n\n"
-        f"🔥 Прямо сейчас в боте {buyers_count} человек ищут квартиру!",
+        get_text('switched_to_seller', lang, count=buyers_count),
         reply_markup=keyboard
     )
 
@@ -2956,6 +2956,7 @@ async def switch_to_seller(callback: types.CallbackQuery, state: FSMContext):
 async def buyer_switch_to_seller(message: types.Message, state: FSMContext):
     db = SessionLocal()
     user = db.query(User).filter(User.telegram_id == message.from_user.id).first()
+    lang = get_user_lang(user)
     
     if user:
         user.role = UserRole.SELLER
@@ -2964,11 +2965,10 @@ async def buyer_switch_to_seller(message: types.Message, state: FSMContext):
     buyers_count = db.query(User).filter(User.role == UserRole.BUYER).count()
     db.close()
     
-    keyboard = get_seller_menu()
+    keyboard = get_seller_menu(lang)
     
     await message.answer(
-        f"💼 Вы теперь в режиме продавца!\n\n"
-        f"🔥 Прямо сейчас в боте {buyers_count} человек ищут квартиру!",
+        get_text('switched_to_seller', lang, count=buyers_count),
         reply_markup=keyboard
     )
 
