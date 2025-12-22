@@ -2865,6 +2865,7 @@ async def show_seller_profile_info(message, user):
         webapp_url = os.environ.get('REPLIT_DOMAINS', '').split(',')[0] if os.environ.get('REPLIT_DOMAINS') else ''
     
     db = SessionLocal()
+    user = db.query(User).filter(User.id == user.id).first()
     active_properties_count = db.query(Property).filter(Property.owner_id == user.id).count()
     db.close()
     
