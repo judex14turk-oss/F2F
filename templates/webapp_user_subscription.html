@@ -493,30 +493,7 @@
         tg.expand();
         
         function buyTariff(tariffId, tariffName, price) {
-            if (confirm('Купить тариф "' + tariffName + '" за ' + price.toLocaleString('ru-RU') + ' сум?')) {
-                fetch('/api/webapp/buy_tariff', {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json'
-                    },
-                    body: JSON.stringify({
-                        tg_id: '{{ tg_id }}',
-                        tariff_id: tariffId
-                    })
-                })
-                .then(response => response.json())
-                .then(data => {
-                    if (data.success) {
-                        alert('Тариф успешно активирован!');
-                        location.reload();
-                    } else {
-                        alert(data.message || 'Ошибка при покупке тарифа');
-                    }
-                })
-                .catch(error => {
-                    alert('Ошибка при покупке тарифа');
-                });
-            }
+            window.location.href = '/webapp/payment?tariff=' + tariffId + '&price=' + price + '&tg_id={{ tg_id }}';
         }
     </script>
 </body>

@@ -1026,22 +1026,28 @@ def webapp_user_subscription():
             'processed_at': req.processed_at
         })
     
+    tariff_settings = db.query(TariffSettings).all()
+    tariff_prices = {t.tariff_type: t for t in tariff_settings}
+    
+    pro_settings = tariff_prices.get('PRO')
+    premium_settings = tariff_prices.get('PREMIUM')
+    
     available_tariffs = [
         {
-            'id': 'PRO',
+            'id': 'pro',
             'name': 'Про',
-            'price': 99000,
-            'properties': 50,
-            'likes': 10,
+            'price': pro_settings.price if pro_settings else 300000,
+            'properties': pro_settings.properties_limit if pro_settings else 50,
+            'likes': pro_settings.likes_per_day if pro_settings else 10,
             'duration': 30,
             'color': '#3b82f6'
         },
         {
-            'id': 'PREMIUM',
+            'id': 'premium',
             'name': 'Премиум',
-            'price': 199000,
-            'properties': 100,
-            'likes': 30,
+            'price': premium_settings.price if premium_settings else 500000,
+            'properties': premium_settings.properties_limit if premium_settings else 100,
+            'likes': premium_settings.likes_per_day if premium_settings else 30,
             'duration': 30,
             'color': '#8b5cf6'
         }
@@ -1062,7 +1068,7 @@ def webapp_user_subscription():
         trial_days=trial_days,
         payment_history=history_data,
         available_tariffs=available_tariffs,
-        current_tariff=user.tariff.name if user.tariff else 'FREE'
+        current_tariff=user.tariff.name.lower() if user.tariff else 'free'
     )
 
 
