@@ -3076,7 +3076,7 @@ async def buyer_messages(message: types.Message):
     await message.answer(text, reply_markup=get_buyer_profile_menu())
 
 
-@dp.message(F.text.in_(["⬅️ Назад", "⬅️ Orqaga"]))
+@dp.message(F.text.in_(["⬅️ Назад", "⬅️ Orqaga", "🔙 Назад", "🔙 Orqaga"]))
 async def buyer_profile_back(message: types.Message, state: FSMContext):
     db = SessionLocal()
     user = db.query(User).filter(User.telegram_id == message.from_user.id).first()
