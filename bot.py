@@ -1374,6 +1374,8 @@ async def show_property_card(message, property_id, state=None):
         desc = prop.description[:1000] + "..." if len(prop.description) > 1000 else prop.description
         text += f"\n💬 <i>{desc}</i>"
     
+    text += "\n\n━━━━━━━━━━━━━━━━━━━━\n🔍 Ещё больше вариантов в @F2F_Tashkent_Bot"
+    
     search_keyboard = ReplyKeyboardMarkup(
         keyboard=[
             [KeyboardButton(text="❌ Не нравится"), KeyboardButton(text="❤️ Нравится")],
