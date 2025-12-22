@@ -829,8 +829,7 @@ def webapp_user_objects():
         status_names = {
             PropertyStatus.ACTIVE: 'Активно',
             PropertyStatus.MODERATION: 'На модерации',
-            PropertyStatus.SOLD: 'Продано',
-            PropertyStatus.INACTIVE: 'Неактивно',
+            PropertyStatus.ARCHIVE: 'В архиве',
         }
         
         properties_data.append({
@@ -1084,7 +1083,7 @@ def webapp_user_likes():
                 'liker_id': liker.id,
                 'liker_telegram_id': liker.telegram_id,
                 'liker_username': liker.username,
-                'liker_name': liker.name or 'Пользователь',
+                'liker_name': liker.first_name or liker.username or 'Пользователь',
                 'created_at': like.created_at
             })
     
