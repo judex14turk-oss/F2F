@@ -3,12 +3,13 @@ import os
 import re
 from datetime import datetime, timedelta
 
-from aiogram import Bot, Dispatcher, types, F
+from aiogram import Bot, Dispatcher, types, F, BaseMiddleware
 from aiogram.filters import Command, CommandStart
-from aiogram.types import InlineKeyboardMarkup, InlineKeyboardButton, ReplyKeyboardMarkup, KeyboardButton, ReplyKeyboardRemove, WebAppInfo
+from aiogram.types import InlineKeyboardMarkup, InlineKeyboardButton, ReplyKeyboardMarkup, KeyboardButton, ReplyKeyboardRemove, WebAppInfo, TelegramObject
 from aiogram.fsm.context import FSMContext
 from aiogram.fsm.state import State, StatesGroup
 from aiogram.fsm.storage.memory import MemoryStorage
+from typing import Callable, Dict, Any, Awaitable
 
 from models import SessionLocal, User, Property, Like, Match, Offer, District, ResidentialComplex, Advertisement
 from models import UserRole, SellerType, TariffType, PropertyType, PropertyStatus, init_db
@@ -22,6 +23,37 @@ WEBAPP_URL = os.environ.get('WEBAPP_URL', '')
 bot = Bot(token=BOT_TOKEN)
 storage = MemoryStorage()
 dp = Dispatcher(storage=storage)
+
+
+class BlockedUserMiddleware(BaseMiddleware):
+    async def __call__(
+        self,
+        handler: Callable[[TelegramObject, Dict[str, Any]], Awaitable[Any]],
+        event: TelegramObject,
+        data: Dict[str, Any]
+    ) -> Any:
+        user_id = None
+        if hasattr(event, 'from_user') and event.from_user:
+            user_id = event.from_user.id
+        elif hasattr(event, 'message') and event.message and event.message.from_user:
+            user_id = event.message.from_user.id
+        
+        if user_id:
+            db = SessionLocal()
+            user = db.query(User).filter(User.telegram_id == user_id).first()
+            is_blocked = user.is_blocked if user else False
+            db.close()
+            
+            if is_blocked:
+                if hasattr(event, 'answer'):
+                    await event.answer("🚫 Ваш аккаунт заблокирован. Обратитесь к администратору.")
+                return
+        
+        return await handler(event, data)
+
+
+dp.message.middleware(BlockedUserMiddleware())
+dp.callback_query.middleware(BlockedUserMiddleware())
 
 
 class RegistrationStates(StatesGroup):
