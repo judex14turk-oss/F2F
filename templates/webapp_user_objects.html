@@ -1,0 +1,312 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Мои объекты</title>
+    <script src="https://telegram.org/js/telegram-web-app.js"></script>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.0/font/bootstrap-icons.css" rel="stylesheet">
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        
+        body {
+            background: #0a0a0a;
+            color: #e5e5e5;
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            padding-bottom: 30px;
+        }
+        
+        .header {
+            background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
+            padding: 20px 16px;
+            border-bottom: 1px solid #2a2a2a;
+        }
+        
+        .header h1 {
+            font-size: 1.2rem;
+            font-weight: 600;
+            color: #fff;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        
+        .nav-tabs {
+            display: flex;
+            gap: 4px;
+            padding: 12px;
+            background: #111;
+            overflow-x: auto;
+        }
+        
+        .nav-tab {
+            flex: 1;
+            text-align: center;
+            padding: 10px 6px;
+            background: #1a1a1a;
+            border-radius: 8px;
+            text-decoration: none;
+            color: #888;
+            font-size: 0.7rem;
+            white-space: nowrap;
+            border: 1px solid #2a2a2a;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 4px;
+        }
+        
+        .nav-tab i {
+            font-size: 1.1rem;
+        }
+        
+        .nav-tab.active {
+            background: #3b82f6;
+            color: white;
+            border-color: #3b82f6;
+        }
+        
+        .properties-list {
+            padding: 12px;
+        }
+        
+        .property-card {
+            background: #151515;
+            border: 1px solid #252525;
+            border-radius: 12px;
+            margin-bottom: 12px;
+            overflow: hidden;
+        }
+        
+        .property-image {
+            width: 100%;
+            height: 180px;
+            object-fit: cover;
+            background: #1a1a1a;
+        }
+        
+        .property-placeholder {
+            width: 100%;
+            height: 180px;
+            background: #1a1a1a;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: #444;
+            font-size: 3rem;
+        }
+        
+        .property-info {
+            padding: 12px;
+        }
+        
+        .property-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 8px;
+        }
+        
+        .property-id {
+            font-size: 0.75rem;
+            color: #888;
+        }
+        
+        .property-status {
+            padding: 4px 8px;
+            border-radius: 6px;
+            font-size: 0.7rem;
+            font-weight: 600;
+        }
+        
+        .property-status.active { background: #10b981; color: #fff; }
+        .property-status.moderation { background: #f59e0b; color: #fff; }
+        .property-status.sold { background: #3b82f6; color: #fff; }
+        .property-status.inactive { background: #6b7280; color: #fff; }
+        
+        .property-title {
+            font-size: 1rem;
+            font-weight: 600;
+            color: #fff;
+            margin-bottom: 4px;
+        }
+        
+        .property-details {
+            font-size: 0.85rem;
+            color: #888;
+            margin-bottom: 8px;
+        }
+        
+        .property-price {
+            font-size: 1.1rem;
+            font-weight: 700;
+            color: #10b981;
+            margin-bottom: 12px;
+        }
+        
+        .property-actions {
+            display: flex;
+            gap: 8px;
+        }
+        
+        .action-btn {
+            flex: 1;
+            padding: 10px;
+            border: none;
+            border-radius: 8px;
+            font-size: 0.8rem;
+            font-weight: 600;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 4px;
+            text-decoration: none;
+        }
+        
+        .action-btn.edit {
+            background: #3b82f6;
+            color: #fff;
+        }
+        
+        .action-btn.archive {
+            background: #f59e0b;
+            color: #fff;
+        }
+        
+        .action-btn.delete {
+            background: #ef4444;
+            color: #fff;
+        }
+        
+        .empty-state {
+            text-align: center;
+            padding: 60px 20px;
+            color: #888;
+        }
+        
+        .empty-state i {
+            font-size: 4rem;
+            color: #333;
+            margin-bottom: 16px;
+        }
+        
+        .empty-state h2 {
+            font-size: 1.1rem;
+            color: #fff;
+            margin-bottom: 8px;
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <h1><i class="bi bi-house"></i> Мои объекты</h1>
+    </div>
+    
+    <div class="nav-tabs">
+        <a href="{{ url_for('webapp_user_objects', tg_id=tg_id) }}" class="nav-tab active">
+            <i class="bi bi-house"></i>
+            Объекты
+        </a>
+        <a href="{{ url_for('webapp_user_subscription', tg_id=tg_id) }}" class="nav-tab">
+            <i class="bi bi-credit-card"></i>
+            Подписка
+        </a>
+        <a href="{{ url_for('webapp_user_likes', tg_id=tg_id) }}" class="nav-tab">
+            <i class="bi bi-heart"></i>
+            Лайки
+        </a>
+        <a href="{{ url_for('webapp_user_chats', tg_id=tg_id) }}" class="nav-tab">
+            <i class="bi bi-chat"></i>
+            Переписка
+        </a>
+        <a href="{{ url_for('webapp_user_stats', tg_id=tg_id) }}" class="nav-tab">
+            <i class="bi bi-graph-up"></i>
+            Статистика
+        </a>
+    </div>
+    
+    <div class="properties-list">
+        {% if properties %}
+            {% for prop in properties %}
+            <div class="property-card">
+                {% if prop.first_photo %}
+                <img src="{{ prop.first_photo }}" alt="Фото объекта" class="property-image">
+                {% else %}
+                <div class="property-placeholder">
+                    <i class="bi bi-house"></i>
+                </div>
+                {% endif %}
+                
+                <div class="property-info">
+                    <div class="property-header">
+                        <span class="property-id">{{ prop.unique_id or 'ID: ' ~ prop.id }}</span>
+                        <span class="property-status {% if prop.status.name == 'ACTIVE' %}active{% elif prop.status.name == 'MODERATION' %}moderation{% elif prop.status.name == 'SOLD' %}sold{% else %}inactive{% endif %}">
+                            {{ prop.status_name }}
+                        </span>
+                    </div>
+                    
+                    <div class="property-title">{{ prop.rooms }}-комн., {{ prop.area }} м²</div>
+                    <div class="property-details">
+                        <i class="bi bi-geo-alt"></i> {{ prop.district }}
+                    </div>
+                    <div class="property-price">${{ "{:,}".format(prop.price) }}</div>
+                    
+                    <div class="property-actions">
+                        <a href="{{ url_for('webapp_user_property_edit', tg_id=tg_id, property_id=prop.id) }}" class="action-btn edit">
+                            <i class="bi bi-pencil"></i> Редактировать
+                        </a>
+                        <button onclick="archiveProperty({{ prop.id }})" class="action-btn archive">
+                            <i class="bi bi-archive"></i> В архив
+                        </button>
+                        <button onclick="deleteProperty({{ prop.id }})" class="action-btn delete">
+                            <i class="bi bi-trash"></i>
+                        </button>
+                    </div>
+                </div>
+            </div>
+            {% endfor %}
+        {% else %}
+            <div class="empty-state">
+                <i class="bi bi-house-x"></i>
+                <h2>Нет объектов</h2>
+                <p>У вас пока нет добавленных объектов</p>
+            </div>
+        {% endif %}
+    </div>
+    
+    <script>
+        const tg = window.Telegram.WebApp;
+        tg.ready();
+        tg.expand();
+        
+        function archiveProperty(propertyId) {
+            if (confirm('Переместить объект в архив?')) {
+                fetch('/webapp/user_property/' + propertyId + '/archive?tg_id={{ tg_id }}', {
+                    method: 'POST'
+                }).then(response => {
+                    if (response.ok) {
+                        location.reload();
+                    } else {
+                        alert('Ошибка при архивации');
+                    }
+                });
+            }
+        }
+        
+        function deleteProperty(propertyId) {
+            if (confirm('Удалить объект? Это действие нельзя отменить.')) {
+                fetch('/webapp/user_property/' + propertyId + '/delete?tg_id={{ tg_id }}', {
+                    method: 'POST'
+                }).then(response => {
+                    if (response.ok) {
+                        location.reload();
+                    } else {
+                        alert('Ошибка при удалении');
+                    }
+                });
+            }
+        }
+    </script>
+</body>
+</html>

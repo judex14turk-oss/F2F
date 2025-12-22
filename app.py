@@ -773,7 +773,103 @@ def webapp_user_objects():
     tg_id = request.args.get('tg_id', '')
     if not tg_id:
         return "Access denied", 403
-    return render_template('webapp_user_menu_stub.html', tg_id=tg_id, page='objects', title='Мои объекты')
+    
+    db = get_db()
+    user = db.query(User).filter(User.telegram_id == int(tg_id)).first()
+    
+    if not user:
+        db.close()
+        return "User not found", 404
+    
+    properties = db.query(Property).filter(Property.owner_id == user.id).order_by(Property.created_at.desc()).all()
+    
+    properties_data = []
+    for prop in properties:
+        photo_ids = prop.photos.split(',') if prop.photos else []
+        first_photo = None
+        if photo_ids and photo_ids[0]:
+            pid = photo_ids[0]
+            if pid.startswith('http://') or pid.startswith('https://'):
+                first_photo = pid
+            else:
+                first_photo = url_for('telegram_photo', file_id=pid)
+        
+        status_names = {
+            PropertyStatus.ACTIVE: 'Активно',
+            PropertyStatus.MODERATION: 'На модерации',
+            PropertyStatus.SOLD: 'Продано',
+            PropertyStatus.INACTIVE: 'Неактивно',
+        }
+        
+        properties_data.append({
+            'id': prop.id,
+            'unique_id': prop.unique_id,
+            'district': prop.district or 'Не указан',
+            'rooms': prop.rooms,
+            'area': prop.area,
+            'price': prop.price,
+            'status': prop.status,
+            'status_name': status_names.get(prop.status, 'Неизвестно'),
+            'first_photo': first_photo,
+            'created_at': prop.created_at
+        })
+    
+    db.close()
+    
+    return render_template('webapp_user_objects.html',
+        tg_id=tg_id,
+        properties=properties_data
+    )
+
+
+@app.route('/webapp/user_property/<int:property_id>/archive', methods=['POST'])
+def webapp_user_property_archive(property_id):
+    tg_id = request.args.get('tg_id', '')
+    if not tg_id:
+        return "Access denied", 403
+    
+    db = get_db()
+    user = db.query(User).filter(User.telegram_id == int(tg_id)).first()
+    prop = db.query(Property).filter(Property.id == property_id).first()
+    
+    if not user or not prop or prop.owner_id != user.id:
+        db.close()
+        return "Access denied", 403
+    
+    prop.status = PropertyStatus.INACTIVE
+    prop.archived_at = get_tashkent_now()
+    db.commit()
+    db.close()
+    return "OK", 200
+
+
+@app.route('/webapp/user_property/<int:property_id>/delete', methods=['POST'])
+def webapp_user_property_delete(property_id):
+    tg_id = request.args.get('tg_id', '')
+    if not tg_id:
+        return "Access denied", 403
+    
+    db = get_db()
+    user = db.query(User).filter(User.telegram_id == int(tg_id)).first()
+    prop = db.query(Property).filter(Property.id == property_id).first()
+    
+    if not user or not prop or prop.owner_id != user.id:
+        db.close()
+        return "Access denied", 403
+    
+    db.query(Like).filter(Like.property_id == property_id).delete()
+    db.delete(prop)
+    db.commit()
+    db.close()
+    return "OK", 200
+
+
+@app.route('/webapp/user_property/<int:property_id>/edit')
+def webapp_user_property_edit(property_id):
+    tg_id = request.args.get('tg_id', '')
+    if not tg_id:
+        return "Access denied", 403
+    return render_template('webapp_user_menu_stub.html', tg_id=tg_id, page='objects', title='Редактирование')
 
 
 @app.route('/webapp/user_subscription')
