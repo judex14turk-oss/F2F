@@ -1183,6 +1183,13 @@ async def finish_photos(callback: types.CallbackQuery, state: FSMContext):
     import string
     unique_code = ''.join(random.choices(string.ascii_uppercase + string.digits, k=6))
     
+    current_properties = db.query(Property).filter(
+        Property.owner_id == user.id,
+        Property.status != PropertyStatus.ARCHIVE
+    ).count()
+    limits = get_tariff_limits(user.tariff, user.is_admin)
+    base_limit = limits["properties"]
+    
     prop = Property(
         owner_id=user.id,
         property_type=data.get("property_type", PropertyType.SALE),
@@ -1202,6 +1209,10 @@ async def finish_photos(callback: types.CallbackQuery, state: FSMContext):
         status=PropertyStatus.MODERATION
     )
     db.add(prop)
+    
+    if current_properties >= base_limit and user.bonus_properties and user.bonus_properties > 0:
+        user.bonus_properties -= 1
+    
     db.commit()
     
     prop.unique_id = f"F2F-{prop.id:05d}"
