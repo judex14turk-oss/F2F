@@ -89,6 +89,8 @@ class User(Base):
     daily_offers_reset = Column(DateTime, default=get_tashkent_now)
     trial_used = Column(Boolean, default=False)
     balance = Column(Integer, default=0)
+    bonus_properties = Column(Integer, default=0)
+    bonus_likes = Column(Integer, default=0)
     
     properties = relationship("Property", back_populates="owner")
     likes_given = relationship("Like", foreign_keys="Like.user_id", back_populates="user")

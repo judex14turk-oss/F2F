@@ -906,11 +906,13 @@ async def add_property_start(message: types.Message, state: FSMContext):
         Property.owner_id == user.id,
         Property.status != PropertyStatus.ARCHIVE
     ).count()
+    bonus = user.bonus_properties or 0
+    max_properties = limits["properties"] + bonus
     db.close()
     
-    if current_properties >= limits["properties"]:
+    if current_properties >= max_properties:
         await message.answer(
-            f"⚠️ Вы достигли лимита объектов ({limits['properties']}) для вашего тарифа.\n\n"
+            f"⚠️ Вы достигли лимита объектов ({max_properties}) для вашего тарифа.\n\n"
             f"Перейдите на более высокий тариф, чтобы добавить больше объектов."
         )
         return
@@ -2870,7 +2872,9 @@ async def show_seller_profile_info(message, user):
     db.close()
     
     tariff_limits = get_tariff_limits(user.tariff, user.is_admin)
-    max_properties = tariff_limits.get("properties", 2)
+    base_properties = tariff_limits.get("properties", 2)
+    bonus = user.bonus_properties or 0
+    max_properties = base_properties + bonus
     remaining_properties = max(0, max_properties - active_properties_count)
     
     if user.tariff == TariffType.FREE or user.tariff_expires is None:

@@ -1415,6 +1415,10 @@ def webapp_approve_payment(request_id):
                 tariff_map = {'free': TariffType.FREE, 'pro': TariffType.PRO, 'premium': TariffType.PREMIUM}
                 if promo.tariff.lower() in tariff_map:
                     user.tariff = tariff_map[promo.tariff.lower()]
+            if promo.bonus_properties and promo.bonus_properties > 0:
+                user.bonus_properties = (user.bonus_properties or 0) + promo.bonus_properties
+            if promo.bonus_likes and promo.bonus_likes > 0:
+                user.bonus_likes = (user.bonus_likes or 0) + promo.bonus_likes
             promo.current_uses += 1
         
         promo_req.status = 'approved'
