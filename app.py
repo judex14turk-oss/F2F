@@ -1131,6 +1131,8 @@ def webapp_create_promo():
     discount_percent = request.form.get('discount_percent', 0)
     days_valid = request.form.get('days_valid', 30)
     max_uses = request.form.get('max_uses', 1)
+    bonus_properties = request.form.get('bonus_properties', 0)
+    bonus_likes = request.form.get('bonus_likes', 0)
     description = request.form.get('description', '')
     
     db = get_db()
@@ -1152,6 +1154,8 @@ def webapp_create_promo():
             tariff=tariff,
             discount_percent=int(discount_percent),
             max_uses=int(max_uses),
+            bonus_properties=int(bonus_properties) if bonus_properties else 0,
+            bonus_likes=int(bonus_likes) if bonus_likes else 0,
             expires_at=get_tashkent_now() + timedelta(days=int(days_valid)),
             description=description,
             is_active=True

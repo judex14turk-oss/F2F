@@ -209,6 +209,8 @@ class PromoCode(Base):
     code = Column(String(50), unique=True, nullable=False)
     discount_percent = Column(Integer, default=0)
     bonus_days = Column(Integer, default=0)
+    bonus_properties = Column(Integer, default=0)
+    bonus_likes = Column(Integer, default=0)
     tariff = Column(String(50))
     max_uses = Column(Integer, default=1)
     current_uses = Column(Integer, default=0)
