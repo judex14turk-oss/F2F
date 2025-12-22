@@ -626,9 +626,8 @@ def get_buyer_menu(lang='ru'):
 def get_buyer_profile_menu(lang='ru'):
     return ReplyKeyboardMarkup(
         keyboard=[
-            [KeyboardButton(text=get_text('switch_to_seller', lang))],
             [KeyboardButton(text=get_text('likes', lang)), KeyboardButton(text=get_text('messages', lang))],
-            [KeyboardButton(text=get_text('change_language', lang))],
+            [KeyboardButton(text="👤 Мой профиль")],
             [KeyboardButton(text=get_text('back', lang))]
         ],
         resize_keyboard=True
@@ -2425,7 +2424,6 @@ def get_seller_profile_menu(lang='ru'):
             [KeyboardButton(text=get_text('who_liked_me', lang)), KeyboardButton(text="💬 Сделки")],
             [KeyboardButton(text=get_text('my_properties', lang)), KeyboardButton(text="👤 Мой профиль")],
             [KeyboardButton(text=get_text('tariffs', lang)), KeyboardButton(text="📢 Реклама")],
-            [KeyboardButton(text=get_text('change_language', lang))],
             [KeyboardButton(text=get_text('back_button', lang))]
         ],
         resize_keyboard=True
@@ -2774,8 +2772,8 @@ async def profile(message: types.Message):
         await message.answer(get_text('profile', lang), reply_markup=keyboard)
 
 
-@dp.message(lambda m: m.text in [get_text('change_language', 'ru'), get_text('change_language', 'uz')])
-async def change_language(message: types.Message, state: FSMContext):
+@dp.callback_query(F.data == "change_language")
+async def change_language_callback(callback: types.CallbackQuery, state: FSMContext):
     keyboard = ReplyKeyboardMarkup(
         keyboard=[
             [KeyboardButton(text="🇷🇺 Русский")],
@@ -2783,7 +2781,8 @@ async def change_language(message: types.Message, state: FSMContext):
         ],
         resize_keyboard=True
     )
-    await message.answer(get_text('choose_language', 'ru'), reply_markup=keyboard)
+    await callback.answer()
+    await callback.message.answer(get_text('choose_language', 'ru'), reply_markup=keyboard)
     await state.set_state(RegistrationStates.choosing_language)
 
 
@@ -2838,7 +2837,11 @@ async def show_seller_profile_info(message, user):
         f"💳 Тариф: {tariff_names.get(user.tariff, 'Бесплатный')}\n"
     )
     
-    buttons = [[InlineKeyboardButton(text="🏠 Перейти в режим покупателя", callback_data="switch_to_buyer")]]
+    lang = get_user_lang(user)
+    buttons = [
+        [InlineKeyboardButton(text="🏠 Перейти в режим покупателя", callback_data="switch_to_buyer")],
+        [InlineKeyboardButton(text=get_text('change_language', lang), callback_data="change_language")]
+    ]
     
     if user.is_admin and webapp_url:
         buttons.append([InlineKeyboardButton(
@@ -2869,7 +2872,11 @@ async def show_buyer_profile(message, user):
         f"{bio_line}"
     )
     
-    buttons = [[InlineKeyboardButton(text="💼 Перейти в режим продавца", callback_data="switch_to_seller")]]
+    lang = get_user_lang(user)
+    buttons = [
+        [InlineKeyboardButton(text="💼 Перейти в режим продавца", callback_data="switch_to_seller")],
+        [InlineKeyboardButton(text=get_text('change_language', lang), callback_data="change_language")]
+    ]
     
     if user.is_admin and webapp_url:
         buttons.append([InlineKeyboardButton(
