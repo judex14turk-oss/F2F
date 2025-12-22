@@ -2792,7 +2792,10 @@ async def my_profile(message: types.Message):
     user = db.query(User).filter(User.telegram_id == message.from_user.id).first()
     db.close()
     
-    await show_seller_profile_info(message, user)
+    if user.role == UserRole.SELLER:
+        await show_seller_profile_info(message, user)
+    else:
+        await show_buyer_profile(message, user)
 
 
 @dp.message(F.text == "🔙 Главное меню")
