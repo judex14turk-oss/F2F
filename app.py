@@ -1375,8 +1375,8 @@ def webapp_payments():
         db.close()
         return "У вас нет прав", 403
     
-    pending_requests = db.query(PromoRequest).filter(PromoRequest.status == 'pending').order_by(PromoRequest.created_at.desc()).all()
-    processed_requests = db.query(PromoRequest).filter(PromoRequest.status != 'pending').order_by(PromoRequest.processed_at.desc()).limit(50).all()
+    pending_requests = db.query(PromoRequest).options(joinedload(PromoRequest.user), joinedload(PromoRequest.promo_code)).filter(PromoRequest.status == 'pending').order_by(PromoRequest.created_at.desc()).all()
+    processed_requests = db.query(PromoRequest).options(joinedload(PromoRequest.user), joinedload(PromoRequest.promo_code)).filter(PromoRequest.status != 'pending').order_by(PromoRequest.processed_at.desc()).limit(50).all()
     
     db.close()
     
