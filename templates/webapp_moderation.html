@@ -292,6 +292,16 @@
                 <span class="property-date">{{ prop.created_at.strftime('%d.%m.%Y %H:%M') if prop.created_at else '' }}</span>
             </div>
             
+            {% if prop.photos %}
+            <div class="property-photos">
+                {% for photo_id in prop.photos.split(',')[:5] %}
+                    {% if photo_id.strip() %}
+                    <img src="{{ url_for('telegram_photo', file_id=photo_id.strip()) }}" class="property-photo" alt="Фото">
+                    {% endif %}
+                {% endfor %}
+            </div>
+            {% endif %}
+            
             <div class="property-title">
                 {{ prop.rooms }}-комн. {{ prop.district or '' }}
             </div>
