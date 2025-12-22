@@ -1538,47 +1538,6 @@ def webapp_property_delete(property_id):
     return redirect(url_for('webapp_properties', tg_id=tg_id))
 
 
-@app.route('/webapp/admin/properties/<int:property_id>/approve', methods=['POST'])
-def webapp_approve_property(property_id):
-    tg_id = request.form.get('tg_id')
-    
-    db = get_db()
-    admin = db.query(User).filter(User.telegram_id == int(tg_id)).first() if tg_id else None
-    
-    if not admin or not admin.is_admin:
-        db.close()
-        return "Доступ запрещён", 403
-    
-    prop = db.query(Property).filter(Property.id == property_id).first()
-    if prop:
-        prop.status = PropertyStatus.ACTIVE
-        db.commit()
-    db.close()
-    
-    return redirect(url_for('webapp_properties', tg_id=tg_id))
-
-
-@app.route('/webapp/admin/properties/<int:property_id>/reject', methods=['POST'])
-def webapp_reject_property(property_id):
-    tg_id = request.form.get('tg_id')
-    
-    db = get_db()
-    admin = db.query(User).filter(User.telegram_id == int(tg_id)).first() if tg_id else None
-    
-    if not admin or not admin.is_admin:
-        db.close()
-        return "Доступ запрещён", 403
-    
-    prop = db.query(Property).filter(Property.id == property_id).first()
-    if prop:
-        prop.status = PropertyStatus.ARCHIVE
-        prop.archived_at = datetime.utcnow()
-        db.commit()
-    db.close()
-    
-    return redirect(url_for('webapp_properties', tg_id=tg_id))
-
-
 @app.route('/webapp/admin/properties/<int:property_id>/reactivate', methods=['POST'])
 def webapp_reactivate_property(property_id):
     tg_id = request.form.get('tg_id')
