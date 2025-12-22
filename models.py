@@ -67,6 +67,7 @@ class User(Base):
     role = Column(Enum(UserRole), default=UserRole.BUYER)
     is_admin = Column(Boolean, default=False)
     admin_role = Column(Enum(AdminRole), nullable=True)
+    is_blocked = Column(Boolean, default=False)
     created_at = Column(DateTime, default=get_tashkent_now)
     
     search_rooms = Column(String(50))

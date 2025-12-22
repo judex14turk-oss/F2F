@@ -122,6 +122,39 @@
         .btn-save:active {
             opacity: 0.9;
         }
+        
+        .btn-block {
+            display: block;
+            width: calc(100% - 32px);
+            margin: 0 16px 20px;
+            background: linear-gradient(135deg, #dc2626 0%, #ef4444 100%);
+            color: white;
+            border: none;
+            padding: 16px;
+            border-radius: 12px;
+            font-size: 1rem;
+            font-weight: 600;
+            cursor: pointer;
+        }
+        
+        .btn-block.unblock {
+            background: linear-gradient(135deg, #16a34a 0%, #22c55e 100%);
+        }
+        
+        .btn-block:active {
+            opacity: 0.9;
+        }
+        
+        .blocked-badge {
+            display: inline-block;
+            background: #dc2626;
+            color: white;
+            padding: 4px 8px;
+            border-radius: 6px;
+            font-size: 0.75rem;
+            font-weight: 600;
+            margin-left: 8px;
+        }
     </style>
 </head>
 <body>
@@ -133,7 +166,10 @@
     </div>
     
     <div class="user-card">
-        <div class="user-name">{{ user.first_name or '-' }} {{ user.last_name or '' }}</div>
+        <div class="user-name">
+            {{ user.first_name or '-' }} {{ user.last_name or '' }}
+            {% if user.is_blocked %}<span class="blocked-badge">Заблокирован</span>{% endif %}
+        </div>
         <div class="user-details">
             ID: {{ user.telegram_id }}
             {% if user.username %} | @{{ user.username }}{% endif %}
@@ -170,6 +206,19 @@
         <button type="submit" class="btn-save">
             <i class="bi bi-check-lg"></i> Сохранить изменения
         </button>
+    </form>
+    
+    <form method="POST" action="{{ url_for('webapp_block_user', user_id=user.id) }}" style="margin-top: 10px;">
+        <input type="hidden" name="tg_id" value="{{ tg_id }}">
+        {% if user.is_blocked %}
+        <button type="submit" class="btn-block unblock">
+            <i class="bi bi-unlock"></i> Разблокировать пользователя
+        </button>
+        {% else %}
+        <button type="submit" class="btn-block">
+            <i class="bi bi-lock"></i> Заблокировать пользователя
+        </button>
+        {% endif %}
     </form>
     
     <script>

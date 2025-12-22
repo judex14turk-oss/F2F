@@ -1027,6 +1027,26 @@ def webapp_set_admin_role(user_id):
     return redirect(url_for('webapp_admins', tg_id=tg_id))
 
 
+@app.route('/webapp/admin/user/<int:user_id>/block', methods=['POST'])
+def webapp_block_user(user_id):
+    tg_id = request.form.get('tg_id')
+    
+    db = get_db()
+    admin = db.query(User).filter(User.telegram_id == int(tg_id)).first() if tg_id else None
+    
+    if not admin or not admin.is_admin:
+        db.close()
+        return "Доступ запрещён", 403
+    
+    user = db.query(User).filter(User.id == user_id).first()
+    if user and user.id != admin.id:
+        user.is_blocked = not user.is_blocked
+        db.commit()
+    db.close()
+    
+    return redirect(url_for('webapp_user_edit', user_id=user_id, tg_id=tg_id))
+
+
 @app.route('/webapp/admin/user/<int:user_id>/delete', methods=['POST'])
 def webapp_delete_user(user_id):
     tg_id = request.form.get('tg_id')
