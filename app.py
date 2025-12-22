@@ -758,6 +758,7 @@ def create_payment():
         return jsonify({'success': False, 'message': 'Нет доступных администраторов'})
     
     selected_admin = random.choice(admins)
+    admin_username = selected_admin.username
     
     promo = None
     if promo_code:
@@ -775,12 +776,13 @@ def create_payment():
     )
     db.add(promo_request)
     db.commit()
+    request_id = promo_request.id
     db.close()
     
     return jsonify({
         'success': True,
-        'admin_username': selected_admin.username,
-        'request_id': promo_request.id
+        'admin_username': admin_username,
+        'request_id': request_id
     })
 
 
