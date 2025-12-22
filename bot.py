@@ -3076,18 +3076,21 @@ async def buyer_messages(message: types.Message):
     await message.answer(text, reply_markup=get_buyer_profile_menu())
 
 
-@dp.message(F.text == "⬅️ Назад")
+@dp.message(F.text.in_(["⬅️ Назад", "⬅️ Orqaga"]))
 async def buyer_profile_back(message: types.Message, state: FSMContext):
     db = SessionLocal()
     user = db.query(User).filter(User.telegram_id == message.from_user.id).first()
+    lang = user.language if user and user.language else 'ru'
     db.close()
     
+    menu_text = "🏠 Bosh menyu" if lang == 'uz' else "🏠 Главное меню"
+    
     if user and user.role == UserRole.BUYER:
-        keyboard = get_buyer_menu()
-        await message.answer("🏠 Главное меню", reply_markup=keyboard)
+        keyboard = get_buyer_menu(lang)
+        await message.answer(menu_text, reply_markup=keyboard)
     else:
-        keyboard = get_seller_menu()
-        await message.answer("🏠 Главное меню", reply_markup=keyboard)
+        keyboard = get_seller_menu(lang)
+        await message.answer(menu_text, reply_markup=keyboard)
 
 
 @dp.message(F.text.in_(["💳 Тарифы", "💳 Tariflar"]))
