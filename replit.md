@@ -8,7 +8,17 @@ The platform has two main user interfaces:
 1. **Telegram Bot** - Primary interface for buyers (swipe-based property discovery) and sellers (property management)
 2. **Web Admin/CRM Panel** - Flask-based dashboard for sellers to manage listings and track deals, plus admin functionality for platform management
 
-## Recent Changes (December 17, 2025)
+## Recent Changes (December 22, 2025)
+
+- **Мультиязычность бота**: добавлена полная поддержка узбекского языка
+  - При первой регистрации пользователю предлагается выбор языка (🇷🇺 Русский / 🇺🇿 O'zbekcha)
+  - Создан файл translations.py со всеми переводами на оба языка
+  - Добавлено поле `language` в модель User (миграция БД выполнена)
+  - Все основные кнопки и меню переведены на узбекский
+  - Кнопка "🌍 Сменить язык / Tilni o'zgartirish" добавлена в профиль покупателя и продавца
+  - После смены языка пользователь возвращается в главное меню с новым языком
+
+## Previous Changes (December 17, 2025)
 
 - **Рекламная система**: добавлена полноценная система рекламы в боте
   - Модель Advertisement в базе данных (title, description, media, media_type, views_count)
