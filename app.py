@@ -698,7 +698,7 @@ def webapp_user_stats():
     properties = db.query(Property).filter(Property.owner_id == user.id).all()
     active_properties = [p for p in properties if p.status == PropertyStatus.ACTIVE]
     
-    total_views = sum(p.view_count or 0 for p in properties)
+    total_views = sum(p.views_count or 0 for p in properties)
     total_likes = db.query(Like).filter(Like.property_id.in_([p.id for p in properties])).count() if properties else 0
     total_matches = db.query(Match).filter(Match.seller_id == user.id).count()
     
