@@ -977,7 +977,52 @@ def webapp_user_likes():
     tg_id = request.args.get('tg_id', '')
     if not tg_id:
         return "Access denied", 403
-    return render_template('webapp_user_menu_stub.html', tg_id=tg_id, page='likes', title='Лайки')
+    
+    db = get_db()
+    user = db.query(User).filter(User.telegram_id == int(tg_id)).first()
+    
+    if not user:
+        db.close()
+        return "User not found", 404
+    
+    one_month_ago = get_tashkent_now() - timedelta(days=30)
+    
+    likes = db.query(Like).filter(
+        Like.property_owner_id == user.id,
+        Like.created_at >= one_month_ago
+    ).order_by(Like.created_at.desc()).all()
+    
+    likes_data = []
+    for like in likes:
+        prop = like.property
+        liker = like.user
+        if prop and liker:
+            photo_id = None
+            if prop.photos:
+                photo_id = prop.photos.split(',')[0].strip()
+            
+            likes_data.append({
+                'id': like.id,
+                'property_id': prop.id,
+                'property_type': prop.property_type or 'Квартира',
+                'rooms': prop.rooms,
+                'district': prop.district,
+                'price': prop.price,
+                'photo_id': photo_id,
+                'liker_id': liker.id,
+                'liker_telegram_id': liker.telegram_id,
+                'liker_username': liker.username,
+                'liker_name': liker.name or 'Пользователь',
+                'created_at': like.created_at
+            })
+    
+    db.close()
+    
+    return render_template('webapp_user_likes.html',
+        tg_id=tg_id,
+        user=user,
+        likes=likes_data
+    )
 
 
 @app.route('/webapp/user_chats')
