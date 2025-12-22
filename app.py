@@ -752,19 +752,30 @@ def webapp_user_stats():
         Property.likes_count > 0
     ).order_by(Property.likes_count.desc()).limit(10).all()
     
+    property_type_names = {
+        PropertyType.SALE: "Продажа",
+        PropertyType.RENT: "Аренда"
+    }
+    
     top_properties_data = []
     for prop in top_properties:
         photo_id = None
         if prop.photos:
-            photo_id = prop.photos.split(',')[0].strip()
+            first_photo = prop.photos.split(',')[0].strip()
+            if first_photo and not first_photo.startswith('http'):
+                photo_id = first_photo
+        
+        ptype = property_type_names.get(prop.property_type, 'Квартира') if prop.property_type else 'Квартира'
+        
         top_properties_data.append({
             'id': prop.id,
-            'property_type': prop.property_type or 'Квартира',
+            'property_type': ptype,
             'rooms': prop.rooms,
             'district': prop.district,
             'price': prop.price,
             'likes_count': prop.likes_count or 0,
-            'photo_id': photo_id
+            'photo_id': photo_id,
+            'photo_url': prop.photos.split(',')[0].strip() if prop.photos and prop.photos.split(',')[0].strip().startswith('http') else None
         })
     
     db.close()
