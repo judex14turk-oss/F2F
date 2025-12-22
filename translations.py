@@ -140,6 +140,15 @@ TRANSLATIONS = {
         'matches': "🤝 Мои мэтчи",
         'tariffs': "💳 Тарифы",
         'promo_code': "🎁 Промокод",
+        'my_properties': "🏢 Мои объекты",
+        'find_buyer': "🎯 Найти покупателя",
+        'deals': "💬 Сделки",
+        'my_profile': "👤 Мой профиль",
+        'ads': "📢 Реклама",
+        'main_menu': "🔙 Главное меню",
+        'looking_for_purchase': "🏠 Ищут покупку",
+        'looking_for_rent': "🔑 Ищут аренду",
+        'find_buyer_title': "🎯 Найти покупателя\n\n🏷 Каких клиентов ищем?",
     },
     'uz': {
         'welcome': "👋 F2F ga xush kelibsiz!\n\nXaridorlar yoki kvartiralarni bitta svaypda toping.\n\nRolingizni tanlang:",
@@ -282,6 +291,15 @@ TRANSLATIONS = {
         'matches': "🤝 Mening moslashuvlarim",
         'tariffs': "💳 Tariflar",
         'promo_code': "🎁 Promokod",
+        'my_properties': "🏢 Mening obyektlarim",
+        'find_buyer': "🎯 Xaridor topish",
+        'deals': "💬 Bitimlar",
+        'my_profile': "👤 Mening profilim",
+        'ads': "📢 Reklama",
+        'main_menu': "🔙 Asosiy menyu",
+        'looking_for_purchase': "🏠 Sotib olish qidirmoqda",
+        'looking_for_rent': "🔑 Ijaraga olish qidirmoqda",
+        'find_buyer_title': "🎯 Xaridor topish\n\n🏷 Qanday mijozlarni qidiramiz?",
     }
 }
 

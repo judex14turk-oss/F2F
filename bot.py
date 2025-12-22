@@ -12,6 +12,7 @@ from aiogram.fsm.storage.memory import MemoryStorage
 
 from models import SessionLocal, User, Property, Like, Match, Offer, District, ResidentialComplex, Advertisement
 from models import UserRole, SellerType, TariffType, PropertyType, PropertyStatus, init_db
+from translations import get_text, get_user_lang
 import random
 
 BOT_TOKEN = os.environ.get('TELEGRAM_BOT_TOKEN')
@@ -24,6 +25,7 @@ dp = Dispatcher(storage=storage)
 
 
 class RegistrationStates(StatesGroup):
+    choosing_language = State()
     choosing_role = State()
     buyer_deal_type = State()
     buyer_rooms = State()
@@ -152,7 +154,9 @@ async def cmd_start(message: types.Message, state: FSMContext):
     db = SessionLocal()
     user = db.query(User).filter(User.telegram_id == message.from_user.id).first()
     
+    is_new_user = False
     if not user:
+        is_new_user = True
         user = User(
             telegram_id=message.from_user.id,
             username=message.from_user.username,
@@ -162,48 +166,114 @@ async def cmd_start(message: types.Message, state: FSMContext):
         )
         db.add(user)
         db.commit()
+    
+    lang = get_user_lang(user)
     db.close()
     
-    keyboard = ReplyKeyboardMarkup(
-        keyboard=[
-            [KeyboardButton(text="🏠 Я ищу недвижимость")],
-            [KeyboardButton(text="💼 Я хочу продать/сдать")]
-        ],
-        resize_keyboard=True
-    )
+    if is_new_user:
+        keyboard = ReplyKeyboardMarkup(
+            keyboard=[
+                [KeyboardButton(text="🇷🇺 Русский")],
+                [KeyboardButton(text="🇺🇿 O'zbekcha")]
+            ],
+            resize_keyboard=True
+        )
+        await message.answer(get_text('choose_language', lang), reply_markup=keyboard)
+        await state.set_state(RegistrationStates.choosing_language)
+    else:
+        keyboard = ReplyKeyboardMarkup(
+            keyboard=[
+                [KeyboardButton(text=get_text('looking_for_property', lang))],
+                [KeyboardButton(text=get_text('want_to_sell', lang))]
+            ],
+            resize_keyboard=True
+        )
+        await message.answer(get_text('welcome', lang), reply_markup=keyboard)
+        await state.set_state(RegistrationStates.choosing_role)
+
+
+@dp.message(RegistrationStates.choosing_language)
+async def process_language_choice(message: types.Message, state: FSMContext):
+    if message.text == "🇷🇺 Русский":
+        lang = 'ru'
+    elif message.text == "🇺🇿 O'zbekcha":
+        lang = 'uz'
+    else:
+        return
     
-    await message.answer(
-        "👋 Добро пожаловать в F2F!\n\n"
-        "Находите покупателей или квартиры одним свайпом.\n\n"
-        "Выберите вашу роль:",
-        reply_markup=keyboard
-    )
-    await state.set_state(RegistrationStates.choosing_role)
+    db = SessionLocal()
+    user = db.query(User).filter(User.telegram_id == message.from_user.id).first()
+    is_registered = user and user.phone
+    if user:
+        user.language = lang
+        db.commit()
+        user_role = user.role
+    db.close()
+    
+    if is_registered:
+        await state.clear()
+        await message.answer(get_text('language_changed', lang))
+        if user_role == UserRole.SELLER:
+            keyboard = get_seller_menu(lang)
+        else:
+            keyboard = get_buyer_menu(lang)
+        await message.answer(get_text('returned_to_menu', lang), reply_markup=keyboard)
+    else:
+        keyboard = ReplyKeyboardMarkup(
+            keyboard=[
+                [KeyboardButton(text=get_text('looking_for_property', lang))],
+                [KeyboardButton(text=get_text('want_to_sell', lang))]
+            ],
+            resize_keyboard=True
+        )
+        await message.answer(get_text('welcome', lang), reply_markup=keyboard)
+        await state.set_state(RegistrationStates.choosing_role)
 
 
-@dp.message(F.text == "🏠 Я ищу недвижимость", RegistrationStates.choosing_role)
+@dp.message(RegistrationStates.choosing_role)
 async def process_buyer_role(message: types.Message, state: FSMContext):
     db = SessionLocal()
     user = db.query(User).filter(User.telegram_id == message.from_user.id).first()
-    if user:
-        user.role = UserRole.BUYER
-        db.commit()
-    db.close()
+    lang = get_user_lang(user)
     
-    keyboard = ReplyKeyboardMarkup(
-        keyboard=[
-            [KeyboardButton(text="🏷 Купить")],
-            [KeyboardButton(text="🔑 Снять")],
-            [KeyboardButton(text="⬅️ Назад")]
-        ],
-        resize_keyboard=True
-    )
+    if message.text in [get_text('looking_for_property', 'ru'), get_text('looking_for_property', 'uz')]:
+        if user:
+            user.role = UserRole.BUYER
+            db.commit()
+        db.close()
+        
+        keyboard = ReplyKeyboardMarkup(
+            keyboard=[
+                [KeyboardButton(text=get_text('buy', lang))],
+                [KeyboardButton(text=get_text('rent', lang))],
+                [KeyboardButton(text=get_text('back', lang))]
+            ],
+            resize_keyboard=True
+        )
+        
+        await message.answer(get_text('great_what_interests', lang), reply_markup=keyboard)
+        await state.set_state(RegistrationStates.buyer_deal_type)
     
-    await message.answer(
-        "🏠 Отлично! Что вас интересует?",
-        reply_markup=keyboard
-    )
-    await state.set_state(RegistrationStates.buyer_deal_type)
+    elif message.text in [get_text('want_to_sell', 'ru'), get_text('want_to_sell', 'uz')]:
+        if user:
+            user.role = UserRole.SELLER
+            db.commit()
+        db.close()
+        
+        keyboard = ReplyKeyboardMarkup(
+            keyboard=[
+                [KeyboardButton(text=get_text('owner', lang))],
+                [KeyboardButton(text=get_text('realtor', lang))],
+                [KeyboardButton(text=get_text('developer', lang))],
+                [KeyboardButton(text=get_text('back', lang))]
+            ],
+            resize_keyboard=True
+        )
+        
+        await message.answer(get_text('choose_account_type', lang), reply_markup=keyboard)
+        await state.set_state(RegistrationStates.seller_type)
+    else:
+        db.close()
 
 
 @dp.message(F.text == "⬅️ Назад", RegistrationStates.buyer_deal_type)
@@ -542,23 +612,24 @@ async def show_buyer_menu(message, user_id):
     )
 
 
-def get_buyer_menu():
+def get_buyer_menu(lang='ru'):
     return ReplyKeyboardMarkup(
         keyboard=[
-            [KeyboardButton(text="🏠 Смотреть квартиры")],
-            [KeyboardButton(text="⚙️ Настройки поиска")],
-            [KeyboardButton(text="👤 Профиль")]
+            [KeyboardButton(text=get_text('view_properties', lang))],
+            [KeyboardButton(text=get_text('search_settings', lang))],
+            [KeyboardButton(text=get_text('profile', lang))]
         ],
         resize_keyboard=True
     )
 
 
-def get_buyer_profile_menu():
+def get_buyer_profile_menu(lang='ru'):
     return ReplyKeyboardMarkup(
         keyboard=[
-            [KeyboardButton(text="💼 Войти в режим продавца")],
-            [KeyboardButton(text="❤️ Лайки"), KeyboardButton(text="💬 Переписка")],
-            [KeyboardButton(text="⬅️ Назад")]
+            [KeyboardButton(text=get_text('switch_to_seller', lang))],
+            [KeyboardButton(text=get_text('likes', lang)), KeyboardButton(text=get_text('messages', lang))],
+            [KeyboardButton(text=get_text('change_language', lang))],
+            [KeyboardButton(text=get_text('back', lang))]
         ],
         resize_keyboard=True
     )
@@ -569,99 +640,43 @@ if WEBAPP_BASE_URL and not WEBAPP_BASE_URL.startswith('https://'):
     WEBAPP_BASE_URL = f"https://{WEBAPP_BASE_URL}"
 
 
-@dp.message(F.text == "💼 Я хочу продать/сдать", RegistrationStates.choosing_role)
-async def process_seller_role(message: types.Message, state: FSMContext):
+@dp.message(RegistrationStates.seller_type)
+async def process_seller_type(message: types.Message, state: FSMContext):
     db = SessionLocal()
     user = db.query(User).filter(User.telegram_id == message.from_user.id).first()
-    if user:
-        user.role = UserRole.SELLER
-        db.commit()
+    lang = get_user_lang(user)
     db.close()
     
+    if message.text in [get_text('back', 'ru'), get_text('back', 'uz')]:
+        keyboard = ReplyKeyboardMarkup(
+            keyboard=[
+                [KeyboardButton(text=get_text('looking_for_property', lang))],
+                [KeyboardButton(text=get_text('want_to_sell', lang))]
+            ],
+            resize_keyboard=True
+        )
+        await message.answer(get_text('choose_role', lang), reply_markup=keyboard)
+        await state.set_state(RegistrationStates.choosing_role)
+        return
+    
+    if message.text in [get_text('owner', 'ru'), get_text('owner', 'uz')]:
+        await state.update_data(seller_type=SellerType.OWNER)
+    elif message.text in [get_text('realtor', 'ru'), get_text('realtor', 'uz')]:
+        await state.update_data(seller_type=SellerType.REALTOR)
+    elif message.text in [get_text('developer', 'ru'), get_text('developer', 'uz')]:
+        await state.update_data(seller_type=SellerType.DEVELOPER)
+    else:
+        return
+    
     keyboard = ReplyKeyboardMarkup(
         keyboard=[
-            [KeyboardButton(text="🏠 Собственник")],
-            [KeyboardButton(text="🔑 Риелтор")],
-            [KeyboardButton(text="🏗 Застройщик")],
-            [KeyboardButton(text="⬅️ Назад")]
+            [KeyboardButton(text=get_text('share_phone', lang), request_contact=True)],
+            [KeyboardButton(text=get_text('back', lang))]
         ],
         resize_keyboard=True
     )
     
-    await message.answer("💼 Отлично! Выберите тип аккаунта:", reply_markup=keyboard)
-    await state.set_state(RegistrationStates.seller_type)
-
-
-@dp.message(F.text == "⬅️ Назад", RegistrationStates.seller_type)
-async def back_to_role_from_seller(message: types.Message, state: FSMContext):
-    keyboard = ReplyKeyboardMarkup(
-        keyboard=[
-            [KeyboardButton(text="🏠 Я ищу недвижимость")],
-            [KeyboardButton(text="💼 Я хочу продать/сдать")]
-        ],
-        resize_keyboard=True
-    )
-    await message.answer("Выберите вашу роль:", reply_markup=keyboard)
-    await state.set_state(RegistrationStates.choosing_role)
-
-
-@dp.message(F.text == "🏠 Собственник", RegistrationStates.seller_type)
-async def process_owner_type(message: types.Message, state: FSMContext):
-    await state.update_data(seller_type=SellerType.OWNER)
-    
-    keyboard = ReplyKeyboardMarkup(
-        keyboard=[
-            [KeyboardButton(text="📱 Отправить номер", request_contact=True)],
-            [KeyboardButton(text="⬅️ Назад")]
-        ],
-        resize_keyboard=True
-    )
-    
-    await message.answer(
-        "📱 Поделитесь вашим номером телефона.\n\n"
-        "Это будет ваш идентификатор аккаунта:",
-        reply_markup=keyboard
-    )
-    await state.set_state(RegistrationStates.seller_phone)
-
-
-@dp.message(F.text == "🔑 Риелтор", RegistrationStates.seller_type)
-async def process_realtor_type(message: types.Message, state: FSMContext):
-    await state.update_data(seller_type=SellerType.REALTOR)
-    
-    keyboard = ReplyKeyboardMarkup(
-        keyboard=[
-            [KeyboardButton(text="📱 Отправить номер", request_contact=True)],
-            [KeyboardButton(text="⬅️ Назад")]
-        ],
-        resize_keyboard=True
-    )
-    
-    await message.answer(
-        "📱 Поделитесь вашим номером телефона.\n\n"
-        "Это будет ваш идентификатор аккаунта:",
-        reply_markup=keyboard
-    )
-    await state.set_state(RegistrationStates.seller_phone)
-
-
-@dp.message(F.text == "🏗 Застройщик", RegistrationStates.seller_type)
-async def process_developer_type(message: types.Message, state: FSMContext):
-    await state.update_data(seller_type=SellerType.DEVELOPER)
-    
-    keyboard = ReplyKeyboardMarkup(
-        keyboard=[
-            [KeyboardButton(text="📱 Отправить номер", request_contact=True)],
-            [KeyboardButton(text="⬅️ Назад")]
-        ],
-        resize_keyboard=True
-    )
-    
-    await message.answer(
-        "📱 Поделитесь вашим номером телефона.\n\n"
-        "Это будет ваш идентификатор аккаунта:",
-        reply_markup=keyboard
-    )
+    await message.answer(get_text('share_phone_id', lang), reply_markup=keyboard)
     await state.set_state(RegistrationStates.seller_phone)
 
 
@@ -2393,24 +2408,25 @@ class FindBuyerStates(StatesGroup):
     budget = State()
 
 
-def get_seller_menu():
+def get_seller_menu(lang='ru'):
     return ReplyKeyboardMarkup(
         keyboard=[
-            [KeyboardButton(text="➕ Добавить объект")],
-            [KeyboardButton(text="🎯 Найти покупателя")],
-            [KeyboardButton(text="👤 Профиль")]
+            [KeyboardButton(text=get_text('add_property', lang))],
+            [KeyboardButton(text=get_text('find_buyer', lang))],
+            [KeyboardButton(text=get_text('profile', lang))]
         ],
         resize_keyboard=True
     )
 
 
-def get_seller_profile_menu():
+def get_seller_profile_menu(lang='ru'):
     return ReplyKeyboardMarkup(
         keyboard=[
-            [KeyboardButton(text="❤️ Меня лайкнули"), KeyboardButton(text="💬 Сделки")],
-            [KeyboardButton(text="🏢 Мои объекты"), KeyboardButton(text="👤 Мой профиль")],
-            [KeyboardButton(text="💳 Тарифы"), KeyboardButton(text="📢 Реклама")],
-            [KeyboardButton(text="🔙 Главное меню")]
+            [KeyboardButton(text=get_text('who_liked_me', lang)), KeyboardButton(text="💬 Сделки")],
+            [KeyboardButton(text=get_text('my_properties', lang)), KeyboardButton(text="👤 Мой профиль")],
+            [KeyboardButton(text=get_text('tariffs', lang)), KeyboardButton(text="📢 Реклама")],
+            [KeyboardButton(text=get_text('change_language', lang))],
+            [KeyboardButton(text=get_text('back_button', lang))]
         ],
         resize_keyboard=True
     )
@@ -2743,18 +2759,32 @@ async def reject_offer(callback: types.CallbackQuery):
     await callback.message.edit_text("Спасибо за ответ! Мы найдем для вас другие варианты.")
 
 
-@dp.message(F.text == "👤 Профиль")
+@dp.message(lambda m: m.text in [get_text('profile', 'ru'), get_text('profile', 'uz')])
 async def profile(message: types.Message):
     db = SessionLocal()
     user = db.query(User).filter(User.telegram_id == message.from_user.id).first()
+    lang = get_user_lang(user)
     db.close()
     
     if user.role == UserRole.SELLER:
-        keyboard = get_seller_profile_menu()
+        keyboard = get_seller_profile_menu(lang)
         await message.answer("📂 Раздел профиля:", reply_markup=keyboard)
     else:
-        keyboard = get_buyer_profile_menu()
-        await message.answer("👤 Профиль", reply_markup=keyboard)
+        keyboard = get_buyer_profile_menu(lang)
+        await message.answer(get_text('profile', lang), reply_markup=keyboard)
+
+
+@dp.message(lambda m: m.text in [get_text('change_language', 'ru'), get_text('change_language', 'uz')])
+async def change_language(message: types.Message, state: FSMContext):
+    keyboard = ReplyKeyboardMarkup(
+        keyboard=[
+            [KeyboardButton(text="🇷🇺 Русский")],
+            [KeyboardButton(text="🇺🇿 O'zbekcha")]
+        ],
+        resize_keyboard=True
+    )
+    await message.answer(get_text('choose_language', 'ru'), reply_markup=keyboard)
+    await state.set_state(RegistrationStates.choosing_language)
 
 
 @dp.message(F.text == "👤 Мой профиль")
