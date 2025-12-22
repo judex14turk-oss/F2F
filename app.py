@@ -707,7 +707,7 @@ def webapp_user_stats():
     properties_by_status = {
         'active': len([p for p in properties if p.status == PropertyStatus.ACTIVE]),
         'moderation': len([p for p in properties if p.status == PropertyStatus.MODERATION]),
-        'archive': len([p for p in properties if p.status in [PropertyStatus.SOLD, PropertyStatus.INACTIVE]]),
+        'archive': len([p for p in properties if p.status == PropertyStatus.ARCHIVE]),
     }
     
     type_names = {
