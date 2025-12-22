@@ -501,6 +501,7 @@
                     <div class="form-field">
                         <label>Тариф</label>
                         <select name="tariff" required>
+                            <option value="free">Бесплатный</option>
                             <option value="pro">PRO</option>
                             <option value="premium">Премиум</option>
                         </select>
@@ -541,7 +542,7 @@
             <div class="promo-badges">
                 <span class="badge badge-discount">-{{ promo.discount_percent }}%</span>
                 <span class="badge badge-tariff">
-                    {% if promo.tariff == 'pro' %}PRO{% elif promo.tariff == 'premium' %}Премиум{% else %}{{ promo.tariff }}{% endif %}
+                    {% if promo.tariff == 'free' %}Бесплатный{% elif promo.tariff == 'pro' %}PRO{% elif promo.tariff == 'premium' %}Премиум{% else %}{{ promo.tariff }}{% endif %}
                 </span>
                 <span class="badge badge-uses">{{ promo.current_uses }}/{{ promo.max_uses }}</span>
                 {% if promo.expires_at %}
