@@ -913,13 +913,15 @@ def webapp_user_edit(user_id):
         db.close()
         return "Пользователь не найден", 404
     
+    properties = db.query(Property).filter(Property.user_id == user.id).order_by(Property.created_at.desc()).all()
     db.close()
     
     return render_template('webapp_user_edit.html',
         user=user,
         tg_id=tg_id,
         permissions=permissions,
-        admin_user=admin
+        admin_user=admin,
+        properties=properties
     )
 
 

@@ -155,6 +155,106 @@
             font-weight: 600;
             margin-left: 8px;
         }
+        
+        .properties-section {
+            margin: 16px;
+        }
+        
+        .section-title {
+            font-size: 0.9rem;
+            font-weight: 600;
+            color: #888;
+            margin-bottom: 12px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+        
+        .property-card {
+            background: #151515;
+            border: 1px solid #252525;
+            border-radius: 12px;
+            padding: 12px;
+            margin-bottom: 10px;
+            display: flex;
+            gap: 12px;
+        }
+        
+        .property-image {
+            width: 80px;
+            height: 80px;
+            border-radius: 8px;
+            object-fit: cover;
+            background: #222;
+            flex-shrink: 0;
+        }
+        
+        .property-info {
+            flex: 1;
+            min-width: 0;
+        }
+        
+        .property-title {
+            font-weight: 600;
+            font-size: 0.95rem;
+            color: #fff;
+            margin-bottom: 4px;
+        }
+        
+        .property-details {
+            font-size: 0.8rem;
+            color: #888;
+            margin-bottom: 4px;
+        }
+        
+        .property-price {
+            font-weight: 600;
+            color: #22c55e;
+            font-size: 0.9rem;
+        }
+        
+        .property-status {
+            display: inline-block;
+            padding: 2px 6px;
+            border-radius: 4px;
+            font-size: 0.7rem;
+            font-weight: 500;
+            margin-left: 8px;
+        }
+        
+        .status-active {
+            background: #16a34a22;
+            color: #22c55e;
+        }
+        
+        .status-moderation {
+            background: #f59e0b22;
+            color: #f59e0b;
+        }
+        
+        .status-rejected {
+            background: #dc262622;
+            color: #ef4444;
+        }
+        
+        .status-archived {
+            background: #64748b22;
+            color: #94a3b8;
+        }
+        
+        .no-properties {
+            text-align: center;
+            color: #666;
+            padding: 20px;
+            background: #151515;
+            border-radius: 12px;
+            border: 1px solid #252525;
+        }
+        
+        .property-link {
+            text-decoration: none;
+            color: inherit;
+            display: block;
+        }
     </style>
 </head>
 <body>
@@ -220,6 +320,50 @@
         </button>
         {% endif %}
     </form>
+    
+    <div class="properties-section">
+        <div class="section-title">
+            <i class="bi bi-house-door"></i> Объявления пользователя ({{ properties|length }})
+        </div>
+        
+        {% if properties %}
+            {% for prop in properties %}
+            <a href="{{ url_for('webapp_property_view', property_id=prop.id, tg_id=tg_id) }}" class="property-link">
+                <div class="property-card">
+                    {% if prop.photos %}
+                    <img src="{{ url_for('telegram_photo', file_id=prop.photos.split(',')[0]) }}" class="property-image" alt="">
+                    {% else %}
+                    <div class="property-image" style="display: flex; align-items: center; justify-content: center;">
+                        <i class="bi bi-image" style="font-size: 1.5rem; color: #444;"></i>
+                    </div>
+                    {% endif %}
+                    <div class="property-info">
+                        <div class="property-title">
+                            {{ prop.rooms }} комн. · {{ prop.area }} м²
+                            {% if prop.status.value == 'active' %}
+                            <span class="property-status status-active">Активно</span>
+                            {% elif prop.status.value == 'moderation' %}
+                            <span class="property-status status-moderation">На модерации</span>
+                            {% elif prop.status.value == 'rejected' %}
+                            <span class="property-status status-rejected">Отклонено</span>
+                            {% else %}
+                            <span class="property-status status-archived">Архив</span>
+                            {% endif %}
+                        </div>
+                        <div class="property-details">
+                            {{ prop.district or '-' }} · Этаж {{ prop.floor or '-' }}/{{ prop.total_floors or '-' }}
+                        </div>
+                        <div class="property-price">${{ "{:,.0f}".format(prop.price) if prop.price else '-' }}</div>
+                    </div>
+                </div>
+            </a>
+            {% endfor %}
+        {% else %}
+            <div class="no-properties">
+                <i class="bi bi-house-slash"></i> Объявлений нет
+            </div>
+        {% endif %}
+    </div>
     
     <script>
         const tg = window.Telegram.WebApp;
