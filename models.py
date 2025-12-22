@@ -61,6 +61,7 @@ class User(Base):
     first_name = Column(String(100))
     last_name = Column(String(100))
     phone = Column(String(20))
+    language = Column(String(10), default='ru')
     email = Column(String(200))
     password = Column(String(200))
     role = Column(Enum(UserRole), default=UserRole.BUYER)
