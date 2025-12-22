@@ -1,0 +1,336 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Подробная статистика</title>
+    <script src="https://telegram.org/js/telegram-web-app.js"></script>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.0/font/bootstrap-icons.css" rel="stylesheet">
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        
+        body {
+            background: #0a0a0a;
+            color: #e5e5e5;
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            padding-bottom: 30px;
+        }
+        
+        .header {
+            background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
+            padding: 20px 16px;
+            border-bottom: 1px solid #2a2a2a;
+        }
+        
+        .header h1 {
+            font-size: 1.2rem;
+            font-weight: 600;
+            color: #fff;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        
+        .header-subtitle {
+            font-size: 0.8rem;
+            color: #888;
+            margin-top: 4px;
+        }
+        
+        .user-info {
+            background: #151515;
+            border: 1px solid #252525;
+            margin: 12px;
+            padding: 16px;
+            border-radius: 12px;
+        }
+        
+        .user-info-row {
+            display: flex;
+            justify-content: space-between;
+            padding: 8px 0;
+            border-bottom: 1px solid #252525;
+        }
+        
+        .user-info-row:last-child {
+            border-bottom: none;
+        }
+        
+        .user-info-label {
+            color: #888;
+            font-size: 0.85rem;
+        }
+        
+        .user-info-value {
+            font-weight: 600;
+            font-size: 0.85rem;
+            color: #fff;
+        }
+        
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 10px;
+            padding: 0 12px;
+            margin-bottom: 16px;
+        }
+        
+        .stat-card {
+            background: #151515;
+            border: 1px solid #252525;
+            padding: 16px;
+            border-radius: 12px;
+            text-align: center;
+        }
+        
+        .stat-icon {
+            font-size: 1.8rem;
+            margin-bottom: 8px;
+        }
+        
+        .stat-value {
+            font-size: 1.8rem;
+            font-weight: 700;
+            color: #fff;
+        }
+        
+        .stat-label {
+            font-size: 0.8rem;
+            color: #666;
+            margin-top: 4px;
+        }
+        
+        .stat-card.views .stat-icon { color: #3b82f6; }
+        .stat-card.likes .stat-icon { color: #ef4444; }
+        .stat-card.matches .stat-icon { color: #f59e0b; }
+        .stat-card.properties .stat-icon { color: #10b981; }
+        
+        .section-title {
+            font-size: 0.9rem;
+            color: #888;
+            padding: 16px 12px 8px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        
+        .properties-status {
+            background: #151515;
+            border: 1px solid #252525;
+            margin: 0 12px 16px;
+            padding: 16px;
+            border-radius: 12px;
+        }
+        
+        .status-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 10px 0;
+            border-bottom: 1px solid #252525;
+        }
+        
+        .status-row:last-child {
+            border-bottom: none;
+        }
+        
+        .status-label {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-size: 0.85rem;
+        }
+        
+        .status-dot {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+        }
+        
+        .status-dot.active { background: #10b981; }
+        .status-dot.sold { background: #3b82f6; }
+        .status-dot.inactive { background: #6b7280; }
+        .status-dot.moderation { background: #f59e0b; }
+        
+        .status-value {
+            font-weight: 600;
+            color: #fff;
+        }
+        
+        .tariff-info {
+            background: linear-gradient(135deg, #1e3a5f 0%, #1a2e4a 100%);
+            border: 1px solid #2a4a6a;
+            margin: 0 12px;
+            padding: 16px;
+            border-radius: 12px;
+        }
+        
+        .tariff-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 12px;
+        }
+        
+        .tariff-name {
+            font-size: 1rem;
+            font-weight: 600;
+            color: #fff;
+        }
+        
+        .tariff-badge {
+            background: #3b82f6;
+            padding: 4px 10px;
+            border-radius: 12px;
+            font-size: 0.75rem;
+            color: #fff;
+        }
+        
+        .tariff-details {
+            display: flex;
+            gap: 16px;
+        }
+        
+        .tariff-detail {
+            flex: 1;
+        }
+        
+        .tariff-detail-label {
+            font-size: 0.75rem;
+            color: #888;
+        }
+        
+        .tariff-detail-value {
+            font-size: 1rem;
+            font-weight: 600;
+            color: #fff;
+            margin-top: 2px;
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <h1><i class="bi bi-graph-up-arrow"></i> Подробная статистика</h1>
+        <div class="header-subtitle">ID: {{ user.telegram_id }}</div>
+    </div>
+    
+    <div class="user-info">
+        <div class="user-info-row">
+            <span class="user-info-label"><i class="bi bi-person"></i> Тип</span>
+            <span class="user-info-value">{{ type_name }}</span>
+        </div>
+        <div class="user-info-row">
+            <span class="user-info-label"><i class="bi bi-building"></i> Компания</span>
+            <span class="user-info-value">{{ user.company_name or 'Не указана' }}</span>
+        </div>
+        <div class="user-info-row">
+            <span class="user-info-label"><i class="bi bi-person-badge"></i> Менеджер</span>
+            <span class="user-info-value">{{ user.manager_name or 'Не указан' }}</span>
+        </div>
+        <div class="user-info-row">
+            <span class="user-info-label"><i class="bi bi-telephone"></i> Телефон</span>
+            <span class="user-info-value">{{ user.phone or 'Не указан' }}</span>
+        </div>
+    </div>
+    
+    <div class="section-title"><i class="bi bi-bar-chart"></i> Показатели</div>
+    
+    <div class="stats-grid">
+        <div class="stat-card views">
+            <div class="stat-icon"><i class="bi bi-eye-fill"></i></div>
+            <div class="stat-value">{{ total_views }}</div>
+            <div class="stat-label">Просмотров</div>
+        </div>
+        
+        <div class="stat-card likes">
+            <div class="stat-icon"><i class="bi bi-heart-fill"></i></div>
+            <div class="stat-value">{{ total_likes }}</div>
+            <div class="stat-label">Лайков получено</div>
+        </div>
+        
+        <div class="stat-card matches">
+            <div class="stat-icon"><i class="bi bi-arrow-through-heart-fill"></i></div>
+            <div class="stat-value">{{ total_matches }}</div>
+            <div class="stat-label">Мэтчей</div>
+        </div>
+        
+        <div class="stat-card properties">
+            <div class="stat-icon"><i class="bi bi-house-fill"></i></div>
+            <div class="stat-value">{{ active_properties }}/{{ max_properties }}</div>
+            <div class="stat-label">Активных объявлений</div>
+        </div>
+    </div>
+    
+    <div class="section-title"><i class="bi bi-list-check"></i> Объявления по статусу</div>
+    
+    <div class="properties-status">
+        <div class="status-row">
+            <span class="status-label">
+                <span class="status-dot active"></span>
+                Активные
+            </span>
+            <span class="status-value">{{ properties_by_status.active }}</span>
+        </div>
+        <div class="status-row">
+            <span class="status-label">
+                <span class="status-dot moderation"></span>
+                На модерации
+            </span>
+            <span class="status-value">{{ properties_by_status.moderation }}</span>
+        </div>
+        <div class="status-row">
+            <span class="status-label">
+                <span class="status-dot sold"></span>
+                Проданы
+            </span>
+            <span class="status-value">{{ properties_by_status.sold }}</span>
+        </div>
+        <div class="status-row">
+            <span class="status-label">
+                <span class="status-dot inactive"></span>
+                Неактивные
+            </span>
+            <span class="status-value">{{ properties_by_status.inactive }}</span>
+        </div>
+    </div>
+    
+    <div class="section-title"><i class="bi bi-credit-card"></i> Тариф</div>
+    
+    <div class="tariff-info">
+        <div class="tariff-header">
+            <span class="tariff-name">{{ tariff_name }}</span>
+            {% if days_left is not none %}
+            <span class="tariff-badge">
+                {% if days_left > 0 %}
+                {{ days_left }} дн.
+                {% else %}
+                Истёк
+                {% endif %}
+            </span>
+            {% else %}
+            <span class="tariff-badge">Безлимит</span>
+            {% endif %}
+        </div>
+        <div class="tariff-details">
+            <div class="tariff-detail">
+                <div class="tariff-detail-label">Всего объявлений</div>
+                <div class="tariff-detail-value">{{ total_properties }}</div>
+            </div>
+            <div class="tariff-detail">
+                <div class="tariff-detail-label">Лимит</div>
+                <div class="tariff-detail-value">{{ max_properties }}</div>
+            </div>
+            <div class="tariff-detail">
+                <div class="tariff-detail-label">Осталось</div>
+                <div class="tariff-detail-value">{{ max_properties - active_properties }}</div>
+            </div>
+        </div>
+    </div>
+    
+    <script>
+        const tg = window.Telegram.WebApp;
+        tg.ready();
+        tg.expand();
+    </script>
+</body>
+</html>

@@ -682,6 +682,82 @@ def webapp_payment():
     return render_template('webapp_payment.html')
 
 
+@app.route('/webapp/user_stats')
+def webapp_user_stats():
+    tg_id = request.args.get('tg_id', '')
+    if not tg_id:
+        return "Access denied", 403
+    
+    db = get_db()
+    user = db.query(User).filter(User.telegram_id == int(tg_id)).first()
+    
+    if not user:
+        db.close()
+        return "User not found", 404
+    
+    properties = db.query(Property).filter(Property.owner_id == user.id).all()
+    active_properties = [p for p in properties if p.status == PropertyStatus.ACTIVE]
+    
+    total_views = sum(p.view_count or 0 for p in properties)
+    total_likes = db.query(Like).filter(Like.property_id.in_([p.id for p in properties])).count() if properties else 0
+    total_matches = db.query(Match).filter(Match.seller_id == user.id).count()
+    
+    likes_received = db.query(Like).filter(Like.user_id == user.id).count()
+    
+    properties_by_status = {
+        'active': len([p for p in properties if p.status == PropertyStatus.ACTIVE]),
+        'sold': len([p for p in properties if p.status == PropertyStatus.SOLD]),
+        'inactive': len([p for p in properties if p.status == PropertyStatus.INACTIVE]),
+        'moderation': len([p for p in properties if p.status == PropertyStatus.MODERATION]),
+    }
+    
+    type_names = {
+        SellerType.OWNER: "Собственник",
+        SellerType.REALTOR: "Риелтор",
+        SellerType.DEVELOPER: "Застройщик"
+    }
+    tariff_names = {
+        TariffType.FREE: "Бесплатный",
+        TariffType.PRO: "Про",
+        TariffType.PREMIUM: "Премиум",
+        TariffType.AGENCY_START: "Про",
+        TariffType.DEVELOPER_PRO: "Премиум"
+    }
+    
+    from utils import get_tariff_limits
+    tariff_limits = get_tariff_limits(user.tariff, user.is_admin)
+    base_properties = tariff_limits.get("properties", 2)
+    bonus = user.bonus_properties or 0
+    max_properties = base_properties + bonus
+    
+    if user.tariff == TariffType.FREE or user.tariff_expires is None:
+        days_left = None
+    else:
+        now = get_tashkent_now()
+        if user.tariff_expires > now:
+            days_left = (user.tariff_expires - now).days
+        else:
+            days_left = 0
+    
+    db.close()
+    
+    return render_template('webapp_user_stats.html',
+        user=user,
+        tg_id=tg_id,
+        total_properties=len(properties),
+        active_properties=len(active_properties),
+        total_views=total_views,
+        total_likes=total_likes,
+        total_matches=total_matches,
+        likes_received=likes_received,
+        properties_by_status=properties_by_status,
+        type_name=type_names.get(user.seller_type, 'Не указан'),
+        tariff_name=tariff_names.get(user.tariff, 'Бесплатный'),
+        max_properties=max_properties,
+        days_left=days_left
+    )
+
+
 @app.route('/api/promo/calculate', methods=['POST'])
 def calculate_promo():
     data = request.get_json()

@@ -2929,6 +2929,12 @@ async def show_seller_profile_info(message, user):
         [InlineKeyboardButton(text=get_text('change_language', lang), callback_data="change_language")]
     ]
     
+    if webapp_url:
+        buttons.append([InlineKeyboardButton(
+            text="📊 Подробно",
+            web_app=types.WebAppInfo(url=f"https://{webapp_url}/webapp/user_stats?tg_id={user.telegram_id}")
+        )])
+    
     if user.is_admin and webapp_url:
         buttons.append([InlineKeyboardButton(
             text="🔐 Админ-панель",
@@ -2963,6 +2969,12 @@ async def show_buyer_profile(message, user):
         [InlineKeyboardButton(text="💼 Перейти в режим продавца", callback_data="switch_to_seller")],
         [InlineKeyboardButton(text=get_text('change_language', lang), callback_data="change_language")]
     ]
+    
+    if webapp_url:
+        buttons.append([InlineKeyboardButton(
+            text="📊 Подробно",
+            web_app=types.WebAppInfo(url=f"https://{webapp_url}/webapp/user_stats?tg_id={user.telegram_id}")
+        )])
     
     if user.is_admin and webapp_url:
         buttons.append([InlineKeyboardButton(
