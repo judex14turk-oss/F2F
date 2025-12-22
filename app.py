@@ -768,6 +768,38 @@ def webapp_user_stats():
     )
 
 
+@app.route('/webapp/user_objects')
+def webapp_user_objects():
+    tg_id = request.args.get('tg_id', '')
+    if not tg_id:
+        return "Access denied", 403
+    return render_template('webapp_user_menu_stub.html', tg_id=tg_id, page='objects', title='Мои объекты')
+
+
+@app.route('/webapp/user_subscription')
+def webapp_user_subscription():
+    tg_id = request.args.get('tg_id', '')
+    if not tg_id:
+        return "Access denied", 403
+    return render_template('webapp_user_menu_stub.html', tg_id=tg_id, page='subscription', title='Подписка')
+
+
+@app.route('/webapp/user_likes')
+def webapp_user_likes():
+    tg_id = request.args.get('tg_id', '')
+    if not tg_id:
+        return "Access denied", 403
+    return render_template('webapp_user_menu_stub.html', tg_id=tg_id, page='likes', title='Лайки')
+
+
+@app.route('/webapp/user_chats')
+def webapp_user_chats():
+    tg_id = request.args.get('tg_id', '')
+    if not tg_id:
+        return "Access denied", 403
+    return render_template('webapp_user_menu_stub.html', tg_id=tg_id, page='chats', title='Переписка')
+
+
 @app.route('/api/promo/calculate', methods=['POST'])
 def calculate_promo():
     data = request.get_json()
