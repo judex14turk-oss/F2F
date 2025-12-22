@@ -67,101 +67,109 @@
         }
         
         .properties-list {
-            padding: 12px;
+            padding: 8px;
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 8px;
         }
         
         .property-card {
             background: #151515;
             border: 1px solid #252525;
-            border-radius: 12px;
-            margin-bottom: 12px;
+            border-radius: 10px;
             overflow: hidden;
         }
         
         .property-image {
             width: 100%;
-            height: 180px;
+            height: 100px;
             object-fit: cover;
             background: #1a1a1a;
         }
         
         .property-placeholder {
             width: 100%;
-            height: 180px;
+            height: 100px;
             background: #1a1a1a;
             display: flex;
             align-items: center;
             justify-content: center;
             color: #444;
-            font-size: 3rem;
+            font-size: 2rem;
         }
         
         .property-info {
-            padding: 12px;
+            padding: 8px;
         }
         
         .property-header {
             display: flex;
             justify-content: space-between;
             align-items: center;
-            margin-bottom: 8px;
+            margin-bottom: 4px;
         }
         
         .property-id {
-            font-size: 0.75rem;
+            font-size: 0.65rem;
             color: #888;
         }
         
         .property-status {
-            padding: 4px 8px;
-            border-radius: 6px;
-            font-size: 0.7rem;
+            padding: 2px 6px;
+            border-radius: 4px;
+            font-size: 0.6rem;
             font-weight: 600;
         }
         
         .property-status.active { background: #10b981; color: #fff; }
         .property-status.moderation { background: #f59e0b; color: #fff; }
-        .property-status.sold { background: #3b82f6; color: #fff; }
-        .property-status.inactive { background: #6b7280; color: #fff; }
+        .property-status.archive { background: #6b7280; color: #fff; }
         
         .property-title {
-            font-size: 1rem;
+            font-size: 0.8rem;
             font-weight: 600;
             color: #fff;
-            margin-bottom: 4px;
+            margin-bottom: 2px;
         }
         
         .property-details {
-            font-size: 0.85rem;
+            font-size: 0.7rem;
             color: #888;
-            margin-bottom: 8px;
+            margin-bottom: 4px;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
         }
         
         .property-price {
-            font-size: 1.1rem;
+            font-size: 0.9rem;
             font-weight: 700;
             color: #10b981;
-            margin-bottom: 12px;
+            margin-bottom: 8px;
         }
         
         .property-actions {
             display: flex;
-            gap: 8px;
+            gap: 4px;
         }
         
         .action-btn {
             flex: 1;
-            padding: 10px;
+            padding: 6px 4px;
             border: none;
-            border-radius: 8px;
-            font-size: 0.8rem;
+            border-radius: 6px;
+            font-size: 0.65rem;
             font-weight: 600;
             cursor: pointer;
             display: flex;
             align-items: center;
             justify-content: center;
-            gap: 4px;
+            gap: 2px;
             text-decoration: none;
+        }
+        
+        .action-btn i {
+            font-size: 0.75rem;
         }
         
         .action-btn.edit {
@@ -177,9 +185,12 @@
         .action-btn.delete {
             background: #ef4444;
             color: #fff;
+            flex: 0;
+            padding: 6px 8px;
         }
         
         .empty-state {
+            grid-column: 1 / -1;
             text-align: center;
             padding: 60px 20px;
             color: #888;
@@ -237,7 +248,7 @@
                 <div class="property-info">
                     <div class="property-header">
                         <span class="property-id">{{ prop.unique_id or 'ID: ' ~ prop.id }}</span>
-                        <span class="property-status {% if prop.status.name == 'ACTIVE' %}active{% elif prop.status.name == 'MODERATION' %}moderation{% elif prop.status.name == 'SOLD' %}sold{% else %}inactive{% endif %}">
+                        <span class="property-status {% if prop.status.name == 'ACTIVE' %}active{% elif prop.status.name == 'MODERATION' %}moderation{% else %}archive{% endif %}">
                             {{ prop.status_name }}
                         </span>
                     </div>
@@ -250,10 +261,10 @@
                     
                     <div class="property-actions">
                         <a href="{{ url_for('webapp_user_property_edit', tg_id=tg_id, property_id=prop.id) }}" class="action-btn edit">
-                            <i class="bi bi-pencil"></i> Редактировать
+                            <i class="bi bi-pencil"></i>
                         </a>
                         <button onclick="archiveProperty({{ prop.id }})" class="action-btn archive">
-                            <i class="bi bi-archive"></i> В архив
+                            <i class="bi bi-archive"></i>
                         </button>
                         <button onclick="deleteProperty({{ prop.id }})" class="action-btn delete">
                             <i class="bi bi-trash"></i>
