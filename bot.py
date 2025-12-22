@@ -1165,7 +1165,7 @@ async def finish_photos(callback: types.CallbackQuery, state: FSMContext):
         has_furniture=data.get("has_furniture", False),
         room_type=data.get("room_type", ""),
         bathroom_type=data.get("bathroom_type", ""),
-        status=PropertyStatus.ACTIVE
+        status=PropertyStatus.MODERATION
     )
     db.add(prop)
     db.commit()
@@ -1179,7 +1179,7 @@ async def finish_photos(callback: types.CallbackQuery, state: FSMContext):
     furniture = "Да" if data.get("has_furniture") else "Нет"
     
     summary = (
-        f"✅ Объявление добавлено!\n\n"
+        f"📝 Объявление отправлено на модерацию!\n\n"
         f"🆔 <b>ID: {prop.unique_id}</b>\n\n"
         f"📋 ХАРАКТЕРИСТИКИ:\n"
         f"🏷 Тип сделки: {type_name}\n"

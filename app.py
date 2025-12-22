@@ -691,6 +691,7 @@ def get_admin_permissions(admin_role):
             'can_delete_users': True,
             'can_parse': True,
             'can_manage_ads': True,
+            'can_moderate': True,
             'role_name': 'Старший администратор'
         }
     elif admin_role == AdminRole.ADMIN:
@@ -701,6 +702,7 @@ def get_admin_permissions(admin_role):
             'can_delete_users': False,
             'can_parse': False,
             'can_manage_ads': True,
+            'can_moderate': True,
             'role_name': 'Администратор'
         }
     elif admin_role == AdminRole.OPERATOR:
@@ -711,6 +713,7 @@ def get_admin_permissions(admin_role):
             'can_delete_users': False,
             'can_parse': False,
             'can_manage_ads': False,
+            'can_moderate': True,
             'role_name': 'Оператор'
         }
     return {
@@ -720,6 +723,7 @@ def get_admin_permissions(admin_role):
         'can_delete_users': False,
         'can_parse': False,
         'can_manage_ads': False,
+        'can_moderate': False,
         'role_name': 'Нет доступа'
     }
 
@@ -1077,6 +1081,90 @@ def webapp_delete_user(user_id):
     db.close()
     
     return redirect(url_for('webapp_admin', tg_id=tg_id))
+
+
+@app.route('/webapp/admin/moderation')
+def webapp_moderation():
+    tg_id = request.args.get('tg_id')
+    if not tg_id:
+        return "Telegram ID не указан", 400
+    
+    db = get_db()
+    admin_user = db.query(User).filter(User.telegram_id == int(tg_id)).first()
+    
+    if not admin_user or not admin_user.is_admin:
+        db.close()
+        return "Доступ запрещён", 403
+    
+    permissions = get_admin_permissions(admin_user.admin_role)
+    if not permissions['can_moderate']:
+        db.close()
+        return "У вас нет прав для модерации объявлений", 403
+    
+    properties = db.query(Property).filter(
+        Property.status == PropertyStatus.MODERATION
+    ).order_by(Property.created_at.desc()).all()
+    
+    moderation_count = len(properties)
+    db.close()
+    
+    return render_template('webapp_moderation.html',
+        tg_id=tg_id,
+        permissions=permissions,
+        admin_user=admin_user,
+        properties=properties,
+        moderation_count=moderation_count
+    )
+
+
+@app.route('/webapp/admin/property/<int:property_id>/approve', methods=['POST'])
+def webapp_approve_property(property_id):
+    tg_id = request.form.get('tg_id')
+    
+    db = get_db()
+    admin = db.query(User).filter(User.telegram_id == int(tg_id)).first() if tg_id else None
+    
+    if not admin or not admin.is_admin:
+        db.close()
+        return "Доступ запрещён", 403
+    
+    permissions = get_admin_permissions(admin.admin_role)
+    if not permissions['can_moderate']:
+        db.close()
+        return "У вас нет прав для модерации", 403
+    
+    prop = db.query(Property).filter(Property.id == property_id).first()
+    if prop:
+        prop.status = PropertyStatus.ACTIVE
+        db.commit()
+    db.close()
+    
+    return redirect(url_for('webapp_moderation', tg_id=tg_id))
+
+
+@app.route('/webapp/admin/property/<int:property_id>/reject', methods=['POST'])
+def webapp_reject_property(property_id):
+    tg_id = request.form.get('tg_id')
+    
+    db = get_db()
+    admin = db.query(User).filter(User.telegram_id == int(tg_id)).first() if tg_id else None
+    
+    if not admin or not admin.is_admin:
+        db.close()
+        return "Доступ запрещён", 403
+    
+    permissions = get_admin_permissions(admin.admin_role)
+    if not permissions['can_moderate']:
+        db.close()
+        return "У вас нет прав для модерации", 403
+    
+    prop = db.query(Property).filter(Property.id == property_id).first()
+    if prop:
+        db.delete(prop)
+        db.commit()
+    db.close()
+    
+    return redirect(url_for('webapp_moderation', tg_id=tg_id))
 
 
 @app.route('/webapp/admin/tariffs')
