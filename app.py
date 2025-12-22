@@ -677,6 +677,113 @@ def webapp_tariffs():
     return render_template('tariffs.html')
 
 
+@app.route('/webapp/payment')
+def webapp_payment():
+    return render_template('webapp_payment.html')
+
+
+@app.route('/api/promo/calculate', methods=['POST'])
+def calculate_promo():
+    data = request.get_json()
+    code = data.get('code', '').strip().upper()
+    tariff = data.get('tariff', '')
+    base_price = data.get('base_price', 0)
+    
+    if not code:
+        return jsonify({'valid': False, 'message': 'Введите промокод'})
+    
+    db = get_db()
+    promo = db.query(PromoCode).filter(
+        PromoCode.code == code,
+        PromoCode.is_active == True
+    ).first()
+    
+    if not promo:
+        db.close()
+        return jsonify({'valid': False, 'message': 'Промокод не найден'})
+    
+    if promo.expires_at and promo.expires_at < get_tashkent_now():
+        db.close()
+        return jsonify({'valid': False, 'message': 'Срок действия промокода истёк'})
+    
+    if promo.max_uses > 0 and promo.current_uses >= promo.max_uses:
+        db.close()
+        return jsonify({'valid': False, 'message': 'Промокод уже использован максимальное количество раз'})
+    
+    discount_percent = promo.discount_percent or 0
+    discount_amount = int(base_price * discount_percent / 100) if discount_percent > 0 else 0
+    final_price = base_price - discount_amount
+    
+    db.close()
+    
+    return jsonify({
+        'valid': True,
+        'discount_percent': discount_percent,
+        'discount_amount': discount_amount,
+        'final_price': final_price,
+        'message': f'Скидка {discount_percent}%!' if discount_percent > 0 else 'Промокод применён!'
+    })
+
+
+@app.route('/api/payment/create', methods=['POST'])
+def create_payment():
+    import random
+    
+    data = request.get_json()
+    tg_id = data.get('tg_id')
+    tariff = data.get('tariff', '')
+    base_price = data.get('base_price', 0)
+    final_price = data.get('final_price', 0)
+    promo_code = data.get('promo_code')
+    discount_percent = data.get('discount_percent', 0)
+    
+    if not tg_id:
+        return jsonify({'success': False, 'message': 'Telegram ID не указан'})
+    
+    db = get_db()
+    
+    user = db.query(User).filter(User.telegram_id == int(tg_id)).first()
+    if not user:
+        db.close()
+        return jsonify({'success': False, 'message': 'Пользователь не найден'})
+    
+    admins = db.query(User).filter(
+        User.is_admin == True,
+        User.username.isnot(None),
+        User.username != ''
+    ).all()
+    
+    if not admins:
+        db.close()
+        return jsonify({'success': False, 'message': 'Нет доступных администраторов'})
+    
+    selected_admin = random.choice(admins)
+    
+    promo = None
+    if promo_code:
+        promo = db.query(PromoCode).filter(
+            PromoCode.code == promo_code,
+            PromoCode.is_active == True
+        ).first()
+    
+    tariff_name = 'Премиум' if tariff == 'premium' else 'Про'
+    promo_request = PromoRequest(
+        user_id=user.id,
+        promo_code_id=promo.id if promo else None,
+        promo_code_text=f"Оплата {tariff_name}: {final_price} сум" + (f" (промо: {promo_code})" if promo_code else ""),
+        status='pending'
+    )
+    db.add(promo_request)
+    db.commit()
+    db.close()
+    
+    return jsonify({
+        'success': True,
+        'admin_username': selected_admin.username,
+        'request_id': promo_request.id
+    })
+
+
 @app.route('/webapp/advertising')
 def webapp_advertising():
     return render_template('advertising.html')

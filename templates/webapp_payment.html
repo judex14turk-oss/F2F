@@ -1,0 +1,517 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Оплата | Real Estate Bot</title>
+    <script src="https://telegram.org/js/telegram-web-app.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        :root {
+            --bg-primary: #0f0f0f;
+            --bg-secondary: #1a1a1a;
+            --bg-card: #222222;
+            --text-primary: #ffffff;
+            --text-secondary: #a0a0a0;
+            --accent-free: #4ade80;
+            --accent-pro: #60a5fa;
+            --accent-premium: #f59e0b;
+            --border-color: #333333;
+        }
+        
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: var(--bg-primary);
+            color: var(--text-primary);
+            min-height: 100vh;
+            padding: 20px;
+            padding-bottom: 100px;
+        }
+        
+        .header {
+            text-align: center;
+            margin-bottom: 24px;
+        }
+        
+        .back-btn {
+            position: absolute;
+            left: 20px;
+            top: 20px;
+            background: var(--bg-card);
+            border: 1px solid var(--border-color);
+            border-radius: 10px;
+            padding: 8px 16px;
+            color: var(--text-primary);
+            font-size: 14px;
+            cursor: pointer;
+            text-decoration: none;
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+        }
+        
+        .header h1 {
+            font-size: 24px;
+            font-weight: 700;
+            margin-bottom: 8px;
+            margin-top: 40px;
+        }
+        
+        .header p {
+            color: var(--text-secondary);
+            font-size: 14px;
+        }
+        
+        .payment-container {
+            max-width: 400px;
+            margin: 0 auto;
+        }
+        
+        .tariff-info {
+            background: var(--bg-card);
+            border-radius: 16px;
+            padding: 20px;
+            border: 1px solid var(--border-color);
+            margin-bottom: 20px;
+        }
+        
+        .tariff-header {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            margin-bottom: 16px;
+        }
+        
+        .tariff-icon {
+            width: 48px;
+            height: 48px;
+            border-radius: 12px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 24px;
+        }
+        
+        .tariff-icon.pro { background: rgba(96, 165, 250, 0.15); }
+        .tariff-icon.premium { background: rgba(245, 158, 11, 0.15); }
+        
+        .tariff-name {
+            font-size: 20px;
+            font-weight: 600;
+        }
+        
+        .tariff-period {
+            color: var(--text-secondary);
+            font-size: 14px;
+        }
+        
+        .price-section {
+            background: var(--bg-secondary);
+            border-radius: 12px;
+            padding: 16px;
+            margin-top: 16px;
+        }
+        
+        .price-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 8px 0;
+        }
+        
+        .price-row.total {
+            border-top: 1px solid var(--border-color);
+            margin-top: 8px;
+            padding-top: 16px;
+            font-size: 18px;
+            font-weight: 600;
+        }
+        
+        .price-label {
+            color: var(--text-secondary);
+        }
+        
+        .price-value {
+            font-weight: 500;
+        }
+        
+        .price-value.discount {
+            color: var(--accent-free);
+        }
+        
+        .price-value.old {
+            text-decoration: line-through;
+            color: var(--text-secondary);
+            font-size: 14px;
+        }
+        
+        .promo-section {
+            background: var(--bg-card);
+            border-radius: 16px;
+            padding: 20px;
+            border: 1px solid var(--border-color);
+            margin-bottom: 20px;
+        }
+        
+        .promo-section h3 {
+            font-size: 16px;
+            margin-bottom: 16px;
+        }
+        
+        .promo-input-row {
+            display: flex;
+            gap: 12px;
+        }
+        
+        .promo-input {
+            flex: 1;
+            background: var(--bg-secondary);
+            border: 1px solid var(--border-color);
+            border-radius: 10px;
+            padding: 0 16px;
+            color: var(--text-primary);
+            font-size: 15px;
+            outline: none;
+            height: 44px;
+            text-transform: uppercase;
+        }
+        
+        .promo-input:focus {
+            border-color: var(--accent-pro);
+        }
+        
+        .promo-btn {
+            background: linear-gradient(135deg, var(--accent-pro) 0%, #3b82f6 100%);
+            color: white;
+            border: none;
+            border-radius: 10px;
+            padding: 0 20px;
+            font-size: 14px;
+            font-weight: 600;
+            cursor: pointer;
+            height: 44px;
+            white-space: nowrap;
+        }
+        
+        .promo-result {
+            margin-top: 12px;
+            font-size: 14px;
+            min-height: 20px;
+        }
+        
+        .promo-result.success {
+            color: var(--accent-free);
+        }
+        
+        .promo-result.error {
+            color: #ef4444;
+        }
+        
+        .applied-promo {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            background: rgba(74, 222, 128, 0.1);
+            border: 1px solid rgba(74, 222, 128, 0.3);
+            border-radius: 10px;
+            padding: 12px 16px;
+            margin-top: 12px;
+        }
+        
+        .applied-promo-info {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            color: var(--accent-free);
+        }
+        
+        .remove-promo {
+            background: none;
+            border: none;
+            color: var(--text-secondary);
+            cursor: pointer;
+            font-size: 18px;
+        }
+        
+        .pay-btn {
+            width: 100%;
+            padding: 16px;
+            border: none;
+            border-radius: 12px;
+            font-size: 18px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: transform 0.2s, box-shadow 0.2s;
+        }
+        
+        .pay-btn:hover {
+            transform: translateY(-2px);
+        }
+        
+        .pay-btn.pro {
+            background: linear-gradient(135deg, var(--accent-pro) 0%, #3b82f6 100%);
+            color: white;
+        }
+        
+        .pay-btn.premium {
+            background: linear-gradient(135deg, var(--accent-premium) 0%, #ea580c 100%);
+            color: white;
+        }
+        
+        .pay-btn:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+            transform: none;
+        }
+        
+        .info-note {
+            margin-top: 20px;
+            padding: 16px;
+            background: rgba(96, 165, 250, 0.1);
+            border-radius: 12px;
+            border: 1px solid rgba(96, 165, 250, 0.2);
+        }
+        
+        .info-note p {
+            color: var(--text-secondary);
+            font-size: 13px;
+            line-height: 1.5;
+        }
+        
+        .hidden {
+            display: none !important;
+        }
+    </style>
+</head>
+<body>
+    <a href="/webapp/tariffs" class="back-btn">← Назад</a>
+    
+    <div class="header">
+        <h1>Оплата тарифа</h1>
+        <p>Введите промокод, если есть</p>
+    </div>
+    
+    <div class="payment-container">
+        <div class="tariff-info">
+            <div class="tariff-header">
+                <div class="tariff-icon" id="tariffIcon">⭐</div>
+                <div>
+                    <div class="tariff-name" id="tariffName">Про</div>
+                    <div class="tariff-period">1 месяц</div>
+                </div>
+            </div>
+            
+            <div class="price-section">
+                <div class="price-row" id="originalPriceRow">
+                    <span class="price-label">Стоимость тарифа</span>
+                    <span class="price-value" id="originalPrice">300 000 сум</span>
+                </div>
+                <div class="price-row hidden" id="discountRow">
+                    <span class="price-label">Скидка по промокоду</span>
+                    <span class="price-value discount" id="discountAmount">-0 сум</span>
+                </div>
+                <div class="price-row total">
+                    <span class="price-label">К оплате</span>
+                    <span class="price-value" id="finalPrice">300 000 сум</span>
+                </div>
+            </div>
+        </div>
+        
+        <div class="promo-section">
+            <h3>🎁 Промокод</h3>
+            <div class="promo-input-row" id="promoInputRow">
+                <input type="text" id="promoCode" placeholder="Введите промокод" class="promo-input">
+                <button onclick="applyPromo()" class="promo-btn" id="applyBtn">Применить</button>
+            </div>
+            <div id="promoResult" class="promo-result"></div>
+            <div class="applied-promo hidden" id="appliedPromo">
+                <div class="applied-promo-info">
+                    <span>✓</span>
+                    <span id="appliedPromoCode">PROMO123</span>
+                    <span id="appliedPromoDiscount">(-10%)</span>
+                </div>
+                <button class="remove-promo" onclick="removePromo()">×</button>
+            </div>
+        </div>
+        
+        <button class="pay-btn" id="payBtn" onclick="submitPayment()">
+            Оплатить <span id="payAmount">300 000</span> сум
+        </button>
+        
+        <div class="info-note">
+            <p>
+                💡 После нажатия кнопки "Оплатить" вы будете перенаправлены к администратору для завершения оплаты.
+            </p>
+        </div>
+    </div>
+    
+    <script>
+        const tg = window.Telegram.WebApp;
+        tg.ready();
+        tg.expand();
+        
+        const urlParams = new URLSearchParams(window.location.search);
+        const tariff = urlParams.get('tariff') || 'pro';
+        const basePrice = parseInt(urlParams.get('price')) || 300000;
+        const tgId = urlParams.get('tg_id') || tg.initDataUnsafe?.user?.id || '';
+        
+        let currentPrice = basePrice;
+        let appliedPromoCode = null;
+        let discountPercent = 0;
+        
+        function initPage() {
+            const icon = document.getElementById('tariffIcon');
+            const name = document.getElementById('tariffName');
+            const btn = document.getElementById('payBtn');
+            
+            if (tariff === 'premium') {
+                icon.textContent = '👑';
+                icon.className = 'tariff-icon premium';
+                name.textContent = 'Премиум';
+                btn.className = 'pay-btn premium';
+            } else {
+                icon.textContent = '⭐';
+                icon.className = 'tariff-icon pro';
+                name.textContent = 'Про';
+                btn.className = 'pay-btn pro';
+            }
+            
+            updatePrices();
+        }
+        
+        function formatPrice(price) {
+            return price.toLocaleString('ru-RU');
+        }
+        
+        function updatePrices() {
+            document.getElementById('originalPrice').textContent = formatPrice(basePrice) + ' сум';
+            
+            if (discountPercent > 0) {
+                const discountAmount = Math.round(basePrice * discountPercent / 100);
+                currentPrice = basePrice - discountAmount;
+                
+                document.getElementById('discountRow').classList.remove('hidden');
+                document.getElementById('discountAmount').textContent = '-' + formatPrice(discountAmount) + ' сум';
+            } else {
+                currentPrice = basePrice;
+                document.getElementById('discountRow').classList.add('hidden');
+            }
+            
+            document.getElementById('finalPrice').textContent = formatPrice(currentPrice) + ' сум';
+            document.getElementById('payAmount').textContent = formatPrice(currentPrice);
+        }
+        
+        async function applyPromo() {
+            const code = document.getElementById('promoCode').value.trim().toUpperCase();
+            const resultEl = document.getElementById('promoResult');
+            
+            if (!code) {
+                resultEl.className = 'promo-result error';
+                resultEl.textContent = 'Введите промокод';
+                return;
+            }
+            
+            document.getElementById('applyBtn').disabled = true;
+            document.getElementById('applyBtn').textContent = '...';
+            
+            try {
+                const response = await fetch('/api/promo/calculate', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ 
+                        code: code, 
+                        tariff: tariff,
+                        base_price: basePrice,
+                        tg_id: tgId
+                    })
+                });
+                
+                const data = await response.json();
+                
+                if (data.valid) {
+                    appliedPromoCode = code;
+                    discountPercent = data.discount_percent || 0;
+                    
+                    document.getElementById('promoInputRow').classList.add('hidden');
+                    document.getElementById('appliedPromo').classList.remove('hidden');
+                    document.getElementById('appliedPromoCode').textContent = code;
+                    document.getElementById('appliedPromoDiscount').textContent = discountPercent > 0 ? `(-${discountPercent}%)` : '';
+                    resultEl.textContent = '';
+                    
+                    updatePrices();
+                } else {
+                    resultEl.className = 'promo-result error';
+                    resultEl.textContent = data.message || 'Промокод не найден';
+                }
+            } catch (e) {
+                resultEl.className = 'promo-result error';
+                resultEl.textContent = 'Ошибка проверки';
+            }
+            
+            document.getElementById('applyBtn').disabled = false;
+            document.getElementById('applyBtn').textContent = 'Применить';
+        }
+        
+        function removePromo() {
+            appliedPromoCode = null;
+            discountPercent = 0;
+            
+            document.getElementById('promoInputRow').classList.remove('hidden');
+            document.getElementById('appliedPromo').classList.add('hidden');
+            document.getElementById('promoCode').value = '';
+            document.getElementById('promoResult').textContent = '';
+            
+            updatePrices();
+        }
+        
+        async function submitPayment() {
+            const btn = document.getElementById('payBtn');
+            btn.disabled = true;
+            btn.textContent = 'Создание заявки...';
+            
+            try {
+                const response = await fetch('/api/payment/create', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        tg_id: tgId,
+                        tariff: tariff,
+                        base_price: basePrice,
+                        final_price: currentPrice,
+                        promo_code: appliedPromoCode,
+                        discount_percent: discountPercent
+                    })
+                });
+                
+                const data = await response.json();
+                
+                if (data.success) {
+                    const adminUsername = data.admin_username;
+                    const message = `Заявка на оплату тарифа "${tariff === 'premium' ? 'Премиум' : 'Про'}".\nСумма: ${formatPrice(currentPrice)} сум${appliedPromoCode ? '\nПромокод: ' + appliedPromoCode : ''}`;
+                    
+                    tg.openTelegramLink(`https://t.me/${adminUsername}?text=${encodeURIComponent(message)}`);
+                } else {
+                    alert(data.message || 'Ошибка создания заявки');
+                    btn.disabled = false;
+                    btn.textContent = `Оплатить ${formatPrice(currentPrice)} сум`;
+                }
+            } catch (e) {
+                alert('Ошибка. Попробуйте позже.');
+                btn.disabled = false;
+                btn.textContent = `Оплатить ${formatPrice(currentPrice)} сум`;
+            }
+        }
+        
+        document.getElementById('promoCode').addEventListener('keypress', function(e) {
+            if (e.key === 'Enter') applyPromo();
+        });
+        
+        initPage();
+    </script>
+</body>
+</html>
