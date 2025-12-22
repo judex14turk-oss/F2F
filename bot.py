@@ -859,7 +859,7 @@ async def show_seller_menu(message, user_id, buyers_count=None):
     )
 
 
-@dp.message(F.text == "➕ Добавить объект")
+@dp.message(F.text.in_(["➕ Добавить объект", "➕ Obyekt qo'shish"]))
 async def add_property_start(message: types.Message, state: FSMContext):
     db = SessionLocal()
     user = db.query(User).filter(User.telegram_id == message.from_user.id).first()
@@ -1232,7 +1232,7 @@ async def finish_photos(callback: types.CallbackQuery, state: FSMContext):
     )
 
 
-@dp.message(F.text == "🏠 Смотреть квартиры")
+@dp.message(F.text.in_(["🏠 Смотреть квартиры", "🏠 Kvartiralarni ko'rish"]))
 async def view_properties(message: types.Message, state: FSMContext):
     db = SessionLocal()
     user = db.query(User).filter(User.telegram_id == message.from_user.id).first()
@@ -1404,7 +1404,7 @@ async def show_property_card(message, property_id, state=None):
         await message.answer(text, reply_markup=search_keyboard, parse_mode="HTML")
 
 
-@dp.message(F.text == "❤️ Нравится", SearchStates.viewing_properties)
+@dp.message(F.text.in_(["❤️ Нравится", "❤️ Yoqdi"]), SearchStates.viewing_properties)
 async def process_like_reply(message: types.Message, state: FSMContext):
     data = await state.get_data()
     property_id = data.get("current_property_id")
@@ -1452,12 +1452,12 @@ async def process_like_reply(message: types.Message, state: FSMContext):
     await show_next_property_reply(message, state)
 
 
-@dp.message(F.text == "❌ Не нравится", SearchStates.viewing_properties)
+@dp.message(F.text.in_(["❌ Не нравится", "❌ Yoqmadi"]), SearchStates.viewing_properties)
 async def process_skip_reply(message: types.Message, state: FSMContext):
     await show_next_property_reply(message, state)
 
 
-@dp.message(F.text == "🔙 Назад", SearchStates.viewing_properties)
+@dp.message(F.text.in_(["🔙 Назад", "🔙 Orqaga"]), SearchStates.viewing_properties)
 async def process_back_reply(message: types.Message, state: FSMContext):
     await state.clear()
     
@@ -1573,7 +1573,7 @@ async def show_next_property_reply(message, state):
     await show_property_card(message, properties[current_index], state)
 
 
-@dp.message(F.text == "➡️ Далее", SearchStates.viewing_ad)
+@dp.message(F.text.in_(["➡️ Далее", "➡️ Keyingi"]), SearchStates.viewing_ad)
 async def continue_after_ad(message: types.Message, state: FSMContext):
     """Продолжить просмотр после рекламы"""
     data = await state.get_data()
@@ -1594,7 +1594,7 @@ async def continue_after_ad(message: types.Message, state: FSMContext):
     await show_property_card(message, properties[current_index], state)
 
 
-@dp.message(F.text == "🔙 Назад", SearchStates.viewing_ad)
+@dp.message(F.text.in_(["🔙 Назад", "🔙 Orqaga"]), SearchStates.viewing_ad)
 async def back_from_ad(message: types.Message, state: FSMContext):
     """Вернуться в меню из рекламы"""
     await state.clear()
@@ -1611,7 +1611,7 @@ async def back_from_ad(message: types.Message, state: FSMContext):
     await message.answer("Вы вернулись в меню", reply_markup=keyboard)
 
 
-@dp.message(F.text == "🏢 Мои объекты")
+@dp.message(F.text.in_(["🏢 Мои объекты", "🏢 Mening obyektlarim"]))
 async def my_properties(message: types.Message):
     db = SessionLocal()
     user = db.query(User).filter(User.telegram_id == message.from_user.id).first()
@@ -2132,7 +2132,7 @@ async def edit_photos_cancel(callback: types.CallbackQuery, state: FSMContext):
     await callback.message.edit_text("Редактирование фото отменено.")
 
 
-@dp.message(F.text == "❤️ Меня лайкнули")
+@dp.message(F.text.in_(["❤️ Меня лайкнули", "❤️ Meni layklashdi"]))
 async def likes_received(message: types.Message):
     db = SessionLocal()
     user = db.query(User).filter(User.telegram_id == message.from_user.id).first()
@@ -2242,7 +2242,7 @@ async def create_match(callback: types.CallbackQuery):
     )
 
 
-@dp.message(F.text == "💬 Сделки")
+@dp.message(F.text.in_(["💬 Сделки", "💬 Bitimlar"]))
 async def deals(message: types.Message):
     db = SessionLocal()
     user = db.query(User).filter(User.telegram_id == message.from_user.id).first()
@@ -2430,7 +2430,7 @@ def get_seller_profile_menu(lang='ru'):
     )
 
 
-@dp.message(F.text == "🎯 Найти покупателя")
+@dp.message(F.text.in_(["🎯 Найти покупателя", "🎯 Xaridor topish"]))
 async def find_buyers(message: types.Message, state: FSMContext):
     db = SessionLocal()
     user = db.query(User).filter(User.telegram_id == message.from_user.id).first()
@@ -2798,7 +2798,7 @@ async def my_profile(message: types.Message):
         await show_buyer_profile(message, user)
 
 
-@dp.message(F.text == "🔙 Главное меню")
+@dp.message(F.text.in_(["🔙 Главное меню", "🔙 Asosiy menyu"]))
 async def back_to_main_menu(message: types.Message):
     db = SessionLocal()
     user = db.query(User).filter(User.telegram_id == message.from_user.id).first()
@@ -2937,7 +2937,7 @@ async def switch_to_seller(callback: types.CallbackQuery, state: FSMContext):
     )
 
 
-@dp.message(F.text == "💼 Войти в режим продавца")
+@dp.message(F.text.in_(["💼 Войти в режим продавца", "💼 Sotuvchi rejimiga o'tish"]))
 async def buyer_switch_to_seller(message: types.Message, state: FSMContext):
     db = SessionLocal()
     user = db.query(User).filter(User.telegram_id == message.from_user.id).first()
@@ -2958,7 +2958,7 @@ async def buyer_switch_to_seller(message: types.Message, state: FSMContext):
     )
 
 
-@dp.message(F.text == "❤️ Лайки")
+@dp.message(F.text.in_(["❤️ Лайки", "❤️ Layklar"]))
 async def buyer_likes(message: types.Message):
     db = SessionLocal()
     user = db.query(User).filter(User.telegram_id == message.from_user.id).first()
@@ -3027,7 +3027,7 @@ async def buyer_likes(message: types.Message):
     db.close()
 
 
-@dp.message(F.text == "💬 Переписка")
+@dp.message(F.text.in_(["💬 Переписка", "💬 Xabarlar"]))
 async def buyer_messages(message: types.Message):
     db = SessionLocal()
     user = db.query(User).filter(User.telegram_id == message.from_user.id).first()
@@ -3077,7 +3077,7 @@ async def buyer_profile_back(message: types.Message, state: FSMContext):
         await message.answer("🏠 Главное меню", reply_markup=keyboard)
 
 
-@dp.message(F.text == "💳 Тарифы")
+@dp.message(F.text.in_(["💳 Тарифы", "💳 Tariflar"]))
 async def tariffs(message: types.Message):
     webapp_url = WEBAPP_BASE_URL or os.environ.get('REPLIT_DEV_DOMAIN', '')
     if webapp_url and not webapp_url.startswith('https://'):
@@ -3185,7 +3185,7 @@ async def advertising(message: types.Message):
         await message.answer(text_no_webapp)
 
 
-@dp.message(F.text == "❤️ Мои лайки")
+@dp.message(F.text.in_(["❤️ Мои лайки", "❤️ Mening layklarim"]))
 async def my_likes(message: types.Message):
     db = SessionLocal()
     user = db.query(User).filter(User.telegram_id == message.from_user.id).first()
@@ -3222,7 +3222,7 @@ class SearchSettingsStates(StatesGroup):
     bio = State()
 
 
-@dp.message(F.text == "⚙️ Настройки поиска")
+@dp.message(F.text.in_(["⚙️ Настройки поиска", "⚙️ Qidiruv sozlamalari"]))
 async def search_settings(message: types.Message, state: FSMContext):
     keyboard = ReplyKeyboardMarkup(
         keyboard=[
