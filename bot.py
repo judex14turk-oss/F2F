@@ -154,9 +154,7 @@ async def cmd_start(message: types.Message, state: FSMContext):
     db = SessionLocal()
     user = db.query(User).filter(User.telegram_id == message.from_user.id).first()
     
-    is_new_user = False
     if not user:
-        is_new_user = True
         user = User(
             telegram_id=message.from_user.id,
             username=message.from_user.username,
@@ -167,10 +165,11 @@ async def cmd_start(message: types.Message, state: FSMContext):
         db.add(user)
         db.commit()
     
+    needs_language_selection = user.language is None
     lang = get_user_lang(user)
     db.close()
     
-    if is_new_user:
+    if needs_language_selection:
         keyboard = ReplyKeyboardMarkup(
             keyboard=[
                 [KeyboardButton(text="🇷🇺 Русский")],
@@ -178,7 +177,8 @@ async def cmd_start(message: types.Message, state: FSMContext):
             ],
             resize_keyboard=True
         )
-        await message.answer(get_text('choose_language', lang), reply_markup=keyboard)
+        welcome_text = "👋 Добро пожаловать в F2F! / F2F ga xush kelibsiz!\n\n🌍 Выберите язык / Tilni tanlang:"
+        await message.answer(welcome_text, reply_markup=keyboard)
         await state.set_state(RegistrationStates.choosing_language)
     else:
         keyboard = ReplyKeyboardMarkup(
