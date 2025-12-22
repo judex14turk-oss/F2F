@@ -724,9 +724,18 @@ def webapp_user_stats():
         TariffType.DEVELOPER_PRO: "Премиум"
     }
     
-    from utils import get_tariff_limits
-    tariff_limits = get_tariff_limits(user.tariff, user.is_admin)
-    base_properties = tariff_limits.get("properties", 2)
+    tariff_limits_map = {
+        TariffType.FREE: {"properties": 2},
+        TariffType.PRO: {"properties": 50},
+        TariffType.PREMIUM: {"properties": 100},
+        TariffType.AGENCY_START: {"properties": 50},
+        TariffType.DEVELOPER_PRO: {"properties": 100},
+    }
+    if user.is_admin:
+        base_properties = 999999
+    else:
+        tariff_limits = tariff_limits_map.get(user.tariff, {"properties": 2})
+        base_properties = tariff_limits.get("properties", 2)
     bonus = user.bonus_properties or 0
     max_properties = base_properties + bonus
     
