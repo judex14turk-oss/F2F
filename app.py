@@ -7,6 +7,7 @@ from functools import wraps
 from flask import Flask, render_template, request, jsonify, redirect, url_for, session, Response
 
 TELEGRAM_BOT_TOKEN = os.environ.get('TELEGRAM_BOT_TOKEN', '')
+from sqlalchemy.orm import joinedload
 from models import SessionLocal, User, Property, Like, Match, Offer, District, ResidentialComplex, PromoCode, TariffSettings, Advertisement
 from models import UserRole, SellerType, TariffType, PropertyType, PropertyStatus, AdminRole, init_db, get_tashkent_now
 
@@ -1101,7 +1102,9 @@ def webapp_moderation():
         db.close()
         return "У вас нет прав для модерации объявлений", 403
     
-    properties = db.query(Property).filter(
+    properties = db.query(Property).options(
+        joinedload(Property.owner)
+    ).filter(
         Property.status == PropertyStatus.MODERATION
     ).order_by(Property.created_at.desc()).all()
     
