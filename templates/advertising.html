@@ -170,8 +170,9 @@
         }
         
         .contact-btn {
-            display: inline-flex;
+            display: flex;
             align-items: center;
+            justify-content: center;
             gap: 8px;
             background: linear-gradient(135deg, #ec4899 0%, #be185d 100%);
             color: white;
@@ -180,6 +181,9 @@
             text-decoration: none;
             font-weight: 600;
             font-size: 0.95rem;
+            width: 100%;
+            max-width: 280px;
+            margin: 8px auto;
         }
     </style>
 </head>
@@ -243,7 +247,7 @@
             <span>💬</span>
             <span>Написать @InvictumMurad</span>
         </a>
-        <a href="https://t.me/nkarshiyev" class="contact-btn" style="margin-top: 10px;">
+        <a href="https://t.me/nkarshiyev" class="contact-btn">
             <span>💬</span>
             <span>Написать @nkarshiyev</span>
         </a>
