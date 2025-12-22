@@ -627,7 +627,7 @@ def get_buyer_profile_menu(lang='ru'):
     return ReplyKeyboardMarkup(
         keyboard=[
             [KeyboardButton(text=get_text('likes', lang)), KeyboardButton(text=get_text('messages', lang))],
-            [KeyboardButton(text="👤 Мой профиль")],
+            [KeyboardButton(text=get_text('my_profile', lang))],
             [KeyboardButton(text=get_text('back', lang))]
         ],
         resize_keyboard=True
@@ -2421,9 +2421,9 @@ def get_seller_menu(lang='ru'):
 def get_seller_profile_menu(lang='ru'):
     return ReplyKeyboardMarkup(
         keyboard=[
-            [KeyboardButton(text=get_text('who_liked_me', lang)), KeyboardButton(text="💬 Сделки")],
-            [KeyboardButton(text=get_text('my_properties', lang)), KeyboardButton(text="👤 Мой профиль")],
-            [KeyboardButton(text=get_text('tariffs', lang)), KeyboardButton(text="📢 Реклама")],
+            [KeyboardButton(text=get_text('who_liked_me', lang)), KeyboardButton(text=get_text('deals', lang))],
+            [KeyboardButton(text=get_text('my_properties', lang)), KeyboardButton(text=get_text('my_profile', lang))],
+            [KeyboardButton(text=get_text('tariffs', lang)), KeyboardButton(text=get_text('ads', lang))],
             [KeyboardButton(text=get_text('back_button', lang))]
         ],
         resize_keyboard=True
@@ -2766,7 +2766,7 @@ async def profile(message: types.Message):
     
     if user.role == UserRole.SELLER:
         keyboard = get_seller_profile_menu(lang)
-        await message.answer("📂 Раздел профиля:", reply_markup=keyboard)
+        await message.answer(get_text('profile', lang), reply_markup=keyboard)
     else:
         keyboard = get_buyer_profile_menu(lang)
         await message.answer(get_text('profile', lang), reply_markup=keyboard)
@@ -2786,7 +2786,7 @@ async def change_language_callback(callback: types.CallbackQuery, state: FSMCont
     await state.set_state(RegistrationStates.choosing_language)
 
 
-@dp.message(F.text == "👤 Мой профиль")
+@dp.message(lambda m: m.text in [get_text('my_profile', 'ru'), get_text('my_profile', 'uz')])
 async def my_profile(message: types.Message):
     db = SessionLocal()
     user = db.query(User).filter(User.telegram_id == message.from_user.id).first()
