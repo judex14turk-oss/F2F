@@ -210,6 +210,80 @@
             color: #666;
         }
         
+        .tariffs-grid {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 12px;
+            padding: 0 12px 16px;
+        }
+        
+        .tariff-option {
+            background: #151515;
+            border: 2px solid #252525;
+            border-radius: 12px;
+            padding: 16px;
+            text-align: center;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+        
+        .tariff-option:hover {
+            border-color: #3b82f6;
+        }
+        
+        .tariff-option.current {
+            border-color: #10b981;
+            background: rgba(16, 185, 129, 0.1);
+        }
+        
+        .tariff-option-name {
+            font-size: 1.1rem;
+            font-weight: 700;
+            color: #fff;
+            margin-bottom: 8px;
+        }
+        
+        .tariff-option-price {
+            font-size: 1rem;
+            font-weight: 600;
+            color: #10b981;
+            margin-bottom: 8px;
+        }
+        
+        .tariff-option-details {
+            font-size: 0.75rem;
+            color: #888;
+            margin-bottom: 12px;
+        }
+        
+        .tariff-option-details div {
+            margin-bottom: 4px;
+        }
+        
+        .btn-buy {
+            width: 100%;
+            padding: 10px;
+            border: none;
+            border-radius: 8px;
+            font-size: 0.8rem;
+            font-weight: 600;
+            cursor: pointer;
+            color: #fff;
+        }
+        
+        .btn-buy.primary {
+            background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%);
+        }
+        
+        .btn-buy.premium {
+            background: linear-gradient(135deg, #8b5cf6 0%, #7c3aed 100%);
+        }
+        
+        .btn-buy.current {
+            background: #10b981;
+            cursor: default;
+        }
+        
         .trial-banner {
             background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%);
             margin: 0 12px 16px;
@@ -369,6 +443,29 @@
         </div>
     </div>
     
+    <div class="section-title"><i class="bi bi-bag-check"></i> Купить тариф</div>
+    
+    <div class="tariffs-grid">
+        {% for tariff in available_tariffs %}
+        <div class="tariff-option {% if current_tariff == tariff.id %}current{% endif %}">
+            <div class="tariff-option-name">{{ tariff.name }}</div>
+            <div class="tariff-option-price">{{ "{:,}".format(tariff.price).replace(',', ' ') }} сум</div>
+            <div class="tariff-option-details">
+                <div><i class="bi bi-house"></i> {{ tariff.properties }} объявлений</div>
+                <div><i class="bi bi-heart"></i> {{ tariff.likes }} лайков/день</div>
+                <div><i class="bi bi-calendar"></i> {{ tariff.duration }} дней</div>
+            </div>
+            {% if current_tariff == tariff.id and tariff_status == 'active' %}
+            <button class="btn-buy current" disabled>Активен</button>
+            {% else %}
+            <button class="btn-buy {% if tariff.id == 'PREMIUM' %}premium{% else %}primary{% endif %}" onclick="buyTariff('{{ tariff.id }}', '{{ tariff.name }}', {{ tariff.price }})">
+                Купить
+            </button>
+            {% endif %}
+        </div>
+        {% endfor %}
+    </div>
+    
     <div class="section-title"><i class="bi bi-clock-history"></i> История операций</div>
     
     <div class="history-card">
@@ -394,6 +491,33 @@
         const tg = window.Telegram.WebApp;
         tg.ready();
         tg.expand();
+        
+        function buyTariff(tariffId, tariffName, price) {
+            if (confirm('Купить тариф "' + tariffName + '" за ' + price.toLocaleString('ru-RU') + ' сум?')) {
+                fetch('/api/webapp/buy_tariff', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        tg_id: '{{ tg_id }}',
+                        tariff_id: tariffId
+                    })
+                })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) {
+                        alert('Тариф успешно активирован!');
+                        location.reload();
+                    } else {
+                        alert(data.message || 'Ошибка при покупке тарифа');
+                    }
+                })
+                .catch(error => {
+                    alert('Ошибка при покупке тарифа');
+                });
+            }
+        }
     </script>
 </body>
 </html>

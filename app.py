@@ -1026,6 +1026,27 @@ def webapp_user_subscription():
             'processed_at': req.processed_at
         })
     
+    available_tariffs = [
+        {
+            'id': 'PRO',
+            'name': 'Про',
+            'price': 99000,
+            'properties': 50,
+            'likes': 10,
+            'duration': 30,
+            'color': '#3b82f6'
+        },
+        {
+            'id': 'PREMIUM',
+            'name': 'Премиум',
+            'price': 199000,
+            'properties': 100,
+            'likes': 30,
+            'duration': 30,
+            'color': '#8b5cf6'
+        }
+    ]
+    
     db.close()
     
     return render_template('webapp_user_subscription.html',
@@ -1039,7 +1060,9 @@ def webapp_user_subscription():
         bonus_properties=bonus_properties,
         bonus_likes=bonus_likes,
         trial_days=trial_days,
-        payment_history=history_data
+        payment_history=history_data,
+        available_tariffs=available_tariffs,
+        current_tariff=user.tariff.name if user.tariff else 'FREE'
     )
 
 
@@ -1152,6 +1175,51 @@ def calculate_promo():
         'final_price': final_price,
         'message': f'Скидка {discount_percent}%!' if discount_percent > 0 else 'Промокод применён!'
     })
+
+
+@app.route('/api/webapp/buy_tariff', methods=['POST'])
+def webapp_buy_tariff():
+    data = request.get_json()
+    tg_id = data.get('tg_id')
+    tariff_id = data.get('tariff_id')
+    
+    if not tg_id or not tariff_id:
+        return jsonify({'success': False, 'message': 'Неверные параметры'})
+    
+    tariff_prices = {
+        'PRO': 99000,
+        'PREMIUM': 199000
+    }
+    
+    tariff_map = {
+        'PRO': TariffType.PRO,
+        'PREMIUM': TariffType.PREMIUM
+    }
+    
+    if tariff_id not in tariff_prices:
+        return jsonify({'success': False, 'message': 'Тариф не найден'})
+    
+    price = tariff_prices[tariff_id]
+    
+    db = get_db()
+    user = db.query(User).filter(User.telegram_id == int(tg_id)).first()
+    
+    if not user:
+        db.close()
+        return jsonify({'success': False, 'message': 'Пользователь не найден'})
+    
+    if (user.balance or 0) < price:
+        db.close()
+        return jsonify({'success': False, 'message': f'Недостаточно средств на балансе. Необходимо: {price:,} сум. Ваш баланс: {user.balance or 0:,} сум'})
+    
+    user.balance = (user.balance or 0) - price
+    user.tariff = tariff_map[tariff_id]
+    user.tariff_expires = get_tashkent_now() + timedelta(days=30)
+    
+    db.commit()
+    db.close()
+    
+    return jsonify({'success': True, 'message': 'Тариф успешно активирован!'})
 
 
 @app.route('/api/payment/create', methods=['POST'])
