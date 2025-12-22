@@ -599,15 +599,15 @@ async def process_buyer_phone_text(message: types.Message, state: FSMContext):
 
 async def show_buyer_menu(message, user_id):
     db = SessionLocal()
+    user = db.query(User).filter(User.telegram_id == user_id).first()
+    lang = get_user_lang(user)
     properties_count = db.query(Property).filter(Property.status == PropertyStatus.ACTIVE).count()
     db.close()
     
-    keyboard = get_buyer_menu()
+    keyboard = get_buyer_menu(lang)
     
     await message.answer(
-        f"✅ Регистрация завершена!\n\n"
-        f"📊 Сейчас доступно {properties_count} квартир.\n\n"
-        f"Нажмите '🏠 Смотреть квартиры', чтобы начать поиск!",
+        get_text('registration_complete', lang, count=properties_count),
         reply_markup=keyboard
     )
 
@@ -827,6 +827,7 @@ async def process_phone(message: types.Message, state: FSMContext):
 async def show_seller_menu(message, user_id, buyers_count=None):
     db = SessionLocal()
     user = db.query(User).filter(User.telegram_id == user_id).first()
+    lang = get_user_lang(user)
     
     if buyers_count is None:
         buyers_count = db.query(User).filter(User.role == UserRole.BUYER).count()
@@ -838,23 +839,17 @@ async def show_seller_menu(message, user_id, buyers_count=None):
     db.close()
     
     tariff_names = {
-        TariffType.FREE: "🆓 Бесплатный",
-        TariffType.PRO: "⭐ Про",
-        TariffType.PREMIUM: "👑 Премиум",
-        TariffType.AGENCY_START: "⭐ Про",
-        TariffType.DEVELOPER_PRO: "👑 Премиум"
+        TariffType.FREE: get_text('tariff_free', lang),
+        TariffType.PRO: get_text('tariff_pro', lang),
+        TariffType.PREMIUM: get_text('tariff_premium', lang),
+        TariffType.AGENCY_START: get_text('tariff_agency', lang),
+        TariffType.DEVELOPER_PRO: get_text('tariff_developer', lang)
     }
     
-    keyboard = get_seller_menu()
+    keyboard = get_seller_menu(lang)
     
     await message.answer(
-        f"✅ Регистрация завершена!\n\n"
-        f"🔥 Прямо сейчас в боте {buyers_count} человек ищут квартиру!\n\n"
-        f"📊 Ваша статистика:\n"
-        f"👁 Просмотров: {total_views}\n"
-        f"❤️ Лайков: {total_likes}\n"
-        f"🤝 Мэтчей: {matches_count}\n"
-        f"💳 Тариф: {tariff_names.get(user.tariff, 'Бесплатный')}",
+        get_text('seller_registration_complete', lang, count=buyers_count, views=total_views, likes=total_likes, matches=matches_count, tariff=tariff_names.get(user.tariff, get_text('tariff_free', lang))),
         reply_markup=keyboard
     )
 
@@ -865,10 +860,12 @@ async def add_property_start(message: types.Message, state: FSMContext):
     user = db.query(User).filter(User.telegram_id == message.from_user.id).first()
     
     if not user or user.role != UserRole.SELLER:
-        db.close()
         if user and user.role == UserRole.BUYER:
-            await message.answer("🏠 Главное меню покупателя\n\nВыберите действие:", reply_markup=get_buyer_menu())
+            lang = get_user_lang(user)
+            db.close()
+            await message.answer(get_text('returned_to_menu', lang), reply_markup=get_buyer_menu(lang))
         else:
+            db.close()
             await message.answer("Нажмите /start чтобы начать.")
         return
     
@@ -1223,7 +1220,12 @@ async def finish_photos(callback: types.CallbackQuery, state: FSMContext):
         budget_max=data.get("price")
     )
     
-    keyboard = get_seller_menu()
+    db = SessionLocal()
+    user = db.query(User).filter(User.telegram_id == callback.from_user.id).first()
+    lang = get_user_lang(user)
+    db.close()
+    
+    keyboard = get_seller_menu(lang)
     
     await callback.message.answer(
         f"🎯 {buyers_count} покупателей ищут похожие квартиры.\n"
@@ -1463,14 +1465,15 @@ async def process_back_reply(message: types.Message, state: FSMContext):
     
     db = SessionLocal()
     user = db.query(User).filter(User.telegram_id == message.from_user.id).first()
+    lang = get_user_lang(user)
     db.close()
     
     if user and user.role == UserRole.BUYER:
-        keyboard = get_buyer_menu()
+        keyboard = get_buyer_menu(lang)
     else:
-        keyboard = get_seller_menu()
+        keyboard = get_seller_menu(lang)
     
-    await message.answer("Вы вернулись в меню", reply_markup=keyboard)
+    await message.answer(get_text('returned_to_menu', lang), reply_markup=keyboard)
 
 
 async def show_advertisement(message, ad, state):
@@ -1545,13 +1548,13 @@ async def show_next_property_reply(message, state):
     if current_index >= len(properties):
         db = SessionLocal()
         user = db.query(User).filter(User.telegram_id == message.from_user.id).first()
+        lang = get_user_lang(user)
         db.close()
         
-        keyboard = get_buyer_menu()
+        keyboard = get_buyer_menu(lang)
         
         await message.answer(
-            "🎉 Вы просмотрели все доступные квартиры!\n\n"
-            "Новые объекты появляются каждый день. Заходите позже!",
+            get_text('all_properties_viewed', lang),
             reply_markup=keyboard
         )
         await state.clear()
@@ -1581,10 +1584,13 @@ async def continue_after_ad(message: types.Message, state: FSMContext):
     current_index = data.get("current_index", 0)
     
     if current_index >= len(properties):
-        keyboard = get_buyer_menu()
+        db = SessionLocal()
+        user = db.query(User).filter(User.telegram_id == message.from_user.id).first()
+        lang = get_user_lang(user)
+        db.close()
+        keyboard = get_buyer_menu(lang)
         await message.answer(
-            "🎉 Вы просмотрели все доступные квартиры!\n\n"
-            "Новые объекты появляются каждый день. Заходите позже!",
+            get_text('all_properties_viewed', lang),
             reply_markup=keyboard
         )
         await state.clear()
@@ -1601,14 +1607,15 @@ async def back_from_ad(message: types.Message, state: FSMContext):
     
     db = SessionLocal()
     user = db.query(User).filter(User.telegram_id == message.from_user.id).first()
+    lang = get_user_lang(user)
     db.close()
     
     if user and user.role == UserRole.BUYER:
-        keyboard = get_buyer_menu()
+        keyboard = get_buyer_menu(lang)
     else:
-        keyboard = get_seller_menu()
+        keyboard = get_seller_menu(lang)
     
-    await message.answer("Вы вернулись в меню", reply_markup=keyboard)
+    await message.answer(get_text('returned_to_menu', lang), reply_markup=keyboard)
 
 
 @dp.message(F.text.in_(["🏢 Мои объекты", "🏢 Mening obyektlarim"]))
@@ -2438,7 +2445,8 @@ async def find_buyers(message: types.Message, state: FSMContext):
     
     if not user or user.role != UserRole.SELLER:
         if user and user.role == UserRole.BUYER:
-            await message.answer("🏠 Главное меню покупателя\n\nВыберите действие:", reply_markup=get_buyer_menu())
+            lang = get_user_lang(user)
+            await message.answer(get_text('returned_to_menu', lang), reply_markup=get_buyer_menu(lang))
         else:
             await message.answer("Нажмите /start чтобы начать.")
         return
@@ -2463,10 +2471,14 @@ async def find_buyers(message: types.Message, state: FSMContext):
     await state.set_state(FindBuyerStates.deal_type)
 
 
-@dp.message(F.text == "⬅️ Назад", FindBuyerStates.deal_type)
+@dp.message(F.text.in_(["⬅️ Назад", "⬅️ Orqaga"]), FindBuyerStates.deal_type)
 async def find_buyer_back_from_deal(message: types.Message, state: FSMContext):
     await state.clear()
-    await message.answer("Вы вернулись в меню", reply_markup=get_seller_menu())
+    db = SessionLocal()
+    user = db.query(User).filter(User.telegram_id == message.from_user.id).first()
+    lang = get_user_lang(user)
+    db.close()
+    await message.answer(get_text('returned_to_menu', lang), reply_markup=get_seller_menu(lang))
 
 
 @dp.message(FindBuyerStates.deal_type)
@@ -2802,14 +2814,15 @@ async def my_profile(message: types.Message):
 async def back_to_main_menu(message: types.Message):
     db = SessionLocal()
     user = db.query(User).filter(User.telegram_id == message.from_user.id).first()
+    lang = get_user_lang(user)
     db.close()
     
     if user.role == UserRole.SELLER:
-        keyboard = get_seller_menu()
+        keyboard = get_seller_menu(lang)
     else:
-        keyboard = get_buyer_menu()
+        keyboard = get_buyer_menu(lang)
     
-    await message.answer("🏠 Главное меню", reply_markup=keyboard)
+    await message.answer(get_text('returned_to_menu', lang), reply_markup=keyboard)
 
 
 async def show_seller_profile_info(message, user):
