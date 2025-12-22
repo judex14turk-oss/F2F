@@ -246,7 +246,11 @@
         <div class="like-card">
             <div class="like-card-content">
                 {% if like.photo_id %}
-                <img class="like-photo" src="{{ url_for('telegram_photo', file_id=like.photo_id) }}" alt="Фото">
+                    {% if like.photo_id.startswith('http://') or like.photo_id.startswith('https://') %}
+                    <img class="like-photo" src="{{ like.photo_id }}" alt="Фото">
+                    {% else %}
+                    <img class="like-photo" src="{{ url_for('telegram_photo', file_id=like.photo_id) }}" alt="Фото">
+                    {% endif %}
                 {% else %}
                 <div class="like-placeholder"><i class="bi bi-house"></i></div>
                 {% endif %}
