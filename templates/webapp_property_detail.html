@@ -1,0 +1,367 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Объект #{{ prop.id }}</title>
+    <script src="https://telegram.org/js/telegram-web-app.js"></script>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.0/font/bootstrap-icons.css" rel="stylesheet">
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        
+        body {
+            background: #0a0a0a;
+            color: #e5e5e5;
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            padding-bottom: 30px;
+        }
+        
+        .header {
+            background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
+            padding: 16px;
+            border-bottom: 1px solid #2a2a2a;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+        
+        .back-btn {
+            background: rgba(255,255,255,0.1);
+            border: none;
+            color: #fff;
+            width: 36px;
+            height: 36px;
+            border-radius: 8px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+        }
+        
+        .header h1 {
+            font-size: 1.1rem;
+            font-weight: 600;
+            color: #fff;
+        }
+        
+        .photo-slider {
+            position: relative;
+            width: 100%;
+            height: 280px;
+            background: #111;
+            overflow: hidden;
+        }
+        
+        .photo-slider img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+        }
+        
+        .photo-placeholder {
+            width: 100%;
+            height: 100%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: #444;
+            font-size: 4rem;
+        }
+        
+        .photo-nav {
+            position: absolute;
+            bottom: 12px;
+            left: 50%;
+            transform: translateX(-50%);
+            display: flex;
+            gap: 6px;
+        }
+        
+        .photo-dot {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            background: rgba(255,255,255,0.4);
+        }
+        
+        .photo-dot.active {
+            background: #fff;
+        }
+        
+        .photo-arrows {
+            position: absolute;
+            top: 50%;
+            left: 0;
+            right: 0;
+            transform: translateY(-50%);
+            display: flex;
+            justify-content: space-between;
+            padding: 0 8px;
+        }
+        
+        .photo-arrow {
+            background: rgba(0,0,0,0.5);
+            border: none;
+            color: #fff;
+            width: 36px;
+            height: 36px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+        }
+        
+        .property-main {
+            padding: 16px;
+        }
+        
+        .property-type-badge {
+            display: inline-block;
+            background: #3b82f6;
+            color: #fff;
+            padding: 4px 10px;
+            border-radius: 6px;
+            font-size: 0.75rem;
+            font-weight: 600;
+            margin-bottom: 8px;
+        }
+        
+        .property-title {
+            font-size: 1.3rem;
+            font-weight: 700;
+            color: #fff;
+            margin-bottom: 8px;
+        }
+        
+        .property-price {
+            font-size: 1.5rem;
+            font-weight: 700;
+            color: #10b981;
+            margin-bottom: 16px;
+        }
+        
+        .property-details {
+            background: #151515;
+            border: 1px solid #252525;
+            border-radius: 12px;
+            padding: 16px;
+            margin-bottom: 16px;
+        }
+        
+        .detail-row {
+            display: flex;
+            justify-content: space-between;
+            padding: 10px 0;
+            border-bottom: 1px solid #252525;
+        }
+        
+        .detail-row:last-child {
+            border-bottom: none;
+        }
+        
+        .detail-label {
+            color: #888;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        
+        .detail-value {
+            font-weight: 600;
+            color: #fff;
+        }
+        
+        .property-description {
+            background: #151515;
+            border: 1px solid #252525;
+            border-radius: 12px;
+            padding: 16px;
+            margin-bottom: 16px;
+        }
+        
+        .description-title {
+            font-size: 0.9rem;
+            color: #888;
+            margin-bottom: 8px;
+        }
+        
+        .description-text {
+            font-size: 0.9rem;
+            line-height: 1.6;
+            color: #e5e5e5;
+        }
+        
+        .owner-info {
+            background: #151515;
+            border: 1px solid #252525;
+            border-radius: 12px;
+            padding: 16px;
+        }
+        
+        .owner-title {
+            font-size: 0.9rem;
+            color: #888;
+            margin-bottom: 12px;
+        }
+        
+        .owner-name {
+            font-weight: 600;
+            color: #fff;
+            font-size: 1rem;
+        }
+        
+        .owner-phone {
+            color: #3b82f6;
+            margin-top: 4px;
+        }
+        
+        .stats-row {
+            display: flex;
+            gap: 16px;
+            margin-top: 12px;
+            padding-top: 12px;
+            border-top: 1px solid #252525;
+        }
+        
+        .stat-item {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            color: #888;
+            font-size: 0.85rem;
+        }
+        
+        .stat-item i {
+            font-size: 1rem;
+        }
+        
+        .stat-item.views i { color: #3b82f6; }
+        .stat-item.likes i { color: #ef4444; }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <button class="back-btn" onclick="history.back()">
+            <i class="bi bi-arrow-left"></i>
+        </button>
+        <h1>Объект #{{ prop.id }}</h1>
+    </div>
+    
+    <div class="photo-slider">
+        {% if photos %}
+        <img id="mainPhoto" src="{{ photos[0] }}" alt="Фото объекта">
+        {% if photos|length > 1 %}
+        <div class="photo-arrows">
+            <button class="photo-arrow" onclick="prevPhoto()"><i class="bi bi-chevron-left"></i></button>
+            <button class="photo-arrow" onclick="nextPhoto()"><i class="bi bi-chevron-right"></i></button>
+        </div>
+        <div class="photo-nav">
+            {% for photo in photos %}
+            <div class="photo-dot {% if loop.index0 == 0 %}active{% endif %}" data-index="{{ loop.index0 }}"></div>
+            {% endfor %}
+        </div>
+        {% endif %}
+        {% else %}
+        <div class="photo-placeholder"><i class="bi bi-house"></i></div>
+        {% endif %}
+    </div>
+    
+    <div class="property-main">
+        <span class="property-type-badge">{{ property_type_name }}</span>
+        
+        <div class="property-title">
+            {% if prop.rooms %}{{ prop.rooms }}-комнатная{% endif %}
+            {% if prop.district %}в {{ prop.district }}{% endif %}
+        </div>
+        
+        <div class="property-price">{{ "{:,}".format(prop.price).replace(',', ' ') }} сум</div>
+        
+        <div class="property-details">
+            {% if prop.rooms %}
+            <div class="detail-row">
+                <span class="detail-label"><i class="bi bi-door-open"></i> Комнат</span>
+                <span class="detail-value">{{ prop.rooms }}</span>
+            </div>
+            {% endif %}
+            {% if prop.area %}
+            <div class="detail-row">
+                <span class="detail-label"><i class="bi bi-arrows-fullscreen"></i> Площадь</span>
+                <span class="detail-value">{{ prop.area }} м²</span>
+            </div>
+            {% endif %}
+            {% if prop.floor %}
+            <div class="detail-row">
+                <span class="detail-label"><i class="bi bi-building"></i> Этаж</span>
+                <span class="detail-value">{{ prop.floor }}{% if prop.total_floors %}/{{ prop.total_floors }}{% endif %}</span>
+            </div>
+            {% endif %}
+            {% if prop.district %}
+            <div class="detail-row">
+                <span class="detail-label"><i class="bi bi-geo-alt"></i> Район</span>
+                <span class="detail-value">{{ prop.district }}</span>
+            </div>
+            {% endif %}
+            {% if prop.renovation %}
+            <div class="detail-row">
+                <span class="detail-label"><i class="bi bi-tools"></i> Ремонт</span>
+                <span class="detail-value">{{ prop.renovation }}</span>
+            </div>
+            {% endif %}
+        </div>
+        
+        {% if prop.description %}
+        <div class="property-description">
+            <div class="description-title">Описание</div>
+            <div class="description-text">{{ prop.description }}</div>
+        </div>
+        {% endif %}
+        
+        <div class="owner-info">
+            <div class="owner-title">Владелец</div>
+            <div class="owner-name">{{ owner.name or 'Не указано' }}</div>
+            {% if prop.phone %}
+            <div class="owner-phone">{{ prop.phone }}</div>
+            {% endif %}
+            
+            <div class="stats-row">
+                <div class="stat-item views">
+                    <i class="bi bi-eye-fill"></i>
+                    {{ prop.views_count or 0 }} просмотров
+                </div>
+                <div class="stat-item likes">
+                    <i class="bi bi-heart-fill"></i>
+                    {{ prop.likes_count or 0 }} лайков
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <script>
+        const tg = window.Telegram.WebApp;
+        tg.ready();
+        tg.expand();
+        
+        {% if photos and photos|length > 1 %}
+        const photos = {{ photos|tojson }};
+        let currentPhoto = 0;
+        
+        function showPhoto(index) {
+            currentPhoto = index;
+            document.getElementById('mainPhoto').src = photos[index];
+            document.querySelectorAll('.photo-dot').forEach((dot, i) => {
+                dot.classList.toggle('active', i === index);
+            });
+        }
+        
+        function nextPhoto() {
+            showPhoto((currentPhoto + 1) % photos.length);
+        }
+        
+        function prevPhoto() {
+            showPhoto((currentPhoto - 1 + photos.length) % photos.length);
+        }
+        {% endif %}
+    </script>
+</body>
+</html>

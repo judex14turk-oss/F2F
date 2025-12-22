@@ -483,7 +483,7 @@
     
     <div class="top-properties">
         {% for prop in top_properties %}
-        <div class="top-property-card">
+        <a href="{{ url_for('property_detail', property_id=prop.id) }}" class="top-property-card" style="text-decoration: none; color: inherit;">
             {% if prop.photo_url %}
             <img class="top-property-photo" src="{{ prop.photo_url }}" alt="Фото">
             {% elif prop.photo_id %}
@@ -500,7 +500,7 @@
                 <i class="bi bi-heart-fill"></i>
                 {{ prop.likes_count }}
             </div>
-        </div>
+        </a>
         {% endfor %}
     </div>
     {% endif %}

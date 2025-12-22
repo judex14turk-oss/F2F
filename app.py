@@ -904,6 +904,46 @@ def webapp_user_property_edit(property_id):
     return render_template('webapp_user_menu_stub.html', tg_id=tg_id, page='objects', title='Редактирование')
 
 
+@app.route('/property/<int:property_id>')
+def property_detail(property_id):
+    tg_id = request.args.get('tg_id', '')
+    
+    db = get_db()
+    prop = db.query(Property).filter(Property.id == property_id).first()
+    
+    if not prop:
+        db.close()
+        return "Объект не найден", 404
+    
+    owner = db.query(User).filter(User.id == prop.owner_id).first()
+    
+    photo_ids = prop.photos.split(',') if prop.photos else []
+    photos = []
+    for pid in photo_ids:
+        if pid:
+            pid = pid.strip()
+            if pid.startswith('http://') or pid.startswith('https://'):
+                photos.append(pid)
+            else:
+                photos.append(url_for('telegram_photo', file_id=pid))
+    
+    property_type_names = {
+        PropertyType.SALE: "Продажа",
+        PropertyType.RENT: "Аренда"
+    }
+    ptype = property_type_names.get(prop.property_type, 'Квартира') if prop.property_type else 'Квартира'
+    
+    db.close()
+    
+    return render_template('webapp_property_detail.html',
+        tg_id=tg_id,
+        prop=prop,
+        owner=owner,
+        photos=photos,
+        property_type_name=ptype
+    )
+
+
 @app.route('/webapp/user_subscription')
 def webapp_user_subscription():
     tg_id = request.args.get('tg_id', '')
