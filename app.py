@@ -877,7 +877,97 @@ def webapp_user_subscription():
     tg_id = request.args.get('tg_id', '')
     if not tg_id:
         return "Access denied", 403
-    return render_template('webapp_user_menu_stub.html', tg_id=tg_id, page='subscription', title='Подписка')
+    
+    db = get_db()
+    user = db.query(User).filter(User.telegram_id == int(tg_id)).first()
+    
+    if not user:
+        db.close()
+        return "User not found", 404
+    
+    tariff_names = {
+        TariffType.FREE: "Бесплатный",
+        TariffType.PRO: "Про",
+        TariffType.PREMIUM: "Премиум",
+        TariffType.AGENCY_START: "Про",
+        TariffType.DEVELOPER_PRO: "Премиум"
+    }
+    
+    tariff_limits_map = {
+        TariffType.FREE: {"properties": 2, "likes": 1},
+        TariffType.PRO: {"properties": 50, "likes": 10},
+        TariffType.PREMIUM: {"properties": 100, "likes": 30},
+        TariffType.AGENCY_START: {"properties": 50, "likes": 10},
+        TariffType.DEVELOPER_PRO: {"properties": 100, "likes": 30},
+    }
+    
+    if user.is_admin:
+        base_properties = 999999
+        base_likes = 999999
+    else:
+        limits = tariff_limits_map.get(user.tariff, {"properties": 2, "likes": 1})
+        base_properties = limits["properties"]
+        base_likes = limits["likes"]
+    
+    bonus_properties = user.bonus_properties or 0
+    bonus_likes = user.bonus_likes or 0
+    
+    if user.tariff == TariffType.FREE or user.tariff_expires is None:
+        days_left = None
+        tariff_status = "active"
+    else:
+        now = get_tashkent_now()
+        if user.tariff_expires > now:
+            days_left = (user.tariff_expires - now).days
+            tariff_status = "active"
+        else:
+            days_left = 0
+            tariff_status = "expired"
+    
+    if user.trial_ends_at:
+        now = get_tashkent_now()
+        if user.trial_ends_at > now:
+            trial_days = (user.trial_ends_at - now).days
+        else:
+            trial_days = 0
+    else:
+        trial_days = None
+    
+    payment_history = db.query(PromoRequest).filter(
+        PromoRequest.user_id == user.id
+    ).order_by(PromoRequest.created_at.desc()).limit(20).all()
+    
+    history_data = []
+    for req in payment_history:
+        status_names = {
+            'pending': 'Ожидает',
+            'approved': 'Одобрено',
+            'rejected': 'Отклонено'
+        }
+        history_data.append({
+            'id': req.id,
+            'description': req.promo_code_text or 'Запрос',
+            'status': req.status,
+            'status_name': status_names.get(req.status, req.status),
+            'created_at': req.created_at,
+            'processed_at': req.processed_at
+        })
+    
+    db.close()
+    
+    return render_template('webapp_user_subscription.html',
+        tg_id=tg_id,
+        user=user,
+        tariff_name=tariff_names.get(user.tariff, 'Бесплатный'),
+        days_left=days_left,
+        tariff_status=tariff_status,
+        base_properties=base_properties,
+        base_likes=base_likes,
+        bonus_properties=bonus_properties,
+        bonus_likes=bonus_likes,
+        trial_days=trial_days,
+        payment_history=history_data
+    )
 
 
 @app.route('/webapp/user_likes')
