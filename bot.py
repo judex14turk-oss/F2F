@@ -3242,29 +3242,41 @@ class SearchSettingsStates(StatesGroup):
 
 @dp.message(F.text.in_(["⚙️ Настройки поиска", "⚙️ Qidiruv sozlamalari"]))
 async def search_settings(message: types.Message, state: FSMContext):
+    db = SessionLocal()
+    user = db.query(User).filter(User.telegram_id == message.from_user.id).first()
+    lang = get_user_lang(user)
+    db.close()
+    
+    await state.update_data(user_lang=lang)
+    
     keyboard = ReplyKeyboardMarkup(
         keyboard=[
-            [KeyboardButton(text="🏠 Купить"), KeyboardButton(text="🔑 Снять в аренду")],
-            [KeyboardButton(text="⬅️ Назад")]
+            [KeyboardButton(text=get_text('buy_button', lang)), KeyboardButton(text=get_text('rent_button', lang))],
+            [KeyboardButton(text=get_text('back', lang))]
         ],
         resize_keyboard=True
     )
-    await message.answer("⚙️ Изменить параметры поиска\n\n🏷 Что вас интересует?", reply_markup=keyboard)
+    await message.answer(get_text('search_settings_title', lang), reply_markup=keyboard)
     await state.set_state(SearchSettingsStates.deal_type)
 
 
-@dp.message(F.text == "⬅️ Назад", SearchSettingsStates.deal_type)
+@dp.message(F.text.in_(["⬅️ Назад", "⬅️ Orqaga"]), SearchSettingsStates.deal_type)
 async def settings_back_to_menu(message: types.Message, state: FSMContext):
+    data = await state.get_data()
+    lang = data.get('user_lang', 'ru')
     await state.clear()
-    keyboard = get_buyer_menu()
-    await message.answer("Вы вернулись в главное меню", reply_markup=keyboard)
+    keyboard = get_buyer_menu(lang)
+    await message.answer(get_text('returned_to_main_menu', lang), reply_markup=keyboard)
 
 
 @dp.message(SearchSettingsStates.deal_type)
 async def settings_deal_selected(message: types.Message, state: FSMContext):
-    if message.text == "🏠 Купить":
+    data = await state.get_data()
+    lang = data.get('user_lang', 'ru')
+    
+    if message.text in [get_text('buy_button', 'ru'), get_text('buy_button', 'uz')]:
         deal_type = "buy"
-    elif message.text == "🔑 Снять в аренду":
+    elif message.text in [get_text('rent_button', 'ru'), get_text('rent_button', 'uz')]:
         deal_type = "rent"
     else:
         return
@@ -3273,36 +3285,45 @@ async def settings_deal_selected(message: types.Message, state: FSMContext):
     
     keyboard = ReplyKeyboardMarkup(
         keyboard=[
-            [KeyboardButton(text="🏢 Квартира")],
-            [KeyboardButton(text="🏡 Дом / Участок")],
-            [KeyboardButton(text="🏪 Коммерческая")],
-            [KeyboardButton(text="⬅️ Назад")]
+            [KeyboardButton(text=get_text('apartment', lang))],
+            [KeyboardButton(text=get_text('house', lang))],
+            [KeyboardButton(text=get_text('commercial', lang))],
+            [KeyboardButton(text=get_text('back', lang))]
         ],
         resize_keyboard=True
     )
-    await message.answer("🏢 Выберите тип недвижимости:", reply_markup=keyboard)
+    await message.answer(get_text('choose_property_type', lang), reply_markup=keyboard)
     await state.set_state(SearchSettingsStates.prop_type)
 
 
-@dp.message(F.text == "⬅️ Назад", SearchSettingsStates.prop_type)
+@dp.message(F.text.in_(["⬅️ Назад", "⬅️ Orqaga"]), SearchSettingsStates.prop_type)
 async def settings_back_to_deal(message: types.Message, state: FSMContext):
+    data = await state.get_data()
+    lang = data.get('user_lang', 'ru')
+    
     keyboard = ReplyKeyboardMarkup(
         keyboard=[
-            [KeyboardButton(text="🏠 Купить"), KeyboardButton(text="🔑 Снять в аренду")],
-            [KeyboardButton(text="⬅️ Назад")]
+            [KeyboardButton(text=get_text('buy_button', lang)), KeyboardButton(text=get_text('rent_button', lang))],
+            [KeyboardButton(text=get_text('back', lang))]
         ],
         resize_keyboard=True
     )
-    await message.answer("🏷 Что вас интересует?", reply_markup=keyboard)
+    await message.answer(get_text('what_interests_you', lang), reply_markup=keyboard)
     await state.set_state(SearchSettingsStates.deal_type)
 
 
 @dp.message(SearchSettingsStates.prop_type)
 async def settings_proptype_selected(message: types.Message, state: FSMContext):
+    data = await state.get_data()
+    lang = data.get('user_lang', 'ru')
+    
     prop_types = {
-        "🏢 Квартира": "apartment",
-        "🏡 Дом / Участок": "house",
-        "🏪 Коммерческая": "commercial"
+        get_text('apartment', 'ru'): "apartment",
+        get_text('apartment', 'uz'): "apartment",
+        get_text('house', 'ru'): "house",
+        get_text('house', 'uz'): "house",
+        get_text('commercial', 'ru'): "commercial",
+        get_text('commercial', 'uz'): "commercial"
     }
     prop_type = prop_types.get(message.text)
     if not prop_type:
@@ -3313,34 +3334,40 @@ async def settings_proptype_selected(message: types.Message, state: FSMContext):
     keyboard = ReplyKeyboardMarkup(
         keyboard=[
             [KeyboardButton(text="1"), KeyboardButton(text="2"), KeyboardButton(text="3")],
-            [KeyboardButton(text="4+"), KeyboardButton(text="Студия")],
-            [KeyboardButton(text="Любое")],
-            [KeyboardButton(text="⬅️ Назад")]
+            [KeyboardButton(text="4+"), KeyboardButton(text=get_text('studio', lang))],
+            [KeyboardButton(text=get_text('any_rooms', lang))],
+            [KeyboardButton(text=get_text('back', lang))]
         ],
         resize_keyboard=True
     )
-    await message.answer("🚪 Выберите количество комнат:", reply_markup=keyboard)
+    await message.answer(get_text('choose_rooms_count', lang), reply_markup=keyboard)
     await state.set_state(SearchSettingsStates.rooms)
 
 
-@dp.message(F.text == "⬅️ Назад", SearchSettingsStates.rooms)
+@dp.message(F.text.in_(["⬅️ Назад", "⬅️ Orqaga"]), SearchSettingsStates.rooms)
 async def settings_back_to_proptype(message: types.Message, state: FSMContext):
+    data = await state.get_data()
+    lang = data.get('user_lang', 'ru')
+    
     keyboard = ReplyKeyboardMarkup(
         keyboard=[
-            [KeyboardButton(text="🏢 Квартира")],
-            [KeyboardButton(text="🏡 Дом / Участок")],
-            [KeyboardButton(text="🏪 Коммерческая")],
-            [KeyboardButton(text="⬅️ Назад")]
+            [KeyboardButton(text=get_text('apartment', lang))],
+            [KeyboardButton(text=get_text('house', lang))],
+            [KeyboardButton(text=get_text('commercial', lang))],
+            [KeyboardButton(text=get_text('back', lang))]
         ],
         resize_keyboard=True
     )
-    await message.answer("🏢 Выберите тип недвижимости:", reply_markup=keyboard)
+    await message.answer(get_text('choose_property_type', lang), reply_markup=keyboard)
     await state.set_state(SearchSettingsStates.prop_type)
 
 
 @dp.message(SearchSettingsStates.rooms)
 async def settings_rooms_selected(message: types.Message, state: FSMContext):
-    rooms_map = {"1": "1", "2": "2", "3": "3", "4+": "4", "студия": "studio", "любое": "any"}
+    data = await state.get_data()
+    lang = data.get('user_lang', 'ru')
+    
+    rooms_map = {"1": "1", "2": "2", "3": "3", "4+": "4", "студия": "studio", "studiya": "studio", "любое": "any", "istalgan": "any"}
     rooms = rooms_map.get(message.text.lower())
     if not rooms:
         return
@@ -3360,44 +3387,54 @@ async def settings_rooms_selected(message: types.Message, state: FSMContext):
             row = []
     if row:
         keyboard_buttons.append(row)
-    keyboard_buttons.append([KeyboardButton(text="Любой район")])
-    keyboard_buttons.append([KeyboardButton(text="⬅️ Назад")])
+    keyboard_buttons.append([KeyboardButton(text=get_text('any_district', lang))])
+    keyboard_buttons.append([KeyboardButton(text=get_text('back', lang))])
     
     keyboard = ReplyKeyboardMarkup(keyboard=keyboard_buttons, resize_keyboard=True)
-    await message.answer("📍 Выберите район:", reply_markup=keyboard)
+    await message.answer(get_text('choose_district', lang), reply_markup=keyboard)
     await state.set_state(SearchSettingsStates.district)
 
 
-@dp.message(F.text == "⬅️ Назад", SearchSettingsStates.district)
+@dp.message(F.text.in_(["⬅️ Назад", "⬅️ Orqaga"]), SearchSettingsStates.district)
 async def settings_back_to_rooms(message: types.Message, state: FSMContext):
+    data = await state.get_data()
+    lang = data.get('user_lang', 'ru')
+    
     keyboard = ReplyKeyboardMarkup(
         keyboard=[
             [KeyboardButton(text="1"), KeyboardButton(text="2"), KeyboardButton(text="3")],
-            [KeyboardButton(text="4+"), KeyboardButton(text="Студия")],
-            [KeyboardButton(text="Любое")],
-            [KeyboardButton(text="⬅️ Назад")]
+            [KeyboardButton(text="4+"), KeyboardButton(text=get_text('studio', lang))],
+            [KeyboardButton(text=get_text('any_rooms', lang))],
+            [KeyboardButton(text=get_text('back', lang))]
         ],
         resize_keyboard=True
     )
-    await message.answer("🚪 Выберите количество комнат:", reply_markup=keyboard)
+    await message.answer(get_text('choose_rooms_count', lang), reply_markup=keyboard)
     await state.set_state(SearchSettingsStates.rooms)
 
 
 @dp.message(SearchSettingsStates.district)
 async def settings_district_selected(message: types.Message, state: FSMContext):
-    district = message.text if message.text != "Любой район" else "Любой"
+    data = await state.get_data()
+    lang = data.get('user_lang', 'ru')
+    
+    any_district_texts = [get_text('any_district', 'ru'), get_text('any_district', 'uz')]
+    district = message.text if message.text not in any_district_texts else "Любой"
     await state.update_data(search_district=district)
     
     keyboard = ReplyKeyboardMarkup(
-        keyboard=[[KeyboardButton(text="⬅️ Назад")]],
+        keyboard=[[KeyboardButton(text=get_text('back', lang))]],
         resize_keyboard=True
     )
-    await message.answer("💰 Введите максимальный бюджет в долларах:\n\n(например: 50000)", reply_markup=keyboard)
+    await message.answer(get_text('enter_budget', lang), reply_markup=keyboard)
     await state.set_state(SearchSettingsStates.budget)
 
 
-@dp.message(F.text == "⬅️ Назад", SearchSettingsStates.budget)
+@dp.message(F.text.in_(["⬅️ Назад", "⬅️ Orqaga"]), SearchSettingsStates.budget)
 async def settings_back_to_district(message: types.Message, state: FSMContext):
+    data = await state.get_data()
+    lang = data.get('user_lang', 'ru')
+    
     db = SessionLocal()
     districts = db.query(District).all()
     db.close()
@@ -3411,19 +3448,22 @@ async def settings_back_to_district(message: types.Message, state: FSMContext):
             row = []
     if row:
         keyboard_buttons.append(row)
-    keyboard_buttons.append([KeyboardButton(text="Любой район")])
-    keyboard_buttons.append([KeyboardButton(text="⬅️ Назад")])
+    keyboard_buttons.append([KeyboardButton(text=get_text('any_district', lang))])
+    keyboard_buttons.append([KeyboardButton(text=get_text('back', lang))])
     
     keyboard = ReplyKeyboardMarkup(keyboard=keyboard_buttons, resize_keyboard=True)
-    await message.answer("📍 Выберите район:", reply_markup=keyboard)
+    await message.answer(get_text('choose_district', lang), reply_markup=keyboard)
     await state.set_state(SearchSettingsStates.district)
 
 
 @dp.message(SearchSettingsStates.budget)
 async def settings_budget_entered(message: types.Message, state: FSMContext):
+    data = await state.get_data()
+    lang = data.get('user_lang', 'ru')
+    
     budget = validate_number(message.text)
     if budget is None or budget <= 0:
-        await message.answer("❌ Введите корректный бюджет числом")
+        await message.answer(get_text('invalid_budget', lang))
         return
     
     await state.update_data(search_budget=int(budget))
@@ -3435,43 +3475,48 @@ async def settings_budget_entered(message: types.Message, state: FSMContext):
     
     keyboard = ReplyKeyboardMarkup(
         keyboard=[
-            [KeyboardButton(text="Пропустить")],
-            [KeyboardButton(text="⬅️ Назад")]
+            [KeyboardButton(text=get_text('skip', lang))],
+            [KeyboardButton(text=get_text('back', lang))]
         ],
         resize_keyboard=True
     )
     
-    bio_hint = f"\n\nТекущее описание: {current_bio}" if current_bio else ""
+    bio_hint = f"\n\n{get_text('current_bio', lang)} {current_bio}" if current_bio else ""
     await message.answer(
-        f"📝 Добавьте описание к вашей анкете (до 320 символов):\n\n"
-        f"Например: \"Ищу для молодой семьи с ребёнком, желательно рядом с метро\"{bio_hint}",
+        f"{get_text('add_bio', lang)}{bio_hint}",
         reply_markup=keyboard
     )
     await state.set_state(SearchSettingsStates.bio)
 
 
-@dp.message(F.text == "⬅️ Назад", SearchSettingsStates.bio)
+@dp.message(F.text.in_(["⬅️ Назад", "⬅️ Orqaga"]), SearchSettingsStates.bio)
 async def settings_back_to_budget(message: types.Message, state: FSMContext):
+    data = await state.get_data()
+    lang = data.get('user_lang', 'ru')
+    
     keyboard = ReplyKeyboardMarkup(
-        keyboard=[[KeyboardButton(text="⬅️ Назад")]],
+        keyboard=[[KeyboardButton(text=get_text('back', lang))]],
         resize_keyboard=True
     )
-    await message.answer("💰 Введите максимальный бюджет в долларах:\n\n(например: 50000)", reply_markup=keyboard)
+    await message.answer(get_text('enter_budget', lang), reply_markup=keyboard)
     await state.set_state(SearchSettingsStates.budget)
 
 
 @dp.message(SearchSettingsStates.bio)
 async def settings_bio_entered(message: types.Message, state: FSMContext):
-    bio = message.text.strip() if message.text != "Пропустить" else ""
+    data = await state.get_data()
+    lang = data.get('user_lang', 'ru')
+    
+    skip_texts = [get_text('skip', 'ru'), get_text('skip', 'uz')]
+    bio = message.text.strip() if message.text not in skip_texts else ""
     
     if len(bio) > 320:
-        await message.answer(f"❌ Описание слишком длинное ({len(bio)} символов). Максимум 320 символов.")
+        await message.answer(get_text('invalid_budget', lang))
         return
     
     db = SessionLocal()
     user = db.query(User).filter(User.telegram_id == message.from_user.id).first()
     
-    data = await state.get_data()
     deal_type = data.get("search_deal_type", "buy")
     prop_type = data.get("search_prop_type", "apartment")
     rooms = data.get("search_rooms", "any")
@@ -3489,18 +3534,10 @@ async def settings_bio_entered(message: types.Message, state: FSMContext):
     
     await state.clear()
     
-    deal_names = {"buy": "Покупка", "rent": "Аренда"}
-    prop_names = {"apartment": "Квартира", "house": "Дом/Участок", "commercial": "Коммерческая"}
+    keyboard = get_buyer_menu(lang)
     
-    keyboard = get_buyer_menu()
-    
-    bio_line = f"\n📝 Описание: {bio}" if bio else ""
     await message.answer(
-        f"✅ Настройки обновлены!\n\n"
-        f"🏷 Тип: {deal_names.get(deal_type, deal_type)} — {prop_names.get(prop_type, prop_type)}\n"
-        f"🚪 Комнаты: {rooms if rooms != 'any' else 'Любые'}\n"
-        f"📍 Район: {district}\n"
-        f"💰 Бюджет: до ${int(budget):,}{bio_line}",
+        get_text('settings_saved', lang),
         reply_markup=keyboard
     )
 
