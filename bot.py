@@ -3123,32 +3123,43 @@ async def tariffs(message: types.Message):
         await message.answer(text)
 
 
-@dp.message(F.text == "📢 Реклама")
+@dp.message(F.text.in_(["📢 Реклама", "📢 Reklama"]))
 async def advertising(message: types.Message):
+    db = SessionLocal()
+    user = db.query(User).filter(User.telegram_id == message.from_user.id).first()
+    lang = get_user_lang(user)
+    db.close()
+    
     webapp_url = WEBAPP_BASE_URL or os.environ.get('REPLIT_DEV_DOMAIN', '')
     if webapp_url and not webapp_url.startswith('https://'):
         webapp_url = f"https://{webapp_url}"
     
-    if webapp_url:
-        keyboard = InlineKeyboardMarkup(inline_keyboard=[
-            [InlineKeyboardButton(
-                text="📢 Разместить рекламу",
-                web_app=WebAppInfo(url=f"{webapp_url}/webapp/advertising")
-            )],
-            [InlineKeyboardButton(
-                text="💬 Связаться с администратором",
-                url="https://t.me/InvictumMurad"
-            )]
-        ])
-        
-        await message.answer(
-            "📢 Реклама в боте\n\n"
-            "Разместите рекламу для 25,000+ активных пользователей!\n\n"
-            "Нажмите кнопку ниже для подробностей:",
-            reply_markup=keyboard
+    if lang == 'uz':
+        btn_place_ad = "📢 Reklama joylashtirish"
+        btn_contact = "💬 Administrator bilan bog'lanish"
+        text_with_webapp = (
+            "📢 Botda reklama\n\n"
+            "25,000+ faol foydalanuvchilar uchun reklama joylashtiring!\n\n"
+            "Batafsil ma'lumot uchun tugmani bosing:"
+        )
+        text_no_webapp = (
+            "📢 Botda reklama\n\n"
+            "💰 100 000 so'm/oy\n"
+            "👥 25 000+ faol foydalanuvchilar\n\n"
+            "✅ Maqsadli auditoriya — ko'chmas mulk qidiruvchilar\n"
+            "✅ Ko'rishlar statistikasi\n"
+            "✅ Arzon narx\n\n"
+            "Joylashtirish uchun: @InvictumMurad"
         )
     else:
-        text = (
+        btn_place_ad = "📢 Разместить рекламу"
+        btn_contact = "💬 Связаться с администратором"
+        text_with_webapp = (
+            "📢 Реклама в боте\n\n"
+            "Разместите рекламу для 25,000+ активных пользователей!\n\n"
+            "Нажмите кнопку ниже для подробностей:"
+        )
+        text_no_webapp = (
             "📢 Реклама в боте\n\n"
             "💰 100 000 сум/месяц\n"
             "👥 25 000+ активных пользователей\n\n"
@@ -3157,7 +3168,21 @@ async def advertising(message: types.Message):
             "✅ Доступная цена\n\n"
             "Для размещения: @InvictumMurad"
         )
-        await message.answer(text)
+    
+    if webapp_url:
+        keyboard = InlineKeyboardMarkup(inline_keyboard=[
+            [InlineKeyboardButton(
+                text=btn_place_ad,
+                web_app=WebAppInfo(url=f"{webapp_url}/webapp/advertising")
+            )],
+            [InlineKeyboardButton(
+                text=btn_contact,
+                url="https://t.me/InvictumMurad"
+            )]
+        ])
+        await message.answer(text_with_webapp, reply_markup=keyboard)
+    else:
+        await message.answer(text_no_webapp)
 
 
 @dp.message(F.text == "❤️ Мои лайки")
