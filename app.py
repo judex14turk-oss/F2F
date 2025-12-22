@@ -933,8 +933,10 @@ def webapp_user_subscription():
     else:
         trial_days = None
     
+    one_month_ago = get_tashkent_now() - timedelta(days=30)
     payment_history = db.query(PromoRequest).filter(
-        PromoRequest.user_id == user.id
+        PromoRequest.user_id == user.id,
+        PromoRequest.created_at >= one_month_ago
     ).order_by(PromoRequest.created_at.desc()).limit(20).all()
     
     history_data = []
