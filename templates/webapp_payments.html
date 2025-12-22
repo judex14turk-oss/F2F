@@ -1,0 +1,230 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Оплаты</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.0/font/bootstrap-icons.css" rel="stylesheet">
+    <script src="https://telegram.org/js/telegram-web-app.js"></script>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            background: #0a0a0a;
+            color: #e5e5e5;
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            min-height: 100vh;
+        }
+        .header {
+            background: #111;
+            padding: 16px;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            border-bottom: 1px solid #222;
+        }
+        .back-btn {
+            background: none;
+            border: none;
+            font-size: 1.3rem;
+            color: #3b82f6;
+            cursor: pointer;
+            text-decoration: none;
+        }
+        .header-title {
+            font-weight: 600;
+            font-size: 1rem;
+            color: #fff;
+        }
+        .section {
+            padding: 16px;
+        }
+        .section-title {
+            font-size: 0.9rem;
+            font-weight: 600;
+            color: #888;
+            margin-bottom: 12px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+        .request-card {
+            background: #151515;
+            border: 1px solid #252525;
+            border-radius: 12px;
+            padding: 14px;
+            margin-bottom: 10px;
+        }
+        .request-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            margin-bottom: 8px;
+        }
+        .user-info {
+            flex: 1;
+        }
+        .user-name {
+            font-weight: 600;
+            color: #fff;
+            font-size: 0.95rem;
+        }
+        .user-details {
+            font-size: 0.8rem;
+            color: #888;
+            margin-top: 2px;
+        }
+        .promo-badge {
+            background: #3b82f6;
+            color: white;
+            padding: 4px 10px;
+            border-radius: 6px;
+            font-size: 0.8rem;
+            font-weight: 600;
+        }
+        .request-info {
+            font-size: 0.85rem;
+            color: #aaa;
+            margin-bottom: 10px;
+        }
+        .request-actions {
+            display: flex;
+            gap: 8px;
+        }
+        .btn {
+            flex: 1;
+            padding: 10px;
+            border: none;
+            border-radius: 8px;
+            font-size: 0.9rem;
+            font-weight: 600;
+            cursor: pointer;
+        }
+        .btn-approve {
+            background: linear-gradient(135deg, #16a34a 0%, #22c55e 100%);
+            color: white;
+        }
+        .btn-reject {
+            background: linear-gradient(135deg, #dc2626 0%, #ef4444 100%);
+            color: white;
+        }
+        .empty-state {
+            text-align: center;
+            color: #666;
+            padding: 30px;
+            background: #151515;
+            border-radius: 12px;
+            border: 1px solid #252525;
+        }
+        .status-badge {
+            display: inline-block;
+            padding: 3px 8px;
+            border-radius: 4px;
+            font-size: 0.75rem;
+            font-weight: 500;
+        }
+        .status-approved {
+            background: #16a34a22;
+            color: #22c55e;
+        }
+        .status-rejected {
+            background: #dc262622;
+            color: #ef4444;
+        }
+        .processed-card {
+            opacity: 0.7;
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <a href="{{ url_for('webapp_admin', tg_id=tg_id) }}" class="back-btn">
+            <i class="bi bi-arrow-left"></i>
+        </a>
+        <span class="header-title"><i class="bi bi-credit-card"></i> Оплаты и промокоды</span>
+    </div>
+    
+    <div class="section">
+        <div class="section-title">
+            <i class="bi bi-hourglass-split"></i> Ожидают подтверждения ({{ pending_requests|length }})
+        </div>
+        
+        {% if pending_requests %}
+            {% for req in pending_requests %}
+            <div class="request-card">
+                <div class="request-header">
+                    <div class="user-info">
+                        <div class="user-name">{{ req.user.first_name or '-' }} {{ req.user.last_name or '' }}</div>
+                        <div class="user-details">
+                            ID: {{ req.user.telegram_id }}
+                            {% if req.user.username %} | @{{ req.user.username }}{% endif %}
+                        </div>
+                    </div>
+                    <span class="promo-badge">{{ req.promo_code_text }}</span>
+                </div>
+                <div class="request-info">
+                    {% if req.promo_code %}
+                        {% if req.promo_code.bonus_days %}+{{ req.promo_code.bonus_days }} дней{% endif %}
+                        {% if req.promo_code.tariff %} → {{ req.promo_code.tariff }}{% endif %}
+                    {% endif %}
+                    <br>Подано: {{ req.created_at.strftime('%d.%m.%Y %H:%M') }}
+                </div>
+                <div class="request-actions">
+                    <form method="POST" action="{{ url_for('webapp_approve_payment', request_id=req.id) }}" style="flex:1;">
+                        <input type="hidden" name="tg_id" value="{{ tg_id }}">
+                        <button type="submit" class="btn btn-approve" style="width:100%;">
+                            <i class="bi bi-check-lg"></i> Одобрить
+                        </button>
+                    </form>
+                    <form method="POST" action="{{ url_for('webapp_reject_payment', request_id=req.id) }}" style="flex:1;">
+                        <input type="hidden" name="tg_id" value="{{ tg_id }}">
+                        <button type="submit" class="btn btn-reject" style="width:100%;">
+                            <i class="bi bi-x-lg"></i> Отклонить
+                        </button>
+                    </form>
+                </div>
+            </div>
+            {% endfor %}
+        {% else %}
+            <div class="empty-state">
+                <i class="bi bi-inbox" style="font-size: 2rem;"></i>
+                <p style="margin-top: 10px;">Нет заявок на подтверждение</p>
+            </div>
+        {% endif %}
+    </div>
+    
+    {% if processed_requests %}
+    <div class="section">
+        <div class="section-title">
+            <i class="bi bi-clock-history"></i> История обработки
+        </div>
+        
+        {% for req in processed_requests %}
+        <div class="request-card processed-card">
+            <div class="request-header">
+                <div class="user-info">
+                    <div class="user-name">{{ req.user.first_name or '-' }} {{ req.user.last_name or '' }}</div>
+                    <div class="user-details">ID: {{ req.user.telegram_id }}</div>
+                </div>
+                <div>
+                    <span class="promo-badge" style="background: #333;">{{ req.promo_code_text }}</span>
+                    {% if req.status == 'approved' %}
+                    <span class="status-badge status-approved">Одобрено</span>
+                    {% else %}
+                    <span class="status-badge status-rejected">Отклонено</span>
+                    {% endif %}
+                </div>
+            </div>
+            <div class="request-info">
+                Обработано: {{ req.processed_at.strftime('%d.%m.%Y %H:%M') if req.processed_at else '-' }}
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+    {% endif %}
+    
+    <script>
+        const tg = window.Telegram.WebApp;
+        tg.ready();
+        tg.expand();
+    </script>
+</body>
+</html>

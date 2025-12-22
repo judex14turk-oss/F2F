@@ -221,6 +221,22 @@ class PromoCode(Base):
     description = Column(String(200))
 
 
+class PromoRequest(Base):
+    __tablename__ = 'promo_requests'
+    
+    id = Column(Integer, primary_key=True)
+    user_id = Column(Integer, ForeignKey('users.id'))
+    promo_code_id = Column(Integer, ForeignKey('promo_codes.id'))
+    promo_code_text = Column(String(50))
+    status = Column(String(20), default='pending')
+    created_at = Column(DateTime, default=get_tashkent_now)
+    processed_at = Column(DateTime)
+    processed_by = Column(Integer)
+    
+    user = relationship("User")
+    promo_code = relationship("PromoCode")
+
+
 class TariffSettings(Base):
     __tablename__ = 'tariff_settings'
     

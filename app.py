@@ -8,7 +8,7 @@ from flask import Flask, render_template, request, jsonify, redirect, url_for, s
 
 TELEGRAM_BOT_TOKEN = os.environ.get('TELEGRAM_BOT_TOKEN', '')
 from sqlalchemy.orm import joinedload
-from models import SessionLocal, User, Property, Like, Match, Offer, District, ResidentialComplex, PromoCode, TariffSettings, Advertisement
+from models import SessionLocal, User, Property, Like, Match, Offer, District, ResidentialComplex, PromoCode, TariffSettings, Advertisement, PromoRequest
 from models import UserRole, SellerType, TariffType, PropertyType, PropertyStatus, AdminRole, init_db, get_tashkent_now
 
 app = Flask(__name__)
@@ -1357,6 +1357,97 @@ def webapp_delete_promo(promo_id):
     return redirect(url_for('webapp_tariff_settings', tg_id=tg_id))
 
 
+@app.route('/webapp/admin/payments')
+def webapp_payments():
+    tg_id = request.args.get('tg_id')
+    if not tg_id:
+        return "Telegram ID не указан", 400
+    
+    db = get_db()
+    admin = db.query(User).filter(User.telegram_id == int(tg_id)).first()
+    
+    if not admin or not admin.is_admin:
+        db.close()
+        return "Доступ запрещён", 403
+    
+    permissions = get_admin_permissions(admin.admin_role)
+    if not permissions['can_edit_tariff']:
+        db.close()
+        return "У вас нет прав", 403
+    
+    pending_requests = db.query(PromoRequest).filter(PromoRequest.status == 'pending').order_by(PromoRequest.created_at.desc()).all()
+    processed_requests = db.query(PromoRequest).filter(PromoRequest.status != 'pending').order_by(PromoRequest.processed_at.desc()).limit(50).all()
+    
+    db.close()
+    
+    return render_template('webapp_payments.html',
+        pending_requests=pending_requests,
+        processed_requests=processed_requests,
+        tg_id=tg_id,
+        permissions=permissions,
+        admin_user=admin
+    )
+
+
+@app.route('/webapp/admin/payment/<int:request_id>/approve', methods=['POST'])
+def webapp_approve_payment(request_id):
+    tg_id = request.form.get('tg_id')
+    
+    db = get_db()
+    admin = db.query(User).filter(User.telegram_id == int(tg_id)).first() if tg_id else None
+    
+    if not admin or not admin.is_admin:
+        db.close()
+        return "Доступ запрещён", 403
+    
+    promo_req = db.query(PromoRequest).filter(PromoRequest.id == request_id).first()
+    if promo_req and promo_req.status == 'pending':
+        user = db.query(User).filter(User.id == promo_req.user_id).first()
+        promo = db.query(PromoCode).filter(PromoCode.id == promo_req.promo_code_id).first()
+        
+        if user and promo:
+            if promo.bonus_days and promo.bonus_days > 0:
+                if user.tariff_expires and user.tariff_expires > get_tashkent_now():
+                    user.tariff_expires = user.tariff_expires + timedelta(days=promo.bonus_days)
+                else:
+                    user.tariff_expires = get_tashkent_now() + timedelta(days=promo.bonus_days)
+            if promo.tariff:
+                tariff_map = {'free': TariffType.FREE, 'pro': TariffType.PRO, 'premium': TariffType.PREMIUM}
+                if promo.tariff.lower() in tariff_map:
+                    user.tariff = tariff_map[promo.tariff.lower()]
+            promo.current_uses += 1
+        
+        promo_req.status = 'approved'
+        promo_req.processed_at = get_tashkent_now()
+        promo_req.processed_by = admin.id
+        db.commit()
+    db.close()
+    
+    return redirect(url_for('webapp_payments', tg_id=tg_id))
+
+
+@app.route('/webapp/admin/payment/<int:request_id>/reject', methods=['POST'])
+def webapp_reject_payment(request_id):
+    tg_id = request.form.get('tg_id')
+    
+    db = get_db()
+    admin = db.query(User).filter(User.telegram_id == int(tg_id)).first() if tg_id else None
+    
+    if not admin or not admin.is_admin:
+        db.close()
+        return "Доступ запрещён", 403
+    
+    promo_req = db.query(PromoRequest).filter(PromoRequest.id == request_id).first()
+    if promo_req and promo_req.status == 'pending':
+        promo_req.status = 'rejected'
+        promo_req.processed_at = get_tashkent_now()
+        promo_req.processed_by = admin.id
+        db.commit()
+    db.close()
+    
+    return redirect(url_for('webapp_payments', tg_id=tg_id))
+
+
 @app.route('/webapp/admin/properties')
 def webapp_properties():
     tg_id = request.args.get('tg_id')
@@ -2230,9 +2321,27 @@ def check_promo():
     
     message = promo.description or 'Промокод принят!'
     if promo.discount_percent > 0:
-        message = f'Скидка {promo.discount_percent}%! Напишите администратору для активации.'
+        message = f'Скидка {promo.discount_percent}%! Заявка отправлена администратору.'
     elif promo.bonus_days > 0:
-        message = f'+{promo.bonus_days} дней бесплатно! Напишите администратору.'
+        message = f'+{promo.bonus_days} дней бесплатно! Заявка отправлена администратору.'
+    
+    if tg_id:
+        user = db.query(User).filter(User.telegram_id == int(tg_id)).first()
+        if user:
+            existing_request = db.query(PromoRequest).filter(
+                PromoRequest.user_id == user.id,
+                PromoRequest.promo_code_id == promo.id,
+                PromoRequest.status == 'pending'
+            ).first()
+            if not existing_request:
+                promo_request = PromoRequest(
+                    user_id=user.id,
+                    promo_code_id=promo.id,
+                    promo_code_text=code,
+                    status='pending'
+                )
+                db.add(promo_request)
+                db.commit()
     
     db.close()
     
