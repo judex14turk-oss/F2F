@@ -70,6 +70,7 @@ class RegistrationStates(StatesGroup):
     seller_company = State()
     seller_manager = State()
     seller_phone = State()
+    owner_name = State()
 
 
 class PropertyStates(StatesGroup):
@@ -839,8 +840,50 @@ async def process_phone(message: types.Message, state: FSMContext):
         resize_keyboard=True
     )
     
-    await message.answer("🏢 Введите название компании или ваше имя:", reply_markup=keyboard)
-    await state.set_state(RegistrationStates.seller_company)
+    if seller_type == SellerType.OWNER:
+        await message.answer("👤 Введите ваше имя:", reply_markup=keyboard)
+        await state.set_state(RegistrationStates.owner_name)
+    else:
+        await message.answer("🏢 Введите название компании:", reply_markup=keyboard)
+        await state.set_state(RegistrationStates.seller_company)
+
+
+@dp.message(F.text == "⬅️ Назад", RegistrationStates.owner_name)
+async def back_to_phone_from_owner_name(message: types.Message, state: FSMContext):
+    db = SessionLocal()
+    user = db.query(User).filter(User.telegram_id == message.from_user.id).first()
+    lang = get_user_lang(user)
+    db.close()
+    
+    keyboard = ReplyKeyboardMarkup(
+        keyboard=[
+            [KeyboardButton(text=get_text('share_phone', lang), request_contact=True)],
+            [KeyboardButton(text=get_text('back', lang))]
+        ],
+        resize_keyboard=True
+    )
+    await message.answer(get_text('share_phone_id', lang), reply_markup=keyboard)
+    await state.set_state(RegistrationStates.seller_phone)
+
+
+@dp.message(RegistrationStates.owner_name)
+async def process_owner_name(message: types.Message, state: FSMContext):
+    if message.text == "⬅️ Назад":
+        return
+    
+    db = SessionLocal()
+    user = db.query(User).filter(User.telegram_id == message.from_user.id).first()
+    
+    if user:
+        user.company_name = message.text
+        user.manager_name = message.text
+        db.commit()
+    
+    buyers_count = db.query(User).filter(User.role == UserRole.BUYER).count()
+    db.close()
+    
+    await state.clear()
+    await show_seller_menu(message, message.from_user.id, buyers_count)
 
 
 async def show_seller_menu(message, user_id, buyers_count=None):
