@@ -2938,7 +2938,7 @@ async def show_seller_profile_info(message, user):
     if user.is_admin and webapp_url:
         buttons.append([InlineKeyboardButton(
             text="🔐 Админ-панель",
-            web_app=types.WebAppInfo(url=f"https://{webapp_url}/webapp/admin?tg_id={user.telegram_id}")
+            web_app=types.WebAppInfo(url=f"https://{webapp_url}/webapp/admin/home?tg_id={user.telegram_id}")
         )])
     
     keyboard = InlineKeyboardMarkup(inline_keyboard=buttons)
@@ -2979,7 +2979,7 @@ async def show_buyer_profile(message, user):
     if user.is_admin and webapp_url:
         buttons.append([InlineKeyboardButton(
             text="🔐 Админ-панель",
-            web_app=types.WebAppInfo(url=f"https://{webapp_url}/webapp/admin?tg_id={user.telegram_id}")
+            web_app=types.WebAppInfo(url=f"https://{webapp_url}/webapp/admin/home?tg_id={user.telegram_id}")
         )])
     
     keyboard = InlineKeyboardMarkup(inline_keyboard=buttons)

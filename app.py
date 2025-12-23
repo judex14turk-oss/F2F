@@ -1341,6 +1341,42 @@ def get_admin_permissions(admin_role):
     }
 
 
+@app.route('/webapp/admin/home')
+def webapp_admin_home():
+    tg_id = request.args.get('tg_id')
+    if not tg_id:
+        return "Telegram ID не указан", 400
+    
+    db = get_db()
+    admin_user = db.query(User).filter(User.telegram_id == int(tg_id)).first()
+    
+    if not admin_user or not admin_user.is_admin:
+        db.close()
+        return "Доступ запрещён", 403
+    
+    permissions = get_admin_permissions(admin_user.admin_role)
+    
+    total_count = db.query(User).count()
+    buyers_count = db.query(User).filter(User.role == UserRole.BUYER).count()
+    sellers_count = db.query(User).filter(User.role == UserRole.SELLER).count()
+    admins_count = db.query(User).filter(User.is_admin == True).count()
+    properties_count = db.query(Property).count()
+    pending_count = db.query(Property).filter(Property.status == PropertyStatus.MODERATION).count()
+    
+    db.close()
+    
+    return render_template('webapp_admin_home.html',
+        tg_id=tg_id,
+        permissions=permissions,
+        total_count=total_count,
+        buyers_count=buyers_count,
+        sellers_count=sellers_count,
+        admins_count=admins_count,
+        properties_count=properties_count,
+        pending_count=pending_count
+    )
+
+
 @app.route('/webapp/admin')
 def webapp_admin():
     tg_id = request.args.get('tg_id')
