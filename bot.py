@@ -197,31 +197,18 @@ async def cmd_start(message: types.Message, state: FSMContext):
         db.add(user)
         db.commit()
     
-    needs_language_selection = user.language is None
-    lang = get_user_lang(user)
     db.close()
     
-    if needs_language_selection:
-        keyboard = ReplyKeyboardMarkup(
-            keyboard=[
-                [KeyboardButton(text="🇷🇺 Русский")],
-                [KeyboardButton(text="🇺🇿 O'zbekcha")]
-            ],
-            resize_keyboard=True
-        )
-        welcome_text = "👋 Добро пожаловать в F2F! / F2F ga xush kelibsiz!\n\n🌍 Выберите язык / Tilni tanlang:"
-        await message.answer(welcome_text, reply_markup=keyboard)
-        await state.set_state(RegistrationStates.choosing_language)
-    else:
-        keyboard = ReplyKeyboardMarkup(
-            keyboard=[
-                [KeyboardButton(text=get_text('looking_for_property', lang))],
-                [KeyboardButton(text=get_text('want_to_sell', lang))]
-            ],
-            resize_keyboard=True
-        )
-        await message.answer(get_text('welcome', lang), reply_markup=keyboard)
-        await state.set_state(RegistrationStates.choosing_role)
+    keyboard = ReplyKeyboardMarkup(
+        keyboard=[
+            [KeyboardButton(text="🇷🇺 Русский")],
+            [KeyboardButton(text="🇺🇿 O'zbekcha")]
+        ],
+        resize_keyboard=True
+    )
+    welcome_text = "👋 Добро пожаловать в F2F! / F2F ga xush kelibsiz!\n\n🌍 Выберите язык / Tilni tanlang:"
+    await message.answer(welcome_text, reply_markup=keyboard)
+    await state.set_state(RegistrationStates.choosing_language)
 
 
 @dp.message(RegistrationStates.choosing_language)
