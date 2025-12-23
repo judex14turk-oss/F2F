@@ -7,9 +7,11 @@ from selenium.webdriver.chrome.options import Options
 from selenium.webdriver.common.by import By
 from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
-from selenium.common.exceptions import TimeoutException
+from selenium.common.exceptions import TimeoutException, WebDriverException
 import json
 from datetime import datetime, timedelta, timezone
+import threading
+from concurrent.futures import ThreadPoolExecutor, TimeoutError as FuturesTimeoutError
 
 
 class OLXParser:
@@ -100,9 +102,16 @@ class OLXParser:
         chrome_options.add_argument('--disable-web-security')
         chrome_options.add_argument('--allow-running-insecure-content')
         chrome_options.add_argument('--lang=ru-RU,ru')
+        chrome_options.add_argument('--disable-images')
+        chrome_options.add_argument('--blink-settings=imagesEnabled=false')
         chrome_options.add_argument(f'user-agent={self.headers["User-Agent"]}')
         chrome_options.add_experimental_option('excludeSwitches', ['enable-automation'])
         chrome_options.add_experimental_option('useAutomationExtension', False)
+        prefs = {
+            'profile.managed_default_content_settings.images': 2,
+            'disk-cache-size': 4096
+        }
+        chrome_options.add_experimental_option('prefs', prefs)
         
         try:
             driver = webdriver.Chrome(options=chrome_options)
@@ -119,7 +128,8 @@ class OLXParser:
                     });
                 '''
             })
-            driver.set_page_load_timeout(30)
+            driver.set_page_load_timeout(15)
+            driver.set_script_timeout(10)
             return driver
         except Exception as e:
             print(f"Error creating driver: {e}")
@@ -537,21 +547,36 @@ class OLXParser:
                 
                 try:
                     if get_phone and driver:
-                        data = self.parse_listing_with_driver(driver, url, get_phone=True, timeout=20)
+                        try:
+                            with ThreadPoolExecutor(max_workers=1) as executor:
+                                future = executor.submit(self.parse_listing_with_driver, driver, url, True, 15)
+                                data = future.result(timeout=25)
+                        except FuturesTimeoutError:
+                            print(f"Hard timeout for URL: {url}")
+                            data = {'url': url, 'error': 'Hard timeout'}
+                            driver_errors += 1
+                        except Exception as parse_err:
+                            print(f"Parse error: {parse_err}")
+                            data = {'url': url, 'error': str(parse_err)}
+                            driver_errors += 1
                         
                         if data.get('error'):
                             driver_errors += 1
                             print(f"Driver error ({driver_errors}/{max_driver_errors}): {data.get('error')}")
                             
                             if driver_errors >= max_driver_errors:
+                                print("Too many errors, restarting driver...")
                                 try:
                                     driver.quit()
                                 except:
                                     pass
+                                time.sleep(1)
                                 driver = self.get_driver()
                                 driver_errors = 0
                                 if not driver:
                                     print("Failed to restart driver, falling back to requests")
+                        else:
+                            driver_errors = 0
                     else:
                         data = self.parse_listing_with_requests(url)
                     
