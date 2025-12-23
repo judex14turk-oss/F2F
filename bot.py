@@ -3316,7 +3316,10 @@ class SearchSettingsStates(StatesGroup):
     prop_type = State()
     rooms = State()
     district = State()
-    budget = State()
+    budget_type = State()
+    budget_single = State()
+    budget_min = State()
+    budget_max = State()
     bio = State()
 
 
@@ -3503,14 +3506,18 @@ async def settings_district_selected(message: types.Message, state: FSMContext):
     await state.update_data(search_district=district)
     
     keyboard = ReplyKeyboardMarkup(
-        keyboard=[[KeyboardButton(text=get_text('back', lang))]],
+        keyboard=[
+            [KeyboardButton(text=get_text('budget_single', lang))],
+            [KeyboardButton(text=get_text('budget_range', lang))],
+            [KeyboardButton(text=get_text('back', lang))]
+        ],
         resize_keyboard=True
     )
-    await message.answer(get_text('enter_budget', lang), reply_markup=keyboard)
-    await state.set_state(SearchSettingsStates.budget)
+    await message.answer(get_text('budget_type_question', lang), reply_markup=keyboard)
+    await state.set_state(SearchSettingsStates.budget_type)
 
 
-@dp.message(F.text.in_(["⬅️ Назад", "⬅️ Orqaga"]), SearchSettingsStates.budget)
+@dp.message(F.text.in_(["⬅️ Назад", "⬅️ Orqaga"]), SearchSettingsStates.budget_type)
 async def settings_back_to_district(message: types.Message, state: FSMContext):
     data = await state.get_data()
     lang = data.get('user_lang', 'ru')
@@ -3536,8 +3543,50 @@ async def settings_back_to_district(message: types.Message, state: FSMContext):
     await state.set_state(SearchSettingsStates.district)
 
 
-@dp.message(SearchSettingsStates.budget)
-async def settings_budget_entered(message: types.Message, state: FSMContext):
+@dp.message(SearchSettingsStates.budget_type)
+async def settings_budget_type_selected(message: types.Message, state: FSMContext):
+    data = await state.get_data()
+    lang = data.get('user_lang', 'ru')
+    
+    single_texts = [get_text('budget_single', 'ru'), get_text('budget_single', 'uz')]
+    range_texts = [get_text('budget_range', 'ru'), get_text('budget_range', 'uz')]
+    
+    keyboard = ReplyKeyboardMarkup(
+        keyboard=[[KeyboardButton(text=get_text('back', lang))]],
+        resize_keyboard=True
+    )
+    
+    if message.text in single_texts:
+        await state.update_data(budget_mode='single')
+        await message.answer(get_text('enter_single_budget', lang), reply_markup=keyboard)
+        await state.set_state(SearchSettingsStates.budget_single)
+    elif message.text in range_texts:
+        await state.update_data(budget_mode='range')
+        await message.answer(get_text('enter_min_budget', lang), reply_markup=keyboard)
+        await state.set_state(SearchSettingsStates.budget_min)
+    else:
+        await message.answer(get_text('budget_type_question', lang))
+
+
+@dp.message(F.text.in_(["⬅️ Назад", "⬅️ Orqaga"]), SearchSettingsStates.budget_single)
+async def settings_back_to_budget_type_from_single(message: types.Message, state: FSMContext):
+    data = await state.get_data()
+    lang = data.get('user_lang', 'ru')
+    
+    keyboard = ReplyKeyboardMarkup(
+        keyboard=[
+            [KeyboardButton(text=get_text('budget_single', lang))],
+            [KeyboardButton(text=get_text('budget_range', lang))],
+            [KeyboardButton(text=get_text('back', lang))]
+        ],
+        resize_keyboard=True
+    )
+    await message.answer(get_text('budget_type_question', lang), reply_markup=keyboard)
+    await state.set_state(SearchSettingsStates.budget_type)
+
+
+@dp.message(SearchSettingsStates.budget_single)
+async def settings_single_budget_entered(message: types.Message, state: FSMContext):
     data = await state.get_data()
     lang = data.get('user_lang', 'ru')
     
@@ -3546,7 +3595,98 @@ async def settings_budget_entered(message: types.Message, state: FSMContext):
         await message.answer(get_text('invalid_budget', lang))
         return
     
-    await state.update_data(search_budget=int(budget))
+    budget = int(budget)
+    budget_min = int(budget * 0.8)
+    budget_max = int(budget * 1.2)
+    await state.update_data(search_budget_min=budget_min, search_budget_max=budget_max)
+    
+    db = SessionLocal()
+    user = db.query(User).filter(User.telegram_id == message.from_user.id).first()
+    current_bio = user.buyer_bio or ""
+    db.close()
+    
+    keyboard = ReplyKeyboardMarkup(
+        keyboard=[
+            [KeyboardButton(text=get_text('skip', lang))],
+            [KeyboardButton(text=get_text('back', lang))]
+        ],
+        resize_keyboard=True
+    )
+    
+    bio_hint = f"\n\n{get_text('current_bio', lang)} {current_bio}" if current_bio else ""
+    await message.answer(
+        f"{get_text('add_bio', lang)}{bio_hint}",
+        reply_markup=keyboard
+    )
+    await state.set_state(SearchSettingsStates.bio)
+
+
+@dp.message(F.text.in_(["⬅️ Назад", "⬅️ Orqaga"]), SearchSettingsStates.budget_min)
+async def settings_back_to_budget_type_from_min(message: types.Message, state: FSMContext):
+    data = await state.get_data()
+    lang = data.get('user_lang', 'ru')
+    
+    keyboard = ReplyKeyboardMarkup(
+        keyboard=[
+            [KeyboardButton(text=get_text('budget_single', lang))],
+            [KeyboardButton(text=get_text('budget_range', lang))],
+            [KeyboardButton(text=get_text('back', lang))]
+        ],
+        resize_keyboard=True
+    )
+    await message.answer(get_text('budget_type_question', lang), reply_markup=keyboard)
+    await state.set_state(SearchSettingsStates.budget_type)
+
+
+@dp.message(SearchSettingsStates.budget_min)
+async def settings_min_budget_entered(message: types.Message, state: FSMContext):
+    data = await state.get_data()
+    lang = data.get('user_lang', 'ru')
+    
+    budget_min = validate_number(message.text)
+    if budget_min is None or budget_min <= 0:
+        await message.answer(get_text('invalid_budget', lang))
+        return
+    
+    await state.update_data(search_budget_min=int(budget_min))
+    
+    keyboard = ReplyKeyboardMarkup(
+        keyboard=[[KeyboardButton(text=get_text('back', lang))]],
+        resize_keyboard=True
+    )
+    await message.answer(get_text('enter_max_budget', lang), reply_markup=keyboard)
+    await state.set_state(SearchSettingsStates.budget_max)
+
+
+@dp.message(F.text.in_(["⬅️ Назад", "⬅️ Orqaga"]), SearchSettingsStates.budget_max)
+async def settings_back_to_min_budget(message: types.Message, state: FSMContext):
+    data = await state.get_data()
+    lang = data.get('user_lang', 'ru')
+    
+    keyboard = ReplyKeyboardMarkup(
+        keyboard=[[KeyboardButton(text=get_text('back', lang))]],
+        resize_keyboard=True
+    )
+    await message.answer(get_text('enter_min_budget', lang), reply_markup=keyboard)
+    await state.set_state(SearchSettingsStates.budget_min)
+
+
+@dp.message(SearchSettingsStates.budget_max)
+async def settings_max_budget_entered(message: types.Message, state: FSMContext):
+    data = await state.get_data()
+    lang = data.get('user_lang', 'ru')
+    
+    budget_max = validate_number(message.text)
+    if budget_max is None or budget_max <= 0:
+        await message.answer(get_text('invalid_budget', lang))
+        return
+    
+    budget_min = data.get('search_budget_min', 0)
+    if budget_max < budget_min:
+        await message.answer(get_text('min_greater_than_max', lang))
+        return
+    
+    await state.update_data(search_budget_max=int(budget_max))
     
     db = SessionLocal()
     user = db.query(User).filter(User.telegram_id == message.from_user.id).first()
@@ -3573,13 +3713,18 @@ async def settings_budget_entered(message: types.Message, state: FSMContext):
 async def settings_back_to_budget(message: types.Message, state: FSMContext):
     data = await state.get_data()
     lang = data.get('user_lang', 'ru')
+    budget_mode = data.get('budget_mode', 'single')
     
     keyboard = ReplyKeyboardMarkup(
-        keyboard=[[KeyboardButton(text=get_text('back', lang))]],
+        keyboard=[
+            [KeyboardButton(text=get_text('budget_single', lang))],
+            [KeyboardButton(text=get_text('budget_range', lang))],
+            [KeyboardButton(text=get_text('back', lang))]
+        ],
         resize_keyboard=True
     )
-    await message.answer(get_text('enter_budget', lang), reply_markup=keyboard)
-    await state.set_state(SearchSettingsStates.budget)
+    await message.answer(get_text('budget_type_question', lang), reply_markup=keyboard)
+    await state.set_state(SearchSettingsStates.budget_type)
 
 
 @dp.message(SearchSettingsStates.bio)
@@ -3601,9 +3746,11 @@ async def settings_bio_entered(message: types.Message, state: FSMContext):
     prop_type = data.get("search_prop_type", "apartment")
     rooms = data.get("search_rooms", "any")
     district = data.get("search_district", "Любой")
-    budget = data.get("search_budget", 0)
+    budget_min = data.get("search_budget_min", 0)
+    budget_max = data.get("search_budget_max", 0)
     
-    user.search_budget_max = int(budget)
+    user.search_budget_min = int(budget_min) if budget_min else None
+    user.search_budget_max = int(budget_max) if budget_max else None
     user.search_rooms = rooms
     user.search_district = district
     user.search_payment_type = f"{deal_type}_{prop_type}"
