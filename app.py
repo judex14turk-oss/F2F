@@ -2532,7 +2532,8 @@ def webapp_parser_single():
             has_furniture=has_furniture,
             source='olx',
             olx_id=olx_id,
-            olx_url=url
+            olx_url=url,
+            olx_title=listing.get('title')
         )
         
         db.add(new_property)
@@ -2677,6 +2678,7 @@ def webapp_parser_run():
                 phone=listing.get('phone'),
                 olx_url=listing.get('url'),
                 olx_id=olx_id,
+                olx_title=listing.get('title'),
                 source='olx',
                 seller_name=listing.get('seller_name')
             )
@@ -2840,6 +2842,7 @@ def webapp_parser_run_stream():
                         phone=phone,
                         olx_url=data.get('url'),
                         olx_id=olx_id,
+                        olx_title=data.get('title'),
                         source='olx',
                         seller_name=data.get('seller_name')
                     )

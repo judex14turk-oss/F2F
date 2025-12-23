@@ -1382,7 +1382,12 @@ async def show_property_card(message, property_id, state=None):
     text = f"{type_emoji} <b>{type_name}</b>  •  ID: {prop.id}\n"
     text += "━━━━━━━━━━━━━━━━━━━━\n\n"
     
-    text += f"💰 <b>${prop.price:,}</b>\n\n"
+    text += f"💰 <b>${prop.price:,}</b>\n"
+    
+    if prop.olx_title:
+        text += f"📝 {prop.olx_title}\n"
+    
+    text += "\n"
     
     details = []
     if prop.district:

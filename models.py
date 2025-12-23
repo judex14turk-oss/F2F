@@ -134,6 +134,7 @@ class Property(Base):
     phone = Column(String(50))
     olx_url = Column(String(500))
     olx_id = Column(String(50), unique=True, nullable=True)
+    olx_title = Column(String(500))
     source = Column(String(50), default='manual')
     seller_name = Column(String(200))
     
