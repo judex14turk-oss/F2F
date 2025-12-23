@@ -1914,12 +1914,21 @@ async def delete_property_confirm(callback: types.CallbackQuery):
         ]
     ])
     
-    await callback.message.edit_text(
-        "⚠️ <b>Вы уверены, что хотите удалить этот объект?</b>\n\n"
-        "Это действие нельзя отменить.",
-        reply_markup=keyboard,
-        parse_mode="HTML"
-    )
+    try:
+        await callback.message.edit_text(
+            "⚠️ <b>Вы уверены, что хотите удалить этот объект?</b>\n\n"
+            "Это действие нельзя отменить.",
+            reply_markup=keyboard,
+            parse_mode="HTML"
+        )
+    except:
+        await callback.message.delete()
+        await callback.message.answer(
+            "⚠️ <b>Вы уверены, что хотите удалить этот объект?</b>\n\n"
+            "Это действие нельзя отменить.",
+            reply_markup=keyboard,
+            parse_mode="HTML"
+        )
 
 
 @dp.callback_query(F.data.startswith("prop_confirm_del_"))
@@ -1940,12 +1949,15 @@ async def delete_property_confirmed(callback: types.CallbackQuery):
         db.close()
         return
     
-    db.query(Like).filter(Like.property_id == prop_id).delete()
     db.delete(prop)
     db.commit()
     db.close()
     
-    await callback.message.edit_text("✅ Объект успешно удалён!")
+    try:
+        await callback.message.edit_text("✅ Объект успешно удалён!")
+    except:
+        await callback.message.delete()
+        await callback.message.answer("✅ Объект успешно удалён!")
 
 
 @dp.callback_query(F.data.startswith("prop_cancel_del_"))
