@@ -138,7 +138,9 @@ class Property(Base):
     seller_name = Column(String(200))
     
     owner = relationship("User", back_populates="properties")
-    likes = relationship("Like", back_populates="property")
+    likes = relationship("Like", back_populates="property", cascade="all, delete-orphan")
+    matches = relationship("Match", back_populates="property", cascade="all, delete-orphan")
+    offers = relationship("Offer", back_populates="property", cascade="all, delete-orphan")
 
 
 class Like(Base):
@@ -169,7 +171,7 @@ class Match(Base):
     
     buyer = relationship("User", foreign_keys=[buyer_id])
     seller = relationship("User", foreign_keys=[seller_id])
-    property = relationship("Property")
+    property = relationship("Property", back_populates="matches")
 
 
 class Offer(Base):
@@ -184,7 +186,7 @@ class Offer(Base):
     
     seller = relationship("User", foreign_keys=[seller_id], back_populates="offers_sent")
     buyer = relationship("User", foreign_keys=[buyer_id], back_populates="offers_received")
-    property = relationship("Property")
+    property = relationship("Property", back_populates="offers")
 
 
 class ResidentialComplex(Base):
