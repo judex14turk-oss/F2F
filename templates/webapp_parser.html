@@ -571,11 +571,41 @@
             if (result.skipped_old > 0) {
                 statsText += ` (старые: ${result.skipped_old})`;
             }
+            if (result.skipped_no_phone > 0) {
+                statsText += ` (без телефона: ${result.skipped_no_phone})`;
+            }
             count.textContent = statsText;
             container.innerHTML = '';
             
+            if (result.skipped_urls && result.skipped_urls.length > 0) {
+                let skippedHtml = '<div style="background:#1a1a1a;border:1px solid #333;border-radius:8px;padding:12px;margin-bottom:16px;">';
+                skippedHtml += '<div style="color:#f87171;font-weight:600;margin-bottom:8px;">Пропущенные объявления:</div>';
+                
+                const noPhoneUrls = result.skipped_urls.filter(s => s.reason === 'no_phone');
+                const duplicateUrls = result.skipped_urls.filter(s => s.reason === 'duplicate');
+                
+                if (noPhoneUrls.length > 0) {
+                    skippedHtml += '<div style="color:#888;font-size:0.8rem;margin-bottom:4px;">Без телефона:</div>';
+                    noPhoneUrls.forEach(item => {
+                        skippedHtml += `<div style="margin-bottom:4px;"><a href="${item.url}" target="_blank" style="color:#60a5fa;font-size:0.75rem;word-break:break-all;">${item.title || item.url}</a></div>`;
+                    });
+                }
+                
+                if (duplicateUrls.length > 0) {
+                    skippedHtml += '<div style="color:#888;font-size:0.8rem;margin-top:8px;margin-bottom:4px;">Дубликаты:</div>';
+                    duplicateUrls.forEach(item => {
+                        skippedHtml += `<div style="margin-bottom:4px;"><a href="${item.url}" target="_blank" style="color:#fbbf24;font-size:0.75rem;word-break:break-all;">${item.title || item.url}</a></div>`;
+                    });
+                }
+                
+                skippedHtml += '</div>';
+                container.innerHTML = skippedHtml;
+            }
+            
             if (!result.listings || result.listings.length === 0) {
-                container.innerHTML = '<div style="text-align:center;color:#666;padding:20px;">Объявления не найдены</div>';
+                if (!result.skipped_urls || result.skipped_urls.length === 0) {
+                    container.innerHTML = '<div style="text-align:center;color:#666;padding:20px;">Объявления не найдены</div>';
+                }
                 return;
             }
             

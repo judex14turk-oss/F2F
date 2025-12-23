@@ -2742,6 +2742,7 @@ def webapp_parser_run_stream():
         added_count = 0
         skipped_count = 0
         skipped_no_phone = 0
+        skipped_urls = []
         
         prop_type_enum = PropertyType.SALE if deal_type == 'sale' else PropertyType.RENT
         
@@ -2770,6 +2771,7 @@ def webapp_parser_run_stream():
                     
                     if not phone:
                         skipped_no_phone += 1
+                        skipped_urls.append({'url': data.get('url'), 'reason': 'no_phone', 'title': data.get('title')})
                         yield f"data: {json.dumps({'event': 'progress', 'current': event['current'], 'total': event['total'], 'added': added_count})}\n\n"
                         continue
                     
@@ -2780,6 +2782,7 @@ def webapp_parser_run_stream():
                         existing = db_check.query(Property).filter(Property.olx_id == olx_id).first()
                         if existing:
                             skipped_count += 1
+                            skipped_urls.append({'url': data.get('url'), 'reason': 'duplicate', 'title': data.get('title')})
                             db_check.close()
                             yield f"data: {json.dumps({'event': 'progress', 'current': event['current'], 'total': event['total'], 'added': added_count, 'skipped_duplicates': skipped_count})}\n\n"
                             continue
@@ -2852,7 +2855,7 @@ def webapp_parser_run_stream():
                     yield f"data: {json.dumps({'event': 'progress', 'current': event['current'], 'total': event['total'], 'added': added_count, 'error': event.get('error')})}\n\n"
                 
                 elif event_type == 'complete':
-                    yield f"data: {json.dumps({'event': 'complete', 'parsed': event['parsed'], 'added_to_db': added_count, 'skipped_duplicates': skipped_count, 'skipped_old': event.get('skipped_old', 0), 'skipped_no_phone': skipped_no_phone, 'total_found': event['total']})}\n\n"
+                    yield f"data: {json.dumps({'event': 'complete', 'parsed': event['parsed'], 'added_to_db': added_count, 'skipped_duplicates': skipped_count, 'skipped_old': event.get('skipped_old', 0), 'skipped_no_phone': skipped_no_phone, 'total_found': event['total'], 'skipped_urls': skipped_urls})}\n\n"
             
         except Exception as e:
             yield f"data: {json.dumps({'event': 'error', 'error': str(e)})}\n\n"
