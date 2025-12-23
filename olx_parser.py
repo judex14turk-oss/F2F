@@ -371,6 +371,11 @@ class OLXParser:
                     result['district'] = district_name
                     break
             
+            if not result['phone'] and result['description']:
+                phone_from_desc = self._extract_phone_from_text(result['description'])
+                if phone_from_desc:
+                    result['phone'] = phone_from_desc
+            
         except Exception as e:
             result['error'] = str(e)
             
@@ -382,15 +387,21 @@ class OLXParser:
         phone_patterns = [
             r'\+998[\s\-]?\d{2}[\s\-]?\d{3}[\s\-]?\d{2}[\s\-]?\d{2}',
             r'\+998\d{9}',
+            r'\+99[\s\-]?\d{3}[\s\-]?\d{3}[\s\-]?\d{4}',
             r'998[\s\-]?\d{2}[\s\-]?\d{3}[\s\-]?\d{2}[\s\-]?\d{2}',
             r'998\d{9}',
+            r'(?:^|[^\d])([89]\d{8})(?:[^\d]|$)',
+            r'(?:^|[^\d])(9\d{8})(?:[^\d]|$)',
             r'\d{2}[\s\-]?\d{3}[\s\-]?\d{2}[\s\-]?\d{2}',
         ]
         for pattern in phone_patterns:
             match = re.search(pattern, text)
             if match:
-                phone = match.group(0).replace(' ', '').replace('-', '')
-                if not phone.startswith('+') and not phone.startswith('998'):
+                phone = match.group(1) if match.lastindex else match.group(0)
+                phone = phone.replace(' ', '').replace('-', '')
+                if len(phone) == 9 and phone[0] in '89':
+                    phone = '+998' + phone
+                elif not phone.startswith('+') and not phone.startswith('998'):
                     phone = '+998' + phone
                 elif phone.startswith('998') and not phone.startswith('+'):
                     phone = '+' + phone
