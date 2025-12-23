@@ -221,7 +221,7 @@ class OLXParser:
         
         return listings
     
-    def parse_listing_with_driver(self, driver, url, get_phone=False):
+    def parse_listing_with_driver(self, driver, url, get_phone=False, timeout=20):
         result = {
             'url': url,
             'title': None,
@@ -248,36 +248,46 @@ class OLXParser:
             'error': None
         }
         
+        start_time = time.time()
+        
         try:
+            driver.set_page_load_timeout(15)
             try:
                 driver.get(url)
             except TimeoutException:
                 result['error'] = 'Page load timeout'
                 return result
-            time.sleep(1)
+            except Exception as e:
+                result['error'] = f'Page load error: {str(e)}'
+                return result
+            
+            time.sleep(0.5)
             
             if get_phone:
+                if time.time() - start_time > timeout:
+                    result['error'] = 'Timeout before phone extraction'
+                    return result
+                    
                 try:
                     phone_selectors = [
                         "//button[contains(text(), 'Показать')]",
                         "//button[contains(text(), 'показать')]",
                         "//button[contains(text(), 'телефон')]",
                         "//button[contains(text(), 'Телефон')]",
-                        "//button[contains(text(), 'номер')]",
-                        "//button[contains(@class, 'phone')]",
-                        "//a[contains(@class, 'phone')]",
                         "//*[contains(@data-cy, 'phone')]",
                         "//*[contains(@data-testid, 'phone')]",
                     ]
                     
                     clicked = False
                     for selector in phone_selectors:
+                        if time.time() - start_time > timeout:
+                            break
                         try:
                             elements = driver.find_elements(By.XPATH, selector)
                             for el in elements:
                                 try:
                                     el.click()
-                                    time.sleep(2)
+                                    time.sleep(1)
                                     clicked = True
                                     break
                                 except:
@@ -294,6 +304,8 @@ class OLXParser:
                     ]
                     
                     for pattern in phone_patterns:
+                        if time.time() - start_time > timeout:
+                            break
                         try:
                             phone_elements = driver.find_elements(By.XPATH, pattern)
                             if phone_elements:
@@ -309,7 +321,7 @@ class OLXParser:
                         except:
                             continue
                     
-                    if not result['phone']:
+                    if not result['phone'] and time.time() - start_time < timeout:
                         page_text = driver.page_source
                         phone_match = re.search(r'\+998[\s\-]?\d{2}[\s\-]?\d{3}[\s\-]?\d{2}[\s\-]?\d{2}', page_text)
                         if phone_match:
@@ -505,6 +517,9 @@ class OLXParser:
         }
         
         driver = None
+        driver_errors = 0
+        max_driver_errors = 3
+        
         if get_phone:
             driver = self.get_driver()
             if not driver:
@@ -513,6 +528,7 @@ class OLXParser:
         results = []
         skipped_old = 0
         skipped_district = 0
+        skipped_error = 0
         
         try:
             for i, url in enumerate(listing_urls):
@@ -521,7 +537,21 @@ class OLXParser:
                 
                 try:
                     if get_phone and driver:
-                        data = self.parse_listing_with_driver(driver, url, get_phone=True)
+                        data = self.parse_listing_with_driver(driver, url, get_phone=True, timeout=20)
+                        
+                        if data.get('error'):
+                            driver_errors += 1
+                            print(f"Driver error ({driver_errors}/{max_driver_errors}): {data.get('error')}")
+                            
+                            if driver_errors >= max_driver_errors:
+                                try:
+                                    driver.quit()
+                                except:
+                                    pass
+                                driver = self.get_driver()
+                                driver_errors = 0
+                                if not driver:
+                                    print("Failed to restart driver, falling back to requests")
                     else:
                         data = self.parse_listing_with_requests(url)
                     
