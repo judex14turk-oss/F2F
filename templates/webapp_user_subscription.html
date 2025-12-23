@@ -438,7 +438,7 @@
                 {{ t.get('webapp_balance', 'Баланс') }}
             </span>
             <div class="limit-values">
-                <div class="limit-base">{{ user.balance or 0 }} сум</div>
+                <div class="limit-base">{{ user.balance or 0 }} {{ t.get('webapp_sum', 'сум') }}</div>
             </div>
         </div>
     </div>
@@ -449,7 +449,7 @@
         {% for tariff in available_tariffs %}
         <div class="tariff-option {% if current_tariff == tariff.id %}current{% endif %}">
             <div class="tariff-option-name">{{ tariff.name }}</div>
-            <div class="tariff-option-price">{{ "{:,}".format(tariff.price).replace(',', ' ') }} сум</div>
+            <div class="tariff-option-price">{{ "{:,}".format(tariff.price).replace(',', ' ') }} {{ t.get('webapp_sum', 'сум') }}</div>
             <div class="tariff-option-details">
                 <div><i class="bi bi-house"></i> {{ tariff.properties }} {{ t.get('webapp_objects_count', 'объявлений') }}</div>
                 <div><i class="bi bi-heart"></i> {{ tariff.likes }} {{ t.get('webapp_likes_day', 'лайков/день') }}</div>
