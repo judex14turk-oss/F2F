@@ -10,6 +10,7 @@ TELEGRAM_BOT_TOKEN = os.environ.get('TELEGRAM_BOT_TOKEN', '')
 from sqlalchemy.orm import joinedload
 from models import SessionLocal, User, Property, Like, Match, Offer, District, ResidentialComplex, PromoCode, TariffSettings, Advertisement, PromoRequest
 from models import UserRole, SellerType, TariffType, PropertyType, PropertyStatus, AdminRole, init_db, get_tashkent_now
+from translations import WEBAPP_TRANSLATIONS
 
 app = Flask(__name__)
 app.secret_key = os.environ.get('SESSION_SECRET', 'real-estate-bot-secret-key')
@@ -780,9 +781,26 @@ def webapp_user_stats():
     
     db.close()
     
+    lang = user.language or 'ru'
+    t = WEBAPP_TRANSLATIONS.get(lang, WEBAPP_TRANSLATIONS['ru'])
+    
+    type_names_loc = {
+        SellerType.OWNER: t.get('webapp_owner', 'Собственник'),
+        SellerType.REALTOR: t.get('webapp_realtor', 'Риелтор'),
+        SellerType.DEVELOPER: t.get('webapp_developer', 'Застройщик')
+    }
+    tariff_names_loc = {
+        TariffType.FREE: t.get('webapp_free', 'Бесплатный'),
+        TariffType.START: "Start",
+        TariffType.STANDARD: "Standard",
+        TariffType.PREMIUM: "Premium"
+    }
+    
     return render_template('webapp_user_stats.html',
         user=user,
         tg_id=tg_id,
+        lang=lang,
+        t=t,
         total_properties=len(properties),
         active_properties=len(active_properties),
         total_views=total_views,
@@ -790,8 +808,8 @@ def webapp_user_stats():
         total_matches=total_matches,
         likes_received=likes_received,
         properties_by_status=properties_by_status,
-        type_name=type_names.get(user.seller_type, 'Не указан'),
-        tariff_name=tariff_names.get(user.tariff, 'Бесплатный'),
+        type_name=type_names_loc.get(user.seller_type, t.get('webapp_not_specified', 'Не указан')),
+        tariff_name=tariff_names_loc.get(user.tariff, t.get('webapp_free', 'Бесплатный')),
         base_properties=base_properties,
         bonus_properties=bonus,
         max_properties=max_properties,
@@ -847,8 +865,13 @@ def webapp_user_objects():
     
     db.close()
     
+    lang = user.language or 'ru'
+    t = WEBAPP_TRANSLATIONS.get(lang, WEBAPP_TRANSLATIONS['ru'])
+    
     return render_template('webapp_user_objects.html',
         tg_id=tg_id,
+        lang=lang,
+        t=t,
         properties=properties_data
     )
 
@@ -1055,10 +1078,21 @@ def webapp_user_subscription():
     
     db.close()
     
+    lang = user.language or 'ru'
+    t = WEBAPP_TRANSLATIONS.get(lang, WEBAPP_TRANSLATIONS['ru'])
+    tariff_names_loc = {
+        TariffType.FREE: t.get('webapp_free', 'Бесплатный'),
+        TariffType.START: "Start",
+        TariffType.STANDARD: "Standard",
+        TariffType.PREMIUM: "Premium"
+    }
+    
     return render_template('webapp_user_subscription.html',
         tg_id=tg_id,
+        lang=lang,
+        t=t,
         user=user,
-        tariff_name=tariff_names.get(user.tariff, 'Бесплатный'),
+        tariff_name=tariff_names_loc.get(user.tariff, t.get('webapp_free', 'Бесплатный')),
         days_left=days_left,
         tariff_status=tariff_status,
         base_properties=base_properties,
@@ -1125,8 +1159,13 @@ def webapp_user_likes():
     
     db.close()
     
+    lang = user.language or 'ru'
+    t = WEBAPP_TRANSLATIONS.get(lang, WEBAPP_TRANSLATIONS['ru'])
+    
     return render_template('webapp_user_likes.html',
         tg_id=tg_id,
+        lang=lang,
+        t=t,
         user=user,
         likes=likes_data
     )
