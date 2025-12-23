@@ -791,8 +791,9 @@ def webapp_user_stats():
     }
     tariff_names_loc = {
         TariffType.FREE: t.get('webapp_free', 'Бесплатный'),
-        TariffType.START: "Start",
-        TariffType.STANDARD: "Standard",
+        TariffType.AGENCY_START: "Agency Start",
+        TariffType.DEVELOPER_PRO: "Developer Pro",
+        TariffType.PRO: "Pro",
         TariffType.PREMIUM: "Premium"
     }
     
@@ -1082,8 +1083,9 @@ def webapp_user_subscription():
     t = WEBAPP_TRANSLATIONS.get(lang, WEBAPP_TRANSLATIONS['ru'])
     tariff_names_loc = {
         TariffType.FREE: t.get('webapp_free', 'Бесплатный'),
-        TariffType.START: "Start",
-        TariffType.STANDARD: "Standard",
+        TariffType.AGENCY_START: "Agency Start",
+        TariffType.DEVELOPER_PRO: "Developer Pro",
+        TariffType.PRO: "Pro",
         TariffType.PREMIUM: "Premium"
     }
     

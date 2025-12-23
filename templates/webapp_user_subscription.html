@@ -1,9 +1,9 @@
 <!DOCTYPE html>
-<html lang="ru">
+<html lang="{{ lang }}">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Подписка</title>
+    <title>{{ t.get('webapp_subscription', 'Подписка') }}</title>
     <script src="https://telegram.org/js/telegram-web-app.js"></script>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.0/font/bootstrap-icons.css" rel="stylesheet">
     <style>
@@ -313,25 +313,25 @@
 </head>
 <body>
     <div class="header">
-        <h1><i class="bi bi-credit-card"></i> Подписка</h1>
+        <h1><i class="bi bi-credit-card"></i> {{ t.get('webapp_subscription', 'Подписка') }}</h1>
     </div>
     
     <div class="nav-tabs">
         <a href="{{ url_for('webapp_user_objects', tg_id=tg_id) }}" class="nav-tab">
             <i class="bi bi-house"></i>
-            Объекты
+            {{ t.get('webapp_objects', 'Объекты') }}
         </a>
         <a href="{{ url_for('webapp_user_subscription', tg_id=tg_id) }}" class="nav-tab active">
             <i class="bi bi-credit-card"></i>
-            Подписка
+            {{ t.get('webapp_subscription', 'Подписка') }}
         </a>
         <a href="{{ url_for('webapp_user_likes', tg_id=tg_id) }}" class="nav-tab">
             <i class="bi bi-heart"></i>
-            Лайки
+            {{ t.get('webapp_likes', 'Лайки') }}
         </a>
         <a href="{{ url_for('webapp_user_stats', tg_id=tg_id) }}" class="nav-tab">
             <i class="bi bi-graph-up"></i>
-            Статистика
+            {{ t.get('webapp_stats', 'Статистика') }}
         </a>
     </div>
     
@@ -339,34 +339,34 @@
     <div class="trial-banner">
         <i class="bi bi-gift"></i>
         <div class="trial-banner-text">
-            <h3>Пробный период</h3>
-            <p>Осталось {{ trial_days }} дней бесплатного доступа</p>
+            <h3>{{ t.get('webapp_trial_period', 'Пробный период') }}</h3>
+            <p>{{ t.get('webapp_trial_days_left', 'Осталось') }} {{ trial_days }} {{ t.get('webapp_days', 'дней') }}</p>
         </div>
     </div>
     {% endif %}
     
-    <div class="section-title"><i class="bi bi-star"></i> Текущий тариф</div>
+    <div class="section-title"><i class="bi bi-star"></i> {{ t.get('webapp_current_tariff', 'Текущий тариф') }}</div>
     
     <div class="tariff-card">
         <div class="tariff-header">
             <span class="tariff-name">{{ tariff_name }}</span>
             <span class="tariff-badge {{ tariff_status }}">
-                {% if tariff_status == 'active' %}Активен{% else %}Истёк{% endif %}
+                {% if tariff_status == 'active' %}{{ t.get('webapp_active', 'Активен') }}{% else %}{{ t.get('webapp_expired', 'Истёк') }}{% endif %}
             </span>
         </div>
         <div class="tariff-info-grid">
             <div class="tariff-info-item">
-                <div class="tariff-info-label">До окончания</div>
+                <div class="tariff-info-label">{{ t.get('webapp_active_until', 'До окончания') }}</div>
                 <div class="tariff-info-value">
                     {% if days_left is not none %}
-                        {{ days_left }} дн.
+                        {{ days_left }} {{ t.get('webapp_days_short', 'дн.') }}
                     {% else %}
-                        Безлимит
+                        {{ t.get('webapp_unlimited', 'Безлимит') }}
                     {% endif %}
                 </div>
             </div>
             <div class="tariff-info-item">
-                <div class="tariff-info-label">Дата окончания</div>
+                <div class="tariff-info-label">{{ t.get('webapp_end_date', 'Дата окончания') }}</div>
                 <div class="tariff-info-value">
                     {% if user.tariff_expires %}
                         {{ user.tariff_expires.strftime('%d.%m.%Y') }}
@@ -378,13 +378,13 @@
         </div>
     </div>
     
-    <div class="section-title"><i class="bi bi-sliders"></i> Лимиты и бонусы</div>
+    <div class="section-title"><i class="bi bi-sliders"></i> {{ t.get('webapp_limits_bonuses', 'Лимиты и бонусы') }}</div>
     
     <div class="limits-card">
         <div class="limit-row">
             <span class="limit-label">
                 <i class="bi bi-house" style="color: #3b82f6;"></i>
-                Объявлений по тарифу
+                {{ t.get('webapp_objects_by_tariff', 'Объявлений по тарифу') }}
             </span>
             <div class="limit-values">
                 <div class="limit-base">{{ base_properties }}</div>
@@ -393,19 +393,19 @@
         <div class="limit-row">
             <span class="limit-label">
                 <i class="bi bi-gift" style="color: #10b981;"></i>
-                Бонусных объявлений
+                {{ t.get('webapp_bonus_objects', 'Бонусных объявлений') }}
             </span>
             <div class="limit-values">
                 <div class="limit-base">+{{ bonus_properties }}</div>
                 {% if bonus_properties > 0 %}
-                <div class="limit-bonus">от промокода</div>
+                <div class="limit-bonus">{{ t.get('webapp_from_promo', 'от промокода') }}</div>
                 {% endif %}
             </div>
         </div>
         <div class="limit-row">
             <span class="limit-label">
                 <i class="bi bi-calculator" style="color: #8b5cf6;"></i>
-                Всего объявлений
+                {{ t.get('webapp_total_objects', 'Всего объявлений') }}
             </span>
             <div class="limit-values">
                 <div class="limit-base">{{ base_properties + bonus_properties }}</div>
@@ -414,7 +414,7 @@
         <div class="limit-row">
             <span class="limit-label">
                 <i class="bi bi-heart" style="color: #ef4444;"></i>
-                Лайков в день
+                {{ t.get('webapp_likes_per_day', 'Лайков в день') }}
             </span>
             <div class="limit-values">
                 <div class="limit-base">{{ base_likes }}</div>
@@ -423,19 +423,19 @@
         <div class="limit-row">
             <span class="limit-label">
                 <i class="bi bi-heart-fill" style="color: #f59e0b;"></i>
-                Бонусных лайков
+                {{ t.get('webapp_bonus_likes', 'Бонусных лайков') }}
             </span>
             <div class="limit-values">
                 <div class="limit-base">+{{ bonus_likes }}</div>
                 {% if bonus_likes > 0 %}
-                <div class="limit-bonus">от промокода</div>
+                <div class="limit-bonus">{{ t.get('webapp_from_promo', 'от промокода') }}</div>
                 {% endif %}
             </div>
         </div>
         <div class="limit-row">
             <span class="limit-label">
                 <i class="bi bi-wallet2" style="color: #06b6d4;"></i>
-                Баланс
+                {{ t.get('webapp_balance', 'Баланс') }}
             </span>
             <div class="limit-values">
                 <div class="limit-base">{{ user.balance or 0 }} сум</div>
@@ -443,7 +443,7 @@
         </div>
     </div>
     
-    <div class="section-title"><i class="bi bi-bag-check"></i> Купить тариф</div>
+    <div class="section-title"><i class="bi bi-bag-check"></i> {{ t.get('webapp_choose_tariff', 'Купить тариф') }}</div>
     
     <div class="tariffs-grid">
         {% for tariff in available_tariffs %}
@@ -451,22 +451,22 @@
             <div class="tariff-option-name">{{ tariff.name }}</div>
             <div class="tariff-option-price">{{ "{:,}".format(tariff.price).replace(',', ' ') }} сум</div>
             <div class="tariff-option-details">
-                <div><i class="bi bi-house"></i> {{ tariff.properties }} объявлений</div>
-                <div><i class="bi bi-heart"></i> {{ tariff.likes }} лайков/день</div>
-                <div><i class="bi bi-calendar"></i> {{ tariff.duration }} дней</div>
+                <div><i class="bi bi-house"></i> {{ tariff.properties }} {{ t.get('webapp_objects_count', 'объявлений') }}</div>
+                <div><i class="bi bi-heart"></i> {{ tariff.likes }} {{ t.get('webapp_likes_day', 'лайков/день') }}</div>
+                <div><i class="bi bi-calendar"></i> {{ tariff.duration }} {{ t.get('webapp_days', 'дней') }}</div>
             </div>
             {% if current_tariff == tariff.id and tariff_status == 'active' %}
-            <button class="btn-buy current" disabled>Активен</button>
+            <button class="btn-buy current" disabled>{{ t.get('webapp_current', 'Активен') }}</button>
             {% else %}
             <button class="btn-buy {% if tariff.id == 'PREMIUM' %}premium{% else %}primary{% endif %}" onclick="buyTariff('{{ tariff.id }}', '{{ tariff.name }}', {{ tariff.price }})">
-                Купить
+                {{ t.get('webapp_select', 'Купить') }}
             </button>
             {% endif %}
         </div>
         {% endfor %}
     </div>
     
-    <div class="section-title"><i class="bi bi-clock-history"></i> История операций</div>
+    <div class="section-title"><i class="bi bi-clock-history"></i> {{ t.get('webapp_history', 'История операций') }}</div>
     
     <div class="history-card">
         {% if payment_history %}
@@ -482,7 +482,7 @@
         {% else %}
             <div class="empty-history">
                 <i class="bi bi-inbox"></i>
-                <p>История операций пуста</p>
+                <p>{{ t.get('webapp_empty_history', 'История операций пуста') }}</p>
             </div>
         {% endif %}
     </div>
