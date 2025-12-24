@@ -3471,7 +3471,11 @@ async def quick_district_selected(message: types.Message, state: FSMContext):
         return
     
     district = message.text.replace("✅ ", "").strip()
-    if district in TASHKENT_DISTRICTS:
+    db = SessionLocal()
+    valid_districts = [d.name for d in db.query(District).all()]
+    db.close()
+    
+    if district in valid_districts:
         if district in selected_districts:
             selected_districts.remove(district)
         else:
