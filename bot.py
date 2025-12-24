@@ -109,6 +109,37 @@ def validate_number(text):
     return None
 
 
+def get_district_keyboard(selected_districts: list = None):
+    """Генерирует клавиатуру для выбора районов с галочками для выбранных"""
+    if selected_districts is None:
+        selected_districts = []
+    
+    db = SessionLocal()
+    districts = db.query(District).all()
+    db.close()
+    
+    keyboard_buttons = []
+    row = []
+    for district in districts:
+        if district.name in selected_districts:
+            button_text = f"✅ {district.name}"
+        else:
+            button_text = district.name
+        row.append(KeyboardButton(text=button_text))
+        if len(row) == 2:
+            keyboard_buttons.append(row)
+            row = []
+    if row:
+        keyboard_buttons.append(row)
+    
+    if selected_districts:
+        keyboard_buttons.append([KeyboardButton(text="✅ Готово")])
+    keyboard_buttons.append([KeyboardButton(text="Любой район")])
+    keyboard_buttons.append([KeyboardButton(text="⬅️ Назад")])
+    
+    return ReplyKeyboardMarkup(keyboard=keyboard_buttons, resize_keyboard=True)
+
+
 def get_db():
     db = SessionLocal()
     try:
@@ -313,27 +344,11 @@ async def back_to_role_from_deal(message: types.Message, state: FSMContext):
 async def process_buyer_deal_type(message: types.Message, state: FSMContext):
     deal_map = {"🏷 купить": "sale", "🔑 снять": "rent"}
     deal_type = deal_map.get(message.text.lower(), "sale")
-    await state.update_data(deal_type=deal_type)
-    
-    db = SessionLocal()
-    districts = db.query(District).all()
-    db.close()
-    
-    keyboard_buttons = []
-    row = []
-    for district in districts:
-        row.append(KeyboardButton(text=district.name))
-        if len(row) == 2:
-            keyboard_buttons.append(row)
-            row = []
-    if row:
-        keyboard_buttons.append(row)
-    keyboard_buttons.append([KeyboardButton(text="Любой район")])
-    keyboard_buttons.append([KeyboardButton(text="⬅️ Назад")])
+    await state.update_data(deal_type=deal_type, selected_districts=[])
     
     await message.answer(
-        "📍 Выберите район:",
-        reply_markup=ReplyKeyboardMarkup(keyboard=keyboard_buttons, resize_keyboard=True)
+        "📍 Выберите район (можно выбрать несколько):",
+        reply_markup=get_district_keyboard([])
     )
     await state.set_state(RegistrationStates.buyer_district)
 
@@ -396,27 +411,11 @@ async def process_housing_type(message: types.Message, state: FSMContext):
         "любой тип": "Любой"
     }
     housing_type = housing_map.get(message.text.lower(), message.text)
-    await state.update_data(housing_type=housing_type)
-    
-    db = SessionLocal()
-    districts = db.query(District).all()
-    db.close()
-    
-    keyboard_buttons = []
-    row = []
-    for district in districts:
-        row.append(KeyboardButton(text=district.name))
-        if len(row) == 2:
-            keyboard_buttons.append(row)
-            row = []
-    if row:
-        keyboard_buttons.append(row)
-    keyboard_buttons.append([KeyboardButton(text="Любой район")])
-    keyboard_buttons.append([KeyboardButton(text="⬅️ Назад")])
+    await state.update_data(housing_type=housing_type, selected_districts=[])
     
     await message.answer(
-        "📍 Выберите район:",
-        reply_markup=ReplyKeyboardMarkup(keyboard=keyboard_buttons, resize_keyboard=True)
+        "📍 Выберите район (можно выбрать несколько):",
+        reply_markup=get_district_keyboard([])
     )
     await state.set_state(RegistrationStates.buyer_district)
 
@@ -437,45 +436,67 @@ async def back_to_deal_type(message: types.Message, state: FSMContext):
 
 @dp.message(RegistrationStates.buyer_district)
 async def process_district(message: types.Message, state: FSMContext):
-    district_name = message.text if message.text != "Любой район" else "Любой"
-    await state.update_data(district=district_name)
+    data = await state.get_data()
+    selected_districts = data.get('selected_districts', [])
     
-    keyboard = ReplyKeyboardMarkup(
-        keyboard=[
-            [KeyboardButton(text="📱 Отправить номер", request_contact=True)],
-            [KeyboardButton(text="⬅️ Назад")]
-        ],
-        resize_keyboard=True
-    )
+    if message.text == "Любой район":
+        await state.update_data(district="Любой", selected_districts=[])
+        keyboard = ReplyKeyboardMarkup(
+            keyboard=[
+                [KeyboardButton(text="📱 Отправить номер", request_contact=True)],
+                [KeyboardButton(text="⬅️ Назад")]
+            ],
+            resize_keyboard=True
+        )
+        await message.answer(
+            "📞 Поделитесь номером телефона, чтобы продавцы могли с вами связаться:",
+            reply_markup=keyboard
+        )
+        await state.set_state(RegistrationStates.buyer_phone)
+        return
     
+    if message.text == "✅ Готово":
+        if selected_districts:
+            district_str = ", ".join(selected_districts)
+            await state.update_data(district=district_str)
+            keyboard = ReplyKeyboardMarkup(
+                keyboard=[
+                    [KeyboardButton(text="📱 Отправить номер", request_contact=True)],
+                    [KeyboardButton(text="⬅️ Назад")]
+                ],
+                resize_keyboard=True
+            )
+            await message.answer(
+                "📞 Поделитесь номером телефона, чтобы продавцы могли с вами связаться:",
+                reply_markup=keyboard
+            )
+            await state.set_state(RegistrationStates.buyer_phone)
+        return
+    
+    district_name = message.text.replace("✅ ", "")
+    
+    if district_name in selected_districts:
+        selected_districts.remove(district_name)
+    else:
+        selected_districts.append(district_name)
+    
+    await state.update_data(selected_districts=selected_districts)
+    
+    selected_text = ", ".join(selected_districts) if selected_districts else "не выбрано"
     await message.answer(
-        "📞 Поделитесь номером телефона, чтобы продавцы могли с вами связаться:",
-        reply_markup=keyboard
+        f"📍 Выберите район (можно выбрать несколько):\n\nВыбрано: {selected_text}",
+        reply_markup=get_district_keyboard(selected_districts)
     )
-    await state.set_state(RegistrationStates.buyer_phone)
 
 
 @dp.message(F.text == "⬅️ Назад", RegistrationStates.buyer_budget)
 async def back_to_district(message: types.Message, state: FSMContext):
-    db = SessionLocal()
-    districts = db.query(District).all()
-    db.close()
-    
-    keyboard_buttons = []
-    row = []
-    for district in districts:
-        row.append(KeyboardButton(text=district.name))
-        if len(row) == 2:
-            keyboard_buttons.append(row)
-            row = []
-    if row:
-        keyboard_buttons.append(row)
-    keyboard_buttons.append([KeyboardButton(text="Любой район")])
-    keyboard_buttons.append([KeyboardButton(text="⬅️ Назад")])
+    data = await state.get_data()
+    selected_districts = data.get('selected_districts', [])
     
     await message.answer(
-        "📍 Выберите район:",
-        reply_markup=ReplyKeyboardMarkup(keyboard=keyboard_buttons, resize_keyboard=True)
+        "📍 Выберите район (можно выбрать несколько):",
+        reply_markup=get_district_keyboard(selected_districts)
     )
     await state.set_state(RegistrationStates.buyer_district)
 
@@ -544,25 +565,13 @@ async def process_payment(message: types.Message, state: FSMContext):
 
 @dp.message(F.text == "⬅️ Назад", RegistrationStates.buyer_phone)
 async def back_to_district_from_phone(message: types.Message, state: FSMContext):
-    db = SessionLocal()
-    districts = db.query(District).all()
-    db.close()
+    data = await state.get_data()
+    selected_districts = data.get('selected_districts', [])
     
-    keyboard_buttons = []
-    row = []
-    for district in districts:
-        row.append(KeyboardButton(text=district.name))
-        if len(row) == 2:
-            keyboard_buttons.append(row)
-            row = []
-    if row:
-        keyboard_buttons.append(row)
-    keyboard_buttons.append([KeyboardButton(text="Любой район")])
-    keyboard_buttons.append([KeyboardButton(text="⬅️ Назад")])
-    
+    selected_text = ", ".join(selected_districts) if selected_districts else "не выбрано"
     await message.answer(
-        "📍 Выберите район:",
-        reply_markup=ReplyKeyboardMarkup(keyboard=keyboard_buttons, resize_keyboard=True)
+        f"📍 Выберите район (можно выбрать несколько):\n\nВыбрано: {selected_text}",
+        reply_markup=get_district_keyboard(selected_districts)
     )
     await state.set_state(RegistrationStates.buyer_district)
 
