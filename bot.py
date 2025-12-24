@@ -1672,10 +1672,16 @@ async def show_next_property_reply(message, state):
         
         keyboard = get_buyer_menu(lang)
         
+        quick_actions = InlineKeyboardMarkup(inline_keyboard=[
+            [InlineKeyboardButton(text="📍 Изменить район" if lang == 'ru' else "📍 Tumanni o'zgartirish", callback_data="quick_change_district")],
+            [InlineKeyboardButton(text="💰 Изменить бюджет" if lang == 'ru' else "💰 Byudjetni o'zgartirish", callback_data="quick_change_budget")]
+        ])
+        
         await message.answer(
             get_text('all_properties_viewed', lang),
-            reply_markup=keyboard
+            reply_markup=quick_actions
         )
+        await message.answer("👇", reply_markup=keyboard)
         await state.clear()
         return
     
