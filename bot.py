@@ -3372,6 +3372,7 @@ class SearchSettingsStates(StatesGroup):
     prop_type = State()
     rooms = State()
     floor = State()
+    floor_custom = State()
     district = State()
     budget_type = State()
     budget_single = State()
@@ -3521,6 +3522,7 @@ async def settings_rooms_selected(message: types.Message, state: FSMContext):
             [KeyboardButton(text=get_text('floor_2_4', lang))],
             [KeyboardButton(text=get_text('floor_5_7', lang))],
             [KeyboardButton(text=get_text('floor_8_plus', lang))],
+            [KeyboardButton(text=get_text('floor_custom', lang))],
             [KeyboardButton(text=get_text('back', lang))]
         ],
         resize_keyboard=True
@@ -3552,6 +3554,16 @@ async def settings_floor_selected(message: types.Message, state: FSMContext):
     data = await state.get_data()
     lang = data.get('user_lang', 'ru')
     
+    custom_texts = [get_text('floor_custom', 'ru'), get_text('floor_custom', 'uz')]
+    if message.text in custom_texts:
+        keyboard = ReplyKeyboardMarkup(
+            keyboard=[[KeyboardButton(text=get_text('back', lang))]],
+            resize_keyboard=True
+        )
+        await message.answer(get_text('enter_floor_custom', lang), reply_markup=keyboard)
+        await state.set_state(SearchSettingsStates.floor_custom)
+        return
+    
     floor_map = {
         get_text('floor_any', 'ru').lower(): "any",
         get_text('floor_any', 'uz').lower(): "any",
@@ -3577,6 +3589,57 @@ async def settings_floor_selected(message: types.Message, state: FSMContext):
     await state.set_state(SearchSettingsStates.district)
 
 
+@dp.message(F.text.in_(["⬅️ Назад", "⬅️ Orqaga"]), SearchSettingsStates.floor_custom)
+async def settings_back_to_floor_from_custom(message: types.Message, state: FSMContext):
+    data = await state.get_data()
+    lang = data.get('user_lang', 'ru')
+    
+    keyboard = ReplyKeyboardMarkup(
+        keyboard=[
+            [KeyboardButton(text=get_text('floor_any', lang))],
+            [KeyboardButton(text=get_text('floor_1', lang))],
+            [KeyboardButton(text=get_text('floor_2_4', lang))],
+            [KeyboardButton(text=get_text('floor_5_7', lang))],
+            [KeyboardButton(text=get_text('floor_8_plus', lang))],
+            [KeyboardButton(text=get_text('floor_custom', lang))],
+            [KeyboardButton(text=get_text('back', lang))]
+        ],
+        resize_keyboard=True
+    )
+    await message.answer(get_text('choose_floor', lang), reply_markup=keyboard)
+    await state.set_state(SearchSettingsStates.floor)
+
+
+@dp.message(SearchSettingsStates.floor_custom)
+async def settings_floor_custom_entered(message: types.Message, state: FSMContext):
+    data = await state.get_data()
+    lang = data.get('user_lang', 'ru')
+    
+    text = message.text.strip()
+    
+    import re
+    if re.match(r'^\d+$', text):
+        floor = text
+    elif re.match(r'^\d+-\d+$', text):
+        parts = text.split('-')
+        if int(parts[0]) <= int(parts[1]):
+            floor = text
+        else:
+            await message.answer(get_text('invalid_floor', lang))
+            return
+    else:
+        await message.answer(get_text('invalid_floor', lang))
+        return
+    
+    await state.update_data(search_floor=floor, selected_districts=[])
+    
+    await message.answer(
+        get_text('choose_district', lang) + "\n\n" + get_text('can_select_multiple', lang),
+        reply_markup=get_district_keyboard([], lang)
+    )
+    await state.set_state(SearchSettingsStates.district)
+
+
 @dp.message(F.text.in_(["⬅️ Назад", "⬅️ Orqaga"]), SearchSettingsStates.district)
 async def settings_back_to_floor(message: types.Message, state: FSMContext):
     data = await state.get_data()
@@ -3589,6 +3652,7 @@ async def settings_back_to_floor(message: types.Message, state: FSMContext):
             [KeyboardButton(text=get_text('floor_2_4', lang))],
             [KeyboardButton(text=get_text('floor_5_7', lang))],
             [KeyboardButton(text=get_text('floor_8_plus', lang))],
+            [KeyboardButton(text=get_text('floor_custom', lang))],
             [KeyboardButton(text=get_text('back', lang))]
         ],
         resize_keyboard=True
