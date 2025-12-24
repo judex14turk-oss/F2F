@@ -178,6 +178,9 @@ TRANSLATIONS = {
         'add_bio': "📝 Добавьте описание к вашей анкете (до 320 символов):\n\nНапример: \"Ищу для молодой семьи с ребёнком, желательно рядом с метро\"",
         'current_bio': "Текущее описание:",
         'settings_saved': "✅ Настройки сохранены!\n\nТеперь вы будете видеть квартиры по новым критериям.",
+        'can_select_multiple': "Можно выбрать несколько районов",
+        'selected': "Выбрано",
+        'not_selected': "не выбрано",
     },
     'uz': {
         'welcome': "👋 F2F ga xush kelibsiz!\n\nXaridorlar yoki kvartiralarni bitta svaypda toping.\n\nRolingizni tanlang:",
@@ -358,6 +361,9 @@ TRANSLATIONS = {
         'add_bio': "📝 Anketangizga tavsif qo'shing (320 belgigacha):\n\nMasalan: \"Yosh oila uchun qidiraman, metro yaqinida bo'lsa yaxshi\"",
         'current_bio': "Joriy tavsif:",
         'settings_saved': "✅ Sozlamalar saqlandi!\n\nEndi siz yangi mezonlar bo'yicha kvartiralarni ko'rasiz.",
+        'can_select_multiple': "Bir nechta tuman tanlashingiz mumkin",
+        'selected': "Tanlandi",
+        'not_selected': "tanlanmagan",
         
         'webapp_detailed_stats': "Batafsil statistika",
         'webapp_objects': "Obyektlar",

@@ -109,7 +109,7 @@ def validate_number(text):
     return None
 
 
-def get_district_keyboard(selected_districts: list = None):
+def get_district_keyboard(selected_districts: list = None, lang: str = 'ru'):
     """Генерирует клавиатуру для выбора районов с галочками для выбранных"""
     if selected_districts is None:
         selected_districts = []
@@ -134,8 +134,8 @@ def get_district_keyboard(selected_districts: list = None):
     
     if selected_districts:
         keyboard_buttons.append([KeyboardButton(text="✅ Готово")])
-    keyboard_buttons.append([KeyboardButton(text="Любой район")])
-    keyboard_buttons.append([KeyboardButton(text="⬅️ Назад")])
+    keyboard_buttons.append([KeyboardButton(text=get_text('any_district', lang))])
+    keyboard_buttons.append([KeyboardButton(text=get_text('back', lang))])
     
     return ReplyKeyboardMarkup(keyboard=keyboard_buttons, resize_keyboard=True)
 
@@ -3511,26 +3511,12 @@ async def settings_rooms_selected(message: types.Message, state: FSMContext):
     if not rooms:
         return
     
-    await state.update_data(search_rooms=rooms)
+    await state.update_data(search_rooms=rooms, selected_districts=[])
     
-    db = SessionLocal()
-    districts = db.query(District).all()
-    db.close()
-    
-    keyboard_buttons = []
-    row = []
-    for district in districts:
-        row.append(KeyboardButton(text=district.name))
-        if len(row) == 2:
-            keyboard_buttons.append(row)
-            row = []
-    if row:
-        keyboard_buttons.append(row)
-    keyboard_buttons.append([KeyboardButton(text=get_text('any_district', lang))])
-    keyboard_buttons.append([KeyboardButton(text=get_text('back', lang))])
-    
-    keyboard = ReplyKeyboardMarkup(keyboard=keyboard_buttons, resize_keyboard=True)
-    await message.answer(get_text('choose_district', lang), reply_markup=keyboard)
+    await message.answer(
+        get_text('choose_district', lang) + "\n\n" + get_text('can_select_multiple', lang),
+        reply_markup=get_district_keyboard([], lang)
+    )
     await state.set_state(SearchSettingsStates.district)
 
 
@@ -3556,46 +3542,67 @@ async def settings_back_to_rooms(message: types.Message, state: FSMContext):
 async def settings_district_selected(message: types.Message, state: FSMContext):
     data = await state.get_data()
     lang = data.get('user_lang', 'ru')
+    selected_districts = data.get('selected_districts', [])
     
     any_district_texts = [get_text('any_district', 'ru'), get_text('any_district', 'uz')]
-    district = message.text if message.text not in any_district_texts else "Любой"
-    await state.update_data(search_district=district)
     
-    keyboard = ReplyKeyboardMarkup(
-        keyboard=[
-            [KeyboardButton(text=get_text('budget_single', lang))],
-            [KeyboardButton(text=get_text('budget_range', lang))],
-            [KeyboardButton(text=get_text('back', lang))]
-        ],
-        resize_keyboard=True
+    if message.text in any_district_texts:
+        await state.update_data(search_district="Любой", selected_districts=[])
+        keyboard = ReplyKeyboardMarkup(
+            keyboard=[
+                [KeyboardButton(text=get_text('budget_single', lang))],
+                [KeyboardButton(text=get_text('budget_range', lang))],
+                [KeyboardButton(text=get_text('back', lang))]
+            ],
+            resize_keyboard=True
+        )
+        await message.answer(get_text('budget_type_question', lang), reply_markup=keyboard)
+        await state.set_state(SearchSettingsStates.budget_type)
+        return
+    
+    if message.text == "✅ Готово":
+        if selected_districts:
+            district_str = ", ".join(selected_districts)
+            await state.update_data(search_district=district_str)
+            keyboard = ReplyKeyboardMarkup(
+                keyboard=[
+                    [KeyboardButton(text=get_text('budget_single', lang))],
+                    [KeyboardButton(text=get_text('budget_range', lang))],
+                    [KeyboardButton(text=get_text('back', lang))]
+                ],
+                resize_keyboard=True
+            )
+            await message.answer(get_text('budget_type_question', lang), reply_markup=keyboard)
+            await state.set_state(SearchSettingsStates.budget_type)
+        return
+    
+    district_name = message.text.replace("✅ ", "")
+    
+    if district_name in selected_districts:
+        selected_districts.remove(district_name)
+    else:
+        selected_districts.append(district_name)
+    
+    await state.update_data(selected_districts=selected_districts)
+    
+    selected_text = ", ".join(selected_districts) if selected_districts else get_text('not_selected', lang)
+    await message.answer(
+        f"{get_text('choose_district', lang)}\n\n{get_text('selected', lang)}: {selected_text}",
+        reply_markup=get_district_keyboard(selected_districts, lang)
     )
-    await message.answer(get_text('budget_type_question', lang), reply_markup=keyboard)
-    await state.set_state(SearchSettingsStates.budget_type)
 
 
 @dp.message(F.text.in_(["⬅️ Назад", "⬅️ Orqaga"]), SearchSettingsStates.budget_type)
 async def settings_back_to_district(message: types.Message, state: FSMContext):
     data = await state.get_data()
     lang = data.get('user_lang', 'ru')
+    selected_districts = data.get('selected_districts', [])
     
-    db = SessionLocal()
-    districts = db.query(District).all()
-    db.close()
-    
-    keyboard_buttons = []
-    row = []
-    for district in districts:
-        row.append(KeyboardButton(text=district.name))
-        if len(row) == 2:
-            keyboard_buttons.append(row)
-            row = []
-    if row:
-        keyboard_buttons.append(row)
-    keyboard_buttons.append([KeyboardButton(text=get_text('any_district', lang))])
-    keyboard_buttons.append([KeyboardButton(text=get_text('back', lang))])
-    
-    keyboard = ReplyKeyboardMarkup(keyboard=keyboard_buttons, resize_keyboard=True)
-    await message.answer(get_text('choose_district', lang), reply_markup=keyboard)
+    selected_text = ", ".join(selected_districts) if selected_districts else get_text('not_selected', lang)
+    await message.answer(
+        f"{get_text('choose_district', lang)}\n\n{get_text('selected', lang)}: {selected_text}",
+        reply_markup=get_district_keyboard(selected_districts, lang)
+    )
     await state.set_state(SearchSettingsStates.district)
 
 
