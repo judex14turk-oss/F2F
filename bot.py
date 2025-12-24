@@ -3796,14 +3796,18 @@ async def settings_bio_entered(message: types.Message, state: FSMContext):
     lang = data.get('user_lang', 'ru')
     
     skip_texts = [get_text('skip', 'ru'), get_text('skip', 'uz')]
-    bio = message.text.strip() if message.text not in skip_texts else ""
-    
-    if len(bio) > 320:
-        await message.answer(get_text('invalid_budget', lang))
-        return
+    is_skip = message.text in skip_texts
     
     db = SessionLocal()
     user = db.query(User).filter(User.telegram_id == message.from_user.id).first()
+    
+    if not is_skip:
+        bio = message.text.strip()
+        if len(bio) > 320:
+            db.close()
+            await message.answer(get_text('bio_too_long', lang))
+            return
+        user.buyer_bio = bio
     
     deal_type = data.get("search_deal_type", "buy")
     prop_type = data.get("search_prop_type", "apartment")
@@ -3818,7 +3822,6 @@ async def settings_bio_entered(message: types.Message, state: FSMContext):
     user.search_district = district
     user.search_payment_type = f"{deal_type}_{prop_type}"
     user.search_deal_type = "sale" if deal_type == "buy" else "rent"
-    user.buyer_bio = bio if bio else None
     db.commit()
     db.close()
     
