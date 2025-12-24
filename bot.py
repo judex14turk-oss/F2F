@@ -3437,7 +3437,7 @@ async def quick_district_selected(message: types.Message, state: FSMContext):
     lang = data.get('user_lang', 'ru')
     selected_districts = data.get('selected_districts', [])
     
-    done_texts = [get_text('done_selecting', 'ru'), get_text('done_selecting', 'uz')]
+    done_texts = [get_text('done', 'ru'), get_text('done', 'uz')]
     if message.text in done_texts:
         if selected_districts:
             db = SessionLocal()
