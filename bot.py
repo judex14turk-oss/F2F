@@ -3371,6 +3371,7 @@ class SearchSettingsStates(StatesGroup):
     deal_type = State()
     prop_type = State()
     rooms = State()
+    floor = State()
     district = State()
     budget_type = State()
     budget_single = State()
@@ -3511,7 +3512,63 @@ async def settings_rooms_selected(message: types.Message, state: FSMContext):
     if not rooms:
         return
     
-    await state.update_data(search_rooms=rooms, selected_districts=[])
+    await state.update_data(search_rooms=rooms)
+    
+    keyboard = ReplyKeyboardMarkup(
+        keyboard=[
+            [KeyboardButton(text=get_text('floor_any', lang))],
+            [KeyboardButton(text=get_text('floor_1', lang))],
+            [KeyboardButton(text=get_text('floor_2_4', lang))],
+            [KeyboardButton(text=get_text('floor_5_7', lang))],
+            [KeyboardButton(text=get_text('floor_8_plus', lang))],
+            [KeyboardButton(text=get_text('back', lang))]
+        ],
+        resize_keyboard=True
+    )
+    await message.answer(get_text('choose_floor', lang), reply_markup=keyboard)
+    await state.set_state(SearchSettingsStates.floor)
+
+
+@dp.message(F.text.in_(["⬅️ Назад", "⬅️ Orqaga"]), SearchSettingsStates.floor)
+async def settings_back_to_rooms_from_floor(message: types.Message, state: FSMContext):
+    data = await state.get_data()
+    lang = data.get('user_lang', 'ru')
+    
+    keyboard = ReplyKeyboardMarkup(
+        keyboard=[
+            [KeyboardButton(text="1"), KeyboardButton(text="2"), KeyboardButton(text="3")],
+            [KeyboardButton(text="4+"), KeyboardButton(text="Студия" if lang == 'ru' else "Studiya")],
+            [KeyboardButton(text=get_text('any_rooms', lang))],
+            [KeyboardButton(text=get_text('back', lang))]
+        ],
+        resize_keyboard=True
+    )
+    await message.answer(get_text('choose_rooms_count', lang), reply_markup=keyboard)
+    await state.set_state(SearchSettingsStates.rooms)
+
+
+@dp.message(SearchSettingsStates.floor)
+async def settings_floor_selected(message: types.Message, state: FSMContext):
+    data = await state.get_data()
+    lang = data.get('user_lang', 'ru')
+    
+    floor_map = {
+        get_text('floor_any', 'ru').lower(): "any",
+        get_text('floor_any', 'uz').lower(): "any",
+        get_text('floor_1', 'ru').lower(): "1",
+        get_text('floor_1', 'uz').lower(): "1",
+        get_text('floor_2_4', 'ru').lower(): "2-4",
+        get_text('floor_2_4', 'uz').lower(): "2-4",
+        get_text('floor_5_7', 'ru').lower(): "5-7",
+        get_text('floor_5_7', 'uz').lower(): "5-7",
+        get_text('floor_8_plus', 'ru').lower(): "8+",
+        get_text('floor_8_plus', 'uz').lower(): "8+",
+    }
+    floor = floor_map.get(message.text.lower())
+    if not floor:
+        return
+    
+    await state.update_data(search_floor=floor, selected_districts=[])
     
     await message.answer(
         get_text('choose_district', lang) + "\n\n" + get_text('can_select_multiple', lang),
@@ -3521,21 +3578,23 @@ async def settings_rooms_selected(message: types.Message, state: FSMContext):
 
 
 @dp.message(F.text.in_(["⬅️ Назад", "⬅️ Orqaga"]), SearchSettingsStates.district)
-async def settings_back_to_rooms(message: types.Message, state: FSMContext):
+async def settings_back_to_floor(message: types.Message, state: FSMContext):
     data = await state.get_data()
     lang = data.get('user_lang', 'ru')
     
     keyboard = ReplyKeyboardMarkup(
         keyboard=[
-            [KeyboardButton(text="1"), KeyboardButton(text="2"), KeyboardButton(text="3")],
-            [KeyboardButton(text="4+"), KeyboardButton(text=get_text('studio', lang))],
-            [KeyboardButton(text=get_text('any_rooms', lang))],
+            [KeyboardButton(text=get_text('floor_any', lang))],
+            [KeyboardButton(text=get_text('floor_1', lang))],
+            [KeyboardButton(text=get_text('floor_2_4', lang))],
+            [KeyboardButton(text=get_text('floor_5_7', lang))],
+            [KeyboardButton(text=get_text('floor_8_plus', lang))],
             [KeyboardButton(text=get_text('back', lang))]
         ],
         resize_keyboard=True
     )
-    await message.answer(get_text('choose_rooms_count', lang), reply_markup=keyboard)
-    await state.set_state(SearchSettingsStates.rooms)
+    await message.answer(get_text('choose_floor', lang), reply_markup=keyboard)
+    await state.set_state(SearchSettingsStates.floor)
 
 
 @dp.message(SearchSettingsStates.district)
@@ -3812,6 +3871,7 @@ async def settings_bio_entered(message: types.Message, state: FSMContext):
     deal_type = data.get("search_deal_type", "buy")
     prop_type = data.get("search_prop_type", "apartment")
     rooms = data.get("search_rooms", "any")
+    floor = data.get("search_floor", "any")
     district = data.get("search_district", "Любой")
     budget_min = data.get("search_budget_min", 0)
     budget_max = data.get("search_budget_max", 0)
@@ -3819,6 +3879,7 @@ async def settings_bio_entered(message: types.Message, state: FSMContext):
     user.search_budget_min = int(budget_min) if budget_min else None
     user.search_budget_max = int(budget_max) if budget_max else None
     user.search_rooms = rooms
+    user.search_floor = floor
     user.search_district = district
     user.search_payment_type = f"{deal_type}_{prop_type}"
     user.search_deal_type = "sale" if deal_type == "buy" else "rent"

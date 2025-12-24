@@ -71,6 +71,7 @@ class User(Base):
     created_at = Column(DateTime, default=get_tashkent_now)
     
     search_rooms = Column(String(50))
+    search_floor = Column(String(20))
     search_district = Column(String(200))
     search_budget_min = Column(Integer)
     search_budget_max = Column(Integer)
