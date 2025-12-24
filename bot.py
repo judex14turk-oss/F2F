@@ -1359,6 +1359,23 @@ async def view_properties(message: types.Message, state: FSMContext):
     if user.search_budget_min:
         query = query.filter(Property.price >= user.search_budget_min)
     
+    if user.search_floor and user.search_floor not in ["any", "Любой", ""]:
+        floor_filter = user.search_floor
+        if floor_filter == "1":
+            query = query.filter(Property.floor == 1)
+        elif floor_filter == "2-4":
+            query = query.filter(Property.floor >= 2, Property.floor <= 4)
+        elif floor_filter == "5-7":
+            query = query.filter(Property.floor >= 5, Property.floor <= 7)
+        elif floor_filter == "8+":
+            query = query.filter(Property.floor >= 8)
+        elif "-" in floor_filter:
+            parts = floor_filter.split("-")
+            if len(parts) == 2 and parts[0].isdigit() and parts[1].isdigit():
+                query = query.filter(Property.floor >= int(parts[0]), Property.floor <= int(parts[1]))
+        elif floor_filter.isdigit():
+            query = query.filter(Property.floor == int(floor_filter))
+    
     if liked_ids:
         query = query.filter(Property.id.notin_(liked_ids))
     if skipped_ids:
