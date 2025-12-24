@@ -1404,10 +1404,21 @@ async def view_properties(message: types.Message, state: FSMContext):
     db.close()
     
     if not properties:
+        lang = user.language or 'ru'
+        quick_actions = InlineKeyboardMarkup(inline_keyboard=[
+            [InlineKeyboardButton(text="📍 Изменить район" if lang == 'ru' else "📍 Tumanni o'zgartirish", callback_data="quick_change_district")],
+            [InlineKeyboardButton(text="💰 Изменить бюджет" if lang == 'ru' else "💰 Byudjetni o'zgartirish", callback_data="quick_change_budget")]
+        ])
         if liked_ids or skipped_ids:
-            await message.answer("✅ Вы просмотрели все доступные квартиры!\n\nПопробуйте позже — появятся новые объекты.")
+            await message.answer(
+                "✅ Вы просмотрели все доступные квартиры!\n\nПопробуйте позже — появятся новые объекты." if lang == 'ru' else "✅ Siz barcha mavjud kvartiralarni ko'rib chiqdingiz!\n\nKeyinroq urinib ko'ring — yangi obyektlar paydo bo'ladi.",
+                reply_markup=quick_actions
+            )
         else:
-            await message.answer("😔 Пока нет квартир по вашим критериям. Попробуйте позже!")
+            await message.answer(
+                "😔 Пока нет квартир по вашим критериям. Попробуйте позже!" if lang == 'ru' else "😔 Hozircha sizning mezonlaringiz bo'yicha kvartiralar yo'q. Keyinroq urinib ko'ring!",
+                reply_markup=quick_actions
+            )
         return
     
     await state.update_data(properties=[p.id for p in properties], current_index=0)
@@ -3382,6 +3393,184 @@ async def my_likes(message: types.Message):
             )
     
     await message.answer(text)
+
+
+class QuickChangeStates(StatesGroup):
+    district = State()
+    budget = State()
+
+
+@dp.callback_query(F.data == "quick_change_district")
+async def quick_change_district_callback(callback: types.CallbackQuery, state: FSMContext):
+    db = SessionLocal()
+    user = db.query(User).filter(User.telegram_id == callback.from_user.id).first()
+    lang = user.language if user else 'ru'
+    db.close()
+    
+    await state.update_data(user_lang=lang, selected_districts=[])
+    await callback.message.answer(
+        get_text('choose_district', lang) + "\n\n" + get_text('can_select_multiple', lang),
+        reply_markup=get_district_keyboard([], lang)
+    )
+    await state.set_state(QuickChangeStates.district)
+    await callback.answer()
+
+
+@dp.message(F.text.in_(["⬅️ Назад", "⬅️ Orqaga"]), QuickChangeStates.district)
+async def quick_district_back(message: types.Message, state: FSMContext):
+    data = await state.get_data()
+    lang = data.get('user_lang', 'ru')
+    await state.clear()
+    keyboard = get_buyer_menu(lang)
+    await message.answer(get_text('returned_to_main_menu', lang), reply_markup=keyboard)
+
+
+@dp.message(QuickChangeStates.district)
+async def quick_district_selected(message: types.Message, state: FSMContext):
+    data = await state.get_data()
+    lang = data.get('user_lang', 'ru')
+    selected_districts = data.get('selected_districts', [])
+    
+    done_texts = [get_text('done_selecting', 'ru'), get_text('done_selecting', 'uz')]
+    if message.text in done_texts:
+        if selected_districts:
+            db = SessionLocal()
+            user = db.query(User).filter(User.telegram_id == message.from_user.id).first()
+            user.search_district = ",".join(selected_districts)
+            db.commit()
+            db.close()
+            
+            await state.clear()
+            keyboard = get_buyer_menu(lang)
+            await message.answer(
+                f"✅ Район изменён: {', '.join(selected_districts)}" if lang == 'ru' else f"✅ Tuman o'zgartirildi: {', '.join(selected_districts)}",
+                reply_markup=keyboard
+            )
+        return
+    
+    any_district_texts = [get_text('any_district', 'ru'), get_text('any_district', 'uz')]
+    if message.text in any_district_texts:
+        db = SessionLocal()
+        user = db.query(User).filter(User.telegram_id == message.from_user.id).first()
+        user.search_district = "Любой"
+        db.commit()
+        db.close()
+        
+        await state.clear()
+        keyboard = get_buyer_menu(lang)
+        await message.answer(
+            "✅ Район изменён: Любой" if lang == 'ru' else "✅ Tuman o'zgartirildi: Istalgan",
+            reply_markup=keyboard
+        )
+        return
+    
+    district = message.text.replace("✅ ", "").strip()
+    if district in TASHKENT_DISTRICTS:
+        if district in selected_districts:
+            selected_districts.remove(district)
+        else:
+            selected_districts.append(district)
+        await state.update_data(selected_districts=selected_districts)
+        await message.answer(
+            get_text('choose_district', lang) + "\n\n" + get_text('can_select_multiple', lang) + f"\n{get_text('selected', lang)}: {len(selected_districts)}",
+            reply_markup=get_district_keyboard(selected_districts, lang)
+        )
+
+
+@dp.callback_query(F.data == "quick_change_budget")
+async def quick_change_budget_callback(callback: types.CallbackQuery, state: FSMContext):
+    db = SessionLocal()
+    user = db.query(User).filter(User.telegram_id == callback.from_user.id).first()
+    lang = user.language if user else 'ru'
+    db.close()
+    
+    await state.update_data(user_lang=lang)
+    keyboard = ReplyKeyboardMarkup(
+        keyboard=[
+            [KeyboardButton(text=get_text('budget_single', lang))],
+            [KeyboardButton(text=get_text('budget_range', lang))],
+            [KeyboardButton(text=get_text('back', lang))]
+        ],
+        resize_keyboard=True
+    )
+    await callback.message.answer(get_text('budget_type_question', lang), reply_markup=keyboard)
+    await state.set_state(QuickChangeStates.budget)
+    await callback.answer()
+
+
+@dp.message(F.text.in_(["⬅️ Назад", "⬅️ Orqaga"]), QuickChangeStates.budget)
+async def quick_budget_back(message: types.Message, state: FSMContext):
+    data = await state.get_data()
+    lang = data.get('user_lang', 'ru')
+    await state.clear()
+    keyboard = get_buyer_menu(lang)
+    await message.answer(get_text('returned_to_main_menu', lang), reply_markup=keyboard)
+
+
+@dp.message(QuickChangeStates.budget)
+async def quick_budget_type_selected(message: types.Message, state: FSMContext):
+    data = await state.get_data()
+    lang = data.get('user_lang', 'ru')
+    
+    if message.text == get_text('budget_single', lang):
+        keyboard = ReplyKeyboardMarkup(
+            keyboard=[[KeyboardButton(text=get_text('back', lang))]],
+            resize_keyboard=True
+        )
+        await message.answer(get_text('enter_single_budget', lang), reply_markup=keyboard)
+        await state.update_data(budget_mode='single')
+    elif message.text == get_text('budget_range', lang):
+        keyboard = ReplyKeyboardMarkup(
+            keyboard=[[KeyboardButton(text=get_text('back', lang))]],
+            resize_keyboard=True
+        )
+        await message.answer(get_text('enter_min_budget', lang), reply_markup=keyboard)
+        await state.update_data(budget_mode='range')
+    else:
+        budget = validate_number(message.text)
+        if budget is None or budget <= 0:
+            await message.answer(get_text('invalid_budget', lang))
+            return
+        
+        budget_mode = data.get('budget_mode')
+        if budget_mode == 'single':
+            db = SessionLocal()
+            user = db.query(User).filter(User.telegram_id == message.from_user.id).first()
+            user.search_budget_min = int(budget * 0.8)
+            user.search_budget_max = int(budget * 1.2)
+            db.commit()
+            db.close()
+            
+            await state.clear()
+            keyboard = get_buyer_menu(lang)
+            await message.answer(
+                f"✅ Бюджет изменён: ${budget:,.0f} (±20%)" if lang == 'ru' else f"✅ Byudjet o'zgartirildi: ${budget:,.0f} (±20%)",
+                reply_markup=keyboard
+            )
+        elif budget_mode == 'range':
+            if 'quick_budget_min' not in data:
+                await state.update_data(quick_budget_min=int(budget))
+                await message.answer(get_text('enter_max_budget', lang))
+            else:
+                budget_min = data.get('quick_budget_min')
+                budget_max = int(budget)
+                if budget_min > budget_max:
+                    await message.answer(get_text('min_greater_than_max', lang))
+                    return
+                
+                db = SessionLocal()
+                user = db.query(User).filter(User.telegram_id == message.from_user.id).first()
+                user.search_budget_min = budget_min
+                user.search_budget_max = budget_max
+                db.commit()
+                db.close()
+                
+                await state.clear()
+                keyboard = get_buyer_menu(lang)
+                await message.answer(
+                    f"✅ Бюджет изменён: ${budget_min:,} - ${budget_max:,}" if lang == 'ru' else f"✅ Byudjet o'zgartirildi: ${budget_min:,} - ${budget_max:,}",
+                    reply_markup=keyboard
+                )
 
 
 class SearchSettingsStates(StatesGroup):
