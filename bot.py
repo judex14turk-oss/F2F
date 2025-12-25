@@ -3411,12 +3411,25 @@ async def quick_change_district_callback(callback: types.CallbackQuery, state: F
     db = SessionLocal()
     user = db.query(User).filter(User.telegram_id == callback.from_user.id).first()
     lang = user.language if user else 'ru'
+    districts = db.query(District).all()
     db.close()
     
-    await state.update_data(user_lang=lang, selected_districts=[])
+    keyboard_buttons = []
+    row = []
+    for district in districts:
+        row.append(KeyboardButton(text=district.name))
+        if len(row) == 2:
+            keyboard_buttons.append(row)
+            row = []
+    if row:
+        keyboard_buttons.append(row)
+    keyboard_buttons.append([KeyboardButton(text=get_text('any_district', lang))])
+    keyboard_buttons.append([KeyboardButton(text=get_text('back', lang))])
+    
+    await state.update_data(user_lang=lang)
     await callback.message.answer(
-        get_text('choose_district', lang) + "\n\n" + get_text('can_select_multiple', lang),
-        reply_markup=get_district_keyboard([], lang)
+        get_text('choose_district', lang),
+        reply_markup=ReplyKeyboardMarkup(keyboard=keyboard_buttons, resize_keyboard=True)
     )
     await state.set_state(QuickChangeStates.district)
     await callback.answer()
@@ -3435,24 +3448,6 @@ async def quick_district_back(message: types.Message, state: FSMContext):
 async def quick_district_selected(message: types.Message, state: FSMContext):
     data = await state.get_data()
     lang = data.get('user_lang', 'ru')
-    selected_districts = data.get('selected_districts', [])
-    
-    done_texts = [get_text('done', 'ru'), get_text('done', 'uz')]
-    if message.text in done_texts:
-        if selected_districts:
-            db = SessionLocal()
-            user = db.query(User).filter(User.telegram_id == message.from_user.id).first()
-            user.search_district = ",".join(selected_districts)
-            db.commit()
-            db.close()
-            
-            await state.clear()
-            keyboard = get_buyer_menu(lang)
-            await message.answer(
-                f"✅ Район изменён: {', '.join(selected_districts)}" if lang == 'ru' else f"✅ Tuman o'zgartirildi: {', '.join(selected_districts)}",
-                reply_markup=keyboard
-            )
-        return
     
     any_district_texts = [get_text('any_district', 'ru'), get_text('any_district', 'uz')]
     if message.text in any_district_texts:
@@ -3470,20 +3465,23 @@ async def quick_district_selected(message: types.Message, state: FSMContext):
         )
         return
     
-    district = message.text.replace("✅ ", "").strip()
+    district = message.text.strip()
     db = SessionLocal()
     valid_districts = [d.name for d in db.query(District).all()]
     db.close()
     
     if district in valid_districts:
-        if district in selected_districts:
-            selected_districts.remove(district)
-        else:
-            selected_districts.append(district)
-        await state.update_data(selected_districts=selected_districts)
+        db = SessionLocal()
+        user = db.query(User).filter(User.telegram_id == message.from_user.id).first()
+        user.search_district = district
+        db.commit()
+        db.close()
+        
+        await state.clear()
+        keyboard = get_buyer_menu(lang)
         await message.answer(
-            get_text('choose_district', lang) + "\n\n" + get_text('can_select_multiple', lang) + f"\n{get_text('selected', lang)}: {len(selected_districts)}",
-            reply_markup=get_district_keyboard(selected_districts, lang)
+            f"✅ Район изменён: {district}" if lang == 'ru' else f"✅ Tuman o'zgartirildi: {district}",
+            reply_markup=keyboard
         )
 
 
