@@ -3732,10 +3732,6 @@ async def settings_rooms_selected(message: types.Message, state: FSMContext):
     keyboard = ReplyKeyboardMarkup(
         keyboard=[
             [KeyboardButton(text=get_text('floor_any', lang))],
-            [KeyboardButton(text=get_text('floor_1', lang))],
-            [KeyboardButton(text=get_text('floor_2_4', lang))],
-            [KeyboardButton(text=get_text('floor_5_7', lang))],
-            [KeyboardButton(text=get_text('floor_8_plus', lang))],
             [KeyboardButton(text=get_text('floor_custom', lang))],
             [KeyboardButton(text=get_text('back', lang))]
         ],
@@ -3778,20 +3774,10 @@ async def settings_floor_selected(message: types.Message, state: FSMContext):
         await state.set_state(SearchSettingsStates.floor_custom)
         return
     
-    floor_map = {
-        get_text('floor_any', 'ru').lower(): "any",
-        get_text('floor_any', 'uz').lower(): "any",
-        get_text('floor_1', 'ru').lower(): "1",
-        get_text('floor_1', 'uz').lower(): "1",
-        get_text('floor_2_4', 'ru').lower(): "2-4",
-        get_text('floor_2_4', 'uz').lower(): "2-4",
-        get_text('floor_5_7', 'ru').lower(): "5-7",
-        get_text('floor_5_7', 'uz').lower(): "5-7",
-        get_text('floor_8_plus', 'ru').lower(): "8+",
-        get_text('floor_8_plus', 'uz').lower(): "8+",
-    }
-    floor = floor_map.get(message.text.lower())
-    if not floor:
+    any_texts = [get_text('floor_any', 'ru'), get_text('floor_any', 'uz')]
+    if message.text in any_texts:
+        floor = "any"
+    else:
         return
     
     await state.update_data(search_floor=floor)
@@ -3827,10 +3813,6 @@ async def settings_back_to_floor_from_custom(message: types.Message, state: FSMC
     keyboard = ReplyKeyboardMarkup(
         keyboard=[
             [KeyboardButton(text=get_text('floor_any', lang))],
-            [KeyboardButton(text=get_text('floor_1', lang))],
-            [KeyboardButton(text=get_text('floor_2_4', lang))],
-            [KeyboardButton(text=get_text('floor_5_7', lang))],
-            [KeyboardButton(text=get_text('floor_8_plus', lang))],
             [KeyboardButton(text=get_text('floor_custom', lang))],
             [KeyboardButton(text=get_text('back', lang))]
         ],
@@ -3894,10 +3876,6 @@ async def settings_back_to_floor(message: types.Message, state: FSMContext):
     keyboard = ReplyKeyboardMarkup(
         keyboard=[
             [KeyboardButton(text=get_text('floor_any', lang))],
-            [KeyboardButton(text=get_text('floor_1', lang))],
-            [KeyboardButton(text=get_text('floor_2_4', lang))],
-            [KeyboardButton(text=get_text('floor_5_7', lang))],
-            [KeyboardButton(text=get_text('floor_8_plus', lang))],
             [KeyboardButton(text=get_text('floor_custom', lang))],
             [KeyboardButton(text=get_text('back', lang))]
         ],
