@@ -289,113 +289,39 @@ class OLXParser:
                     return result
                     
                 try:
-                    time.sleep(1.5)
+                    from selenium.webdriver.support.ui import WebDriverWait
+                    from selenium.webdriver.support import expected_conditions as EC
                     
-                    phone_selectors = [
-                        "//button[contains(., 'Показать телефон')]",
-                        "//button[contains(., 'Показать')]",
-                        "//button[contains(., 'показать')]",
-                        "//*[contains(@class, 'phone') and contains(@class, 'button')]",
-                        "//*[contains(@class, 'contact')]//button",
-                        "//button[contains(@class, 'css-') and contains(., 'телефон')]",
-                        "//div[contains(@class, 'contact')]//button",
-                        "//*[@data-cy='ad-contact-phone']",
-                        "//*[@data-testid='ad-contact-phone']",
-                        "//*[contains(@data-cy, 'phone')]//button",
-                        "//*[contains(@data-testid, 'phone')]//button",
-                        "//button[contains(@data-cy, 'phone')]",
-                        "//button[contains(@data-testid, 'phone')]",
-                    ]
+                    time.sleep(1)
                     
-                    clicked = False
-                    for selector in phone_selectors:
-                        if time.time() - start_time > timeout:
-                            break
-                        try:
-                            elements = driver.find_elements(By.XPATH, selector)
-                            for el in elements:
-                                try:
-                                    if el.is_displayed() and el.is_enabled():
-                                        try:
-                                            driver.execute_script("arguments[0].scrollIntoView({block: 'center'});", el)
-                                            time.sleep(0.3)
-                                        except:
-                                            pass
-                                        try:
-                                            driver.execute_script("arguments[0].click();", el)
-                                            time.sleep(1.5)
-                                            clicked = True
-                                            break
-                                        except:
-                                            try:
-                                                el.click()
-                                                time.sleep(1.5)
-                                                clicked = True
-                                                break
-                                            except:
-                                                continue
-                                except:
-                                    continue
-                            if clicked:
-                                break
-                        except:
-                            continue
+                    try:
+                        phone_btn = WebDriverWait(driver, 3).until(
+                            EC.element_to_be_clickable((By.XPATH, "//button[contains(., 'Показать')]"))
+                        )
+                        driver.execute_script("arguments[0].click();", phone_btn)
+                        time.sleep(2)
+                    except:
+                        pass
                     
-                    if not clicked:
-                        try:
-                            buttons = driver.find_elements(By.TAG_NAME, "button")
-                            for btn in buttons:
-                                try:
-                                    btn_text = btn.text.lower()
-                                    if 'показать' in btn_text or 'телефон' in btn_text or 'phone' in btn_text:
-                                        if btn.is_displayed() and btn.is_enabled():
-                                            driver.execute_script("arguments[0].scrollIntoView({block: 'center'});", btn)
-                                            time.sleep(0.3)
-                                            driver.execute_script("arguments[0].click();", btn)
-                                            time.sleep(1.5)
-                                            clicked = True
-                                            break
-                                except:
-                                    continue
-                        except:
-                            pass
-                    
-                    phone_patterns = [
-                        "//a[starts-with(@href, 'tel:')]",
-                        "//a[contains(@href, 'tel:')]",
-                        "//*[contains(@class, 'phone-number')]",
-                        "//*[contains(@class, 'phone')]//a",
-                        "//*[contains(@data-testid, 'phone')]//a",
-                        "//*[contains(@data-cy, 'phone')]//a",
-                    ]
-                    
-                    for pattern in phone_patterns:
-                        if time.time() - start_time > timeout:
-                            break
-                        try:
-                            phone_elements = driver.find_elements(By.XPATH, pattern)
-                            for phone_el in phone_elements:
-                                phone_text = phone_el.get_attribute('href')
-                                if phone_text and phone_text.startswith('tel:'):
-                                    result['phone'] = phone_text.replace('tel:', '').replace(' ', '').replace('-', '').strip()
+                    try:
+                        tel_links = driver.find_elements(By.XPATH, "//a[contains(@href, 'tel:')]")
+                        for tel_link in tel_links:
+                            href = tel_link.get_attribute('href')
+                            if href and 'tel:' in href:
+                                phone = href.replace('tel:', '').replace(' ', '').replace('-', '').strip()
+                                if len(phone) >= 9:
+                                    result['phone'] = phone
                                     break
-                                phone_text = phone_el.text.strip()
-                                if phone_text and re.match(r'^[\d\+\-\s\(\)]+$', phone_text) and len(phone_text) >= 9:
-                                    result['phone'] = phone_text.replace(' ', '').replace('-', '')
-                                    break
-                            if result['phone']:
-                                break
-                        except:
-                            continue
+                    except:
+                        pass
                     
-                    if not result['phone'] and time.time() - start_time < timeout:
+                    if not result['phone']:
                         page_text = driver.page_source
                         phone_regexes = [
-                            r'\+998[\s\-]?\d{2}[\s\-]?\d{3}[\s\-]?\d{2}[\s\-]?\d{2}',
-                            r'\+99[\s\-]?\d{3}[\s\-]?\d{3}[\s\-]?\d{4}',
-                            r'\+99[\s\-]?\d{2,3}[\s\-]?\d+',
+                            r'tel:\+?[\d\s\-]+',
+                            r'\+998\d{9}',
+                            r'\+99\s?\d{3}\s?\d{7}',
                             r'998\d{9}',
-                            r'tel:\+?\d[\d\s\-]+',
                         ]
                         for regex in phone_regexes:
                             phone_match = re.search(regex, page_text)
