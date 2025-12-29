@@ -91,6 +91,29 @@ class OLXParser:
         
     def get_driver(self):
         import shutil
+        
+        try:
+            import undetected_chromedriver as uc
+            
+            options = uc.ChromeOptions()
+            options.add_argument('--headless=new')
+            options.add_argument('--no-sandbox')
+            options.add_argument('--disable-dev-shm-usage')
+            options.add_argument('--disable-gpu')
+            options.add_argument('--window-size=1920,1080')
+            options.add_argument('--lang=ru-RU,ru')
+            
+            chromium_path = shutil.which('chromium') or shutil.which('chromium-browser')
+            if chromium_path:
+                options.binary_location = chromium_path
+            
+            driver = uc.Chrome(options=options, headless=True, use_subprocess=True)
+            driver.set_page_load_timeout(20)
+            driver.set_script_timeout(15)
+            return driver
+        except Exception as e:
+            print(f"UC driver failed: {e}, trying regular Selenium")
+            
         from selenium.webdriver.chrome.service import Service
         
         chrome_options = Options()
@@ -100,21 +123,10 @@ class OLXParser:
         chrome_options.add_argument('--disable-gpu')
         chrome_options.add_argument('--window-size=1920,1080')
         chrome_options.add_argument('--disable-blink-features=AutomationControlled')
-        chrome_options.add_argument('--disable-extensions')
-        chrome_options.add_argument('--disable-infobars')
-        chrome_options.add_argument('--disable-web-security')
-        chrome_options.add_argument('--allow-running-insecure-content')
         chrome_options.add_argument('--lang=ru-RU,ru')
-        chrome_options.add_argument('--disable-images')
-        chrome_options.add_argument('--blink-settings=imagesEnabled=false')
-        chrome_options.add_argument(f'user-agent={self.headers["User-Agent"]}')
-        chrome_options.add_experimental_option('excludeSwitches', ['enable-automation'])
+        chrome_options.add_argument('user-agent=Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36')
+        chrome_options.add_experimental_option('excludeSwitches', ['enable-automation', 'enable-logging'])
         chrome_options.add_experimental_option('useAutomationExtension', False)
-        prefs = {
-            'profile.managed_default_content_settings.images': 2,
-            'disk-cache-size': 4096
-        }
-        chrome_options.add_experimental_option('prefs', prefs)
         
         chromium_path = shutil.which('chromium') or shutil.which('chromium-browser') or shutil.which('google-chrome')
         chromedriver_path = shutil.which('chromedriver')
@@ -127,19 +139,11 @@ class OLXParser:
             driver = webdriver.Chrome(service=service, options=chrome_options)
             driver.execute_cdp_cmd('Page.addScriptToEvaluateOnNewDocument', {
                 'source': '''
-                    Object.defineProperty(navigator, 'webdriver', {
-                        get: () => undefined
-                    });
-                    Object.defineProperty(navigator, 'languages', {
-                        get: () => ['ru-RU', 'ru', 'en-US', 'en']
-                    });
-                    Object.defineProperty(navigator, 'plugins', {
-                        get: () => [1, 2, 3, 4, 5]
-                    });
+                    Object.defineProperty(navigator, 'webdriver', {get: () => undefined});
                 '''
             })
-            driver.set_page_load_timeout(15)
-            driver.set_script_timeout(10)
+            driver.set_page_load_timeout(20)
+            driver.set_script_timeout(15)
             return driver
         except Exception as e:
             print(f"Error creating driver: {e}")
