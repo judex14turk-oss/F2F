@@ -288,7 +288,53 @@ class OLXParser:
             
             time.sleep(0.5)
             
-            if get_phone:
+            page_source = driver.page_source
+            soup = BeautifulSoup(page_source, 'lxml')
+            
+            result['title'] = self._extract_title(soup)
+            result['price'], result['currency'] = self._extract_price(soup)
+            result['photos'] = self._extract_photos(soup)
+            result['olx_id'] = self._extract_olx_id(soup, url)
+            result['description'] = self._extract_description(soup)
+            result['location'] = self._extract_location(soup)
+            result['seller_name'] = self._extract_seller(soup)
+            result['published_date'] = self._extract_date(soup)
+            
+            params = self._extract_parameters(soup)
+            result['property_type'] = params.get('Тип жилья') or params.get('Тип недвижимости')
+            result['rooms'] = params.get('Количество комнат')
+            result['total_area'] = params.get('Общая площадь')
+            result['floor'] = params.get('Этаж')
+            result['total_floors'] = params.get('Этажность дома')
+            result['layout'] = params.get('Планировка')
+            result['bathroom'] = params.get('Санузел')
+            result['furnished'] = params.get('Меблирована')
+            result['nearby'] = params.get('Рядом есть', '').split(', ') if params.get('Рядом есть') else []
+            result['commission'] = params.get('Комиссионные')
+            result['building_type'] = params.get('Тип строения')
+            result['renovation'] = params.get('Ремонт')
+            result['land_area'] = params.get('Участок')
+            result['useful_area'] = params.get('Полезная площадь')
+            result['ceiling_height'] = params.get('Высота потолков')
+            result['amenities'] = params.get('В помещении есть')
+            result['location_type'] = params.get('Расположение')
+            
+            for district_key, district_name in self.TASHKENT_DISTRICTS.items():
+                if district_name and district_name in (result['location'] or ''):
+                    result['district'] = district_name
+                    break
+            
+            if result['description']:
+                phone_from_desc = self._extract_phone_from_text(result['description'])
+                if phone_from_desc:
+                    result['phone'] = phone_from_desc
+            
+            if not result['phone'] and result['seller_name']:
+                phone_from_seller = self._extract_phone_from_text(result['seller_name'])
+                if phone_from_seller:
+                    result['phone'] = phone_from_seller
+            
+            if get_phone and not result['phone']:
                 if time.time() - start_time > timeout:
                     result['error'] = 'Timeout before phone extraction'
                     return result
@@ -297,7 +343,7 @@ class OLXParser:
                     from selenium.webdriver.support.ui import WebDriverWait
                     from selenium.webdriver.support import expected_conditions as EC
                     
-                    time.sleep(1)
+                    time.sleep(0.5)
                     
                     phone_button_clicked = False
                     phone_button_selectors = [
@@ -399,52 +445,6 @@ class OLXParser:
                         
                 except Exception as e:
                     result['phone_error'] = str(e)
-            
-            page_source = driver.page_source
-            soup = BeautifulSoup(page_source, 'lxml')
-            
-            result['title'] = self._extract_title(soup)
-            result['price'], result['currency'] = self._extract_price(soup)
-            result['photos'] = self._extract_photos(soup)
-            result['olx_id'] = self._extract_olx_id(soup, url)
-            result['description'] = self._extract_description(soup)
-            result['location'] = self._extract_location(soup)
-            result['seller_name'] = self._extract_seller(soup)
-            result['published_date'] = self._extract_date(soup)
-            
-            params = self._extract_parameters(soup)
-            result['property_type'] = params.get('Тип жилья') or params.get('Тип недвижимости')
-            result['rooms'] = params.get('Количество комнат')
-            result['total_area'] = params.get('Общая площадь')
-            result['floor'] = params.get('Этаж')
-            result['total_floors'] = params.get('Этажность дома')
-            result['layout'] = params.get('Планировка')
-            result['bathroom'] = params.get('Санузел')
-            result['furnished'] = params.get('Меблирована')
-            result['nearby'] = params.get('Рядом есть', '').split(', ') if params.get('Рядом есть') else []
-            result['commission'] = params.get('Комиссионные')
-            result['building_type'] = params.get('Тип строения')
-            result['renovation'] = params.get('Ремонт')
-            result['land_area'] = params.get('Участок')
-            result['useful_area'] = params.get('Полезная площадь')
-            result['ceiling_height'] = params.get('Высота потолков')
-            result['amenities'] = params.get('В помещении есть')
-            result['location_type'] = params.get('Расположение')
-            
-            for district_key, district_name in self.TASHKENT_DISTRICTS.items():
-                if district_name and district_name in (result['location'] or ''):
-                    result['district'] = district_name
-                    break
-            
-            if not result['phone'] and result['seller_name']:
-                phone_from_seller = self._extract_phone_from_text(result['seller_name'])
-                if phone_from_seller:
-                    result['phone'] = phone_from_seller
-            
-            if not result['phone'] and result['description']:
-                phone_from_desc = self._extract_phone_from_text(result['description'])
-                if phone_from_desc:
-                    result['phone'] = phone_from_desc
             
         except Exception as e:
             result['error'] = str(e)
