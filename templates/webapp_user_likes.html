@@ -294,7 +294,7 @@
                     <div class="like-property-details">
                         {% if like.district %}{{ like.district }}{% endif %}
                     </div>
-                    <div class="like-price">{{ "{:,}".format(like.price).replace(',', ' ') }} сум</div>
+                    <div class="like-price">{% if like.currency == '$' or like.currency == 'USD' %}${{ "{:,}".format(like.price).replace(',', ' ') }}{% else %}{{ "{:,}".format(like.price).replace(',', ' ') }} {{ like.currency or 'сум' }}{% endif %}</div>
                     <div class="like-user">
                         <i class="bi bi-heart-fill"></i>
                         {{ like.liker_name }} • {{ like.created_at.strftime('%d.%m.%Y') }}

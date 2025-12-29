@@ -774,6 +774,7 @@ def webapp_user_stats():
             'rooms': prop.rooms,
             'district': prop.district,
             'price': prop.price,
+            'currency': prop.currency or 'сум',
             'likes_count': prop.likes_count or 0,
             'photo_id': photo_id,
             'photo_url': prop.photos.split(',')[0].strip() if prop.photos and prop.photos.split(',')[0].strip().startswith('http') else None
@@ -990,6 +991,7 @@ def webapp_user_search_filters_search():
             'floor': prop.floor,
             'total_floors': prop.total_floors,
             'price': prop.price,
+            'currency': prop.currency or 'сум',
             'district': prop.district,
             'photo': first_photo,
             'property_type': 'sale' if prop.property_type == PropertyType.SALE else 'rent'
@@ -1331,6 +1333,7 @@ def webapp_user_likes():
                 'rooms': prop.rooms,
                 'district': prop.district,
                 'price': prop.price,
+                'currency': prop.currency or 'сум',
                 'photo_id': photo_id,
                 'liker_id': liker.id,
                 'liker_telegram_id': liker.telegram_id,

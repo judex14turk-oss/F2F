@@ -275,7 +275,7 @@
             {% if prop.district %}в {{ prop.district }}{% endif %}
         </div>
         
-        <div class="property-price">{{ "{:,}".format(prop.price).replace(',', ' ') }} сум</div>
+        <div class="property-price">{% if prop.currency == '$' or prop.currency == 'USD' %}${{ "{:,}".format(prop.price).replace(',', ' ') }}{% else %}{{ "{:,}".format(prop.price).replace(',', ' ') }} {{ prop.currency or 'сум' }}{% endif %}</div>
         
         <div class="property-details">
             {% if prop.rooms %}

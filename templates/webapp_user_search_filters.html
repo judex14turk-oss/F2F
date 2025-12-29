@@ -616,7 +616,7 @@
                                 <span class="property-detail"><i class="bi bi-layers"></i> ${p.floor || '?'}/${p.total_floors || '?'} этаж</span>
                                 <span class="property-detail">${p.property_type === 'rent' ? '{{ t.get("webapp_rent_filter", "Аренда") }}' : '{{ t.get("webapp_buy", "Покупка") }}'}</span>
                             </div>
-                            <div class="property-price">${formatPrice(p.price)} сум</div>
+                            <div class="property-price">${p.currency === '$' || p.currency === 'USD' ? '$' + formatPrice(p.price) : formatPrice(p.price) + ' ' + (p.currency || 'сум')}</div>
                             <div class="property-district"><i class="bi bi-geo-alt"></i> ${p.district || '{{ t.get("webapp_not_specified", "Не указан") }}'}</div>
                         </div>
                     </div>

@@ -131,6 +131,7 @@ class Property(Base):
     total_floors = Column(Integer)
     area = Column(Float)
     price = Column(Integer, nullable=False)
+    currency = Column(String(10), default='сум')
     description = Column(Text)
     photos = Column(Text)
     status = Column(Enum(PropertyStatus), default=PropertyStatus.MODERATION)

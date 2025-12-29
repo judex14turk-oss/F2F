@@ -527,7 +527,7 @@
             <div class="top-property-info">
                 <div class="top-property-type">{{ prop.property_type }}{% if prop.rooms %}, {{ prop.rooms }} {{ t.get('webapp_rooms', 'комн.') }}{% endif %}</div>
                 <div class="top-property-district">{% if prop.district %}{{ prop.district }}{% endif %}</div>
-                <div class="top-property-price">{{ "{:,}".format(prop.price).replace(',', ' ') }} сум</div>
+                <div class="top-property-price">{% if prop.currency == '$' or prop.currency == 'USD' %}${{ "{:,}".format(prop.price).replace(',', ' ') }}{% else %}{{ "{:,}".format(prop.price).replace(',', ' ') }} {{ prop.currency or 'сум' }}{% endif %}</div>
             </div>
             <div class="top-property-likes">
                 <i class="bi bi-heart-fill"></i>
