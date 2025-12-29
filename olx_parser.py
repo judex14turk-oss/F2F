@@ -431,6 +431,11 @@ class OLXParser:
                     result['district'] = district_name
                     break
             
+            if not result['phone'] and result['seller_name']:
+                phone_from_seller = self._extract_phone_from_text(result['seller_name'])
+                if phone_from_seller:
+                    result['phone'] = phone_from_seller
+            
             if not result['phone'] and result['description']:
                 phone_from_desc = self._extract_phone_from_text(result['description'])
                 if phone_from_desc:
