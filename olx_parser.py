@@ -362,11 +362,11 @@ class OLXParser:
                     
                     phone_patterns = [
                         "//a[starts-with(@href, 'tel:')]",
+                        "//a[contains(@href, 'tel:')]",
                         "//*[contains(@class, 'phone-number')]",
+                        "//*[contains(@class, 'phone')]//a",
                         "//*[contains(@data-testid, 'phone')]//a",
-                        "//*[contains(@class, 'phone')]//a[starts-with(@href, 'tel:')]",
-                        "//a[contains(@href, 'tel:+998')]",
-                        "//a[contains(@href, 'tel:998')]",
+                        "//*[contains(@data-cy, 'phone')]//a",
                     ]
                     
                     for pattern in phone_patterns:
@@ -374,28 +374,36 @@ class OLXParser:
                             break
                         try:
                             phone_elements = driver.find_elements(By.XPATH, pattern)
-                            if phone_elements:
-                                phone_text = phone_elements[0].get_attribute('href')
+                            for phone_el in phone_elements:
+                                phone_text = phone_el.get_attribute('href')
                                 if phone_text and phone_text.startswith('tel:'):
-                                    result['phone'] = phone_text.replace('tel:', '').strip()
+                                    result['phone'] = phone_text.replace('tel:', '').replace(' ', '').replace('-', '').strip()
                                     break
-                                else:
-                                    phone_text = phone_elements[0].text.strip()
-                                    if phone_text and re.match(r'^[\d\+\-\s\(\)]+$', phone_text):
-                                        result['phone'] = phone_text
-                                        break
+                                phone_text = phone_el.text.strip()
+                                if phone_text and re.match(r'^[\d\+\-\s\(\)]+$', phone_text) and len(phone_text) >= 9:
+                                    result['phone'] = phone_text.replace(' ', '').replace('-', '')
+                                    break
+                            if result['phone']:
+                                break
                         except:
                             continue
                     
                     if not result['phone'] and time.time() - start_time < timeout:
                         page_text = driver.page_source
-                        phone_match = re.search(r'\+998[\s\-]?\d{2}[\s\-]?\d{3}[\s\-]?\d{2}[\s\-]?\d{2}', page_text)
-                        if phone_match:
-                            result['phone'] = phone_match.group(0).replace(' ', '').replace('-', '')
-                        else:
-                            phone_match = re.search(r'998\d{9}', page_text)
+                        phone_regexes = [
+                            r'\+998[\s\-]?\d{2}[\s\-]?\d{3}[\s\-]?\d{2}[\s\-]?\d{2}',
+                            r'\+99[\s\-]?\d{3}[\s\-]?\d{3}[\s\-]?\d{4}',
+                            r'\+99[\s\-]?\d{2,3}[\s\-]?\d+',
+                            r'998\d{9}',
+                            r'tel:\+?\d[\d\s\-]+',
+                        ]
+                        for regex in phone_regexes:
+                            phone_match = re.search(regex, page_text)
                             if phone_match:
-                                result['phone'] = '+' + phone_match.group(0)
+                                phone = phone_match.group(0).replace('tel:', '').replace(' ', '').replace('-', '')
+                                if len(phone) >= 9:
+                                    result['phone'] = phone if phone.startswith('+') else '+' + phone
+                                    break
                         
                 except Exception as e:
                     result['phone_error'] = str(e)
