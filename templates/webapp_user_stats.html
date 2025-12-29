@@ -72,6 +72,32 @@
             border-color: #3b82f6;
         }
         
+        .search-button-container {
+            padding: 8px 12px;
+            background: #111;
+        }
+        
+        .search-button {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 10px;
+            width: 100%;
+            padding: 14px 20px;
+            background: linear-gradient(135deg, #3b82f6 0%, #8b5cf6 100%);
+            border: none;
+            border-radius: 12px;
+            color: #fff;
+            font-size: 1rem;
+            font-weight: 600;
+            text-decoration: none;
+            box-shadow: 0 4px 15px rgba(59, 130, 246, 0.3);
+        }
+        
+        .search-button i {
+            font-size: 1.2rem;
+        }
+        
         .user-info {
             background: #151515;
             border: 1px solid #252525;
@@ -333,9 +359,12 @@
             <i class="bi bi-graph-up"></i>
             {{ t.get('webapp_stats', 'Статистика') }}
         </a>
-        <a href="{{ url_for('webapp_user_search_filters', tg_id=tg_id) }}" class="nav-tab">
-            <i class="bi bi-sliders"></i>
-            {{ t.get('webapp_detailed', 'Подробно') }}
+    </div>
+    
+    <div class="search-button-container">
+        <a href="{{ url_for('webapp_user_search_filters', tg_id=tg_id) }}" class="search-button">
+            <i class="bi bi-search"></i>
+            {{ t.get('webapp_advanced_search', 'Улучшенный поиск') }}
         </a>
     </div>
     
