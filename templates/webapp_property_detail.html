@@ -278,7 +278,7 @@
         <div class="property-price">{% if prop.currency == '$' or prop.currency == 'USD' %}${{ "{:,}".format(prop.price).replace(',', ' ') }}{% else %}{{ "{:,}".format(prop.price).replace(',', ' ') }} {{ prop.currency or 'сум' }}{% endif %}</div>
         
         <div class="property-details">
-            {% if prop.rooms %}
+            {% if prop.rooms and prop.category != 'land' %}
             <div class="detail-row">
                 <span class="detail-label"><i class="bi bi-door-open"></i> Комнат</span>
                 <span class="detail-value">{{ prop.rooms }}</span>
@@ -287,10 +287,17 @@
             {% if prop.area %}
             <div class="detail-row">
                 <span class="detail-label"><i class="bi bi-arrows-fullscreen"></i> Площадь</span>
-                <span class="detail-value">{{ prop.area }} м²</span>
+                <span class="detail-value">{{ prop.area }} {% if prop.category == 'land' %}сот.{% else %}м²{% endif %}</span>
             </div>
             {% endif %}
-            {% if prop.floor %}
+            {% if prop.category == 'house' or prop.category == 'land' %}
+                {% if prop.total_floors %}
+                <div class="detail-row">
+                    <span class="detail-label"><i class="bi bi-building"></i> Этажей</span>
+                    <span class="detail-value">{{ prop.total_floors }}</span>
+                </div>
+                {% endif %}
+            {% elif prop.floor %}
             <div class="detail-row">
                 <span class="detail-label"><i class="bi bi-building"></i> Этаж</span>
                 <span class="detail-value">{{ prop.floor }}{% if prop.total_floors %}/{{ prop.total_floors }}{% endif %}</span>

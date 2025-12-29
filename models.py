@@ -142,6 +142,7 @@ class Property(Base):
     archived_at = Column(DateTime, nullable=True)
     
     housing_type = Column(String(200))
+    category = Column(String(50), default='apartment')
     building_type = Column(String(200))
     renovation = Column(String(200))
     layout = Column(String(200))
