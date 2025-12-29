@@ -1344,7 +1344,7 @@ async def view_properties(message: types.Message, state: FSMContext):
         if rooms_list:
             query = query.filter(Property.rooms.in_(rooms_list))
     
-    if user.search_housing_type and user.search_housing_type not in ["Любой", "any", ""]:
+    if user.search_housing_type and user.search_housing_type not in ["Любой", "any", "", "Квартира", "Дом", "Участок", "Коммерция", "Kvartira", "Uy", "Yer", "Tijorat"]:
         housing_base = user.search_housing_type.rstrip("аи")
         query = query.filter(Property.housing_type.ilike(f"%{housing_base}%"))
     

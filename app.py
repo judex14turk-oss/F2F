@@ -930,7 +930,7 @@ def webapp_user_search_filters_search():
         elif user.search_deal_type == 'Аренда':
             query = query.filter(Property.property_type == PropertyType.RENT)
     
-    if user.search_housing_type:
+    if user.search_housing_type and user.search_housing_type not in ["Квартира", "Дом", "Участок", "Коммерция", "Kvartira", "Uy", "Yer", "Tijorat"]:
         query = query.filter(Property.housing_type == user.search_housing_type)
     
     if user.search_district:
