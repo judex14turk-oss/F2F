@@ -89,6 +89,8 @@ class User(Base):
     web_search_deal_type = Column(String(20))
     web_search_housing_type = Column(String(50))
     web_search_district = Column(String(200))
+    web_search_price_min = Column(BigInteger)
+    web_search_price_max = Column(BigInteger)
     web_search_area_min = Column(Integer)
     web_search_area_max = Column(Integer)
     web_search_building_type = Column(String(100))

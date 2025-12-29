@@ -867,6 +867,8 @@ def webapp_user_search_filters_save():
     user.web_search_deal_type = data.get('deal_type') if data.get('deal_type') else None
     user.web_search_housing_type = data.get('housing_type') if data.get('housing_type') else None
     user.web_search_district = data.get('district') if data.get('district') else None
+    user.web_search_price_min = int(data.get('price_min')) if data.get('price_min') else None
+    user.web_search_price_max = int(data.get('price_max')) if data.get('price_max') else None
     user.web_search_area_min = int(data.get('area_min')) if data.get('area_min') else None
     user.web_search_area_max = int(data.get('area_max')) if data.get('area_max') else None
     user.web_search_building_type = data.get('building_type') if data.get('building_type') else None
@@ -896,6 +898,8 @@ def webapp_user_search_filters_reset():
     user.web_search_deal_type = None
     user.web_search_housing_type = None
     user.web_search_district = None
+    user.web_search_price_min = None
+    user.web_search_price_max = None
     user.web_search_area_min = None
     user.web_search_area_max = None
     user.web_search_building_type = None
@@ -937,6 +941,12 @@ def webapp_user_search_filters_search():
     if user.web_search_district and user.web_search_district not in ["Любой", ""]:
         district_base = user.web_search_district.replace("ский", "").replace("ий", "")
         query = query.filter(Property.district.ilike(f"%{district_base}%"))
+    
+    if user.web_search_price_min:
+        query = query.filter(Property.price >= user.web_search_price_min)
+    
+    if user.web_search_price_max:
+        query = query.filter(Property.price <= user.web_search_price_max)
     
     if user.web_search_area_min:
         query = query.filter(Property.area >= user.web_search_area_min)

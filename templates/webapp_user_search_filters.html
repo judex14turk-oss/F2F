@@ -461,6 +461,17 @@
         
         <div class="filter-card">
             <div class="filter-header">
+                <i class="bi bi-cash filter-icon"></i>
+                <span class="filter-title">{{ t.get('webapp_price', 'Цена') }} ($)</span>
+            </div>
+            <div class="filter-row">
+                <input type="number" class="filter-input" id="price_min" placeholder="{{ t.get('webapp_from', 'От') }}" value="{{ user.web_search_price_min or '' }}">
+                <input type="number" class="filter-input" id="price_max" placeholder="{{ t.get('webapp_to', 'До') }}" value="{{ user.web_search_price_max or '' }}">
+            </div>
+        </div>
+        
+        <div class="filter-card">
+            <div class="filter-header">
                 <i class="bi bi-arrows-expand filter-icon"></i>
                 <span class="filter-title">{{ t.get('webapp_area', 'Площадь') }} (м²)</span>
             </div>
@@ -647,6 +658,8 @@
                 deal_type: getFilterValue('deal_type'),
                 housing_type: getFilterValue('housing_type'),
                 district: getFilterValue('district'),
+                price_min: document.getElementById('price_min').value,
+                price_max: document.getElementById('price_max').value,
                 area_min: document.getElementById('area_min').value,
                 area_max: document.getElementById('area_max').value,
                 building_type: getFilterValue('building_type'),
