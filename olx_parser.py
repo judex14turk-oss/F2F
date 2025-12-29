@@ -431,16 +431,29 @@ class OLXParser:
                         page_text = driver.page_source
                         phone_regexes = [
                             r'tel:\+?[\d\s\-]+',
+                            r'\+998[\s\-]?\d{2}[\s\-]?\d{3}[\s\-]?\d{2}[\s\-]?\d{2}',
                             r'\+998\d{9}',
                             r'\+99\s?\d{3}\s?\d{7}',
+                            r'998[\s\-]?\d{2}[\s\-]?\d{3}[\s\-]?\d{2}[\s\-]?\d{2}',
                             r'998\d{9}',
+                            r'[89]\d{2}[\s\-]?\d{3}[\s\-]?\d{3}',
+                            r'9\d{2}[\s\-]?\d{3}[\s\-]?\d{3}',
+                            r'\d{3}[\s\-]\d{3}[\s\-]\d{3}',
+                            r'\d{2}[\s\-]?\d{3}[\s\-]?\d{2}[\s\-]?\d{2}',
                         ]
                         for regex in phone_regexes:
                             phone_match = re.search(regex, page_text)
                             if phone_match:
                                 phone = phone_match.group(0).replace('tel:', '').replace(' ', '').replace('-', '')
                                 if len(phone) >= 9:
-                                    result['phone'] = phone if phone.startswith('+') else '+' + phone
+                                    if len(phone) == 9 and phone[0] in '89':
+                                        result['phone'] = '+998' + phone
+                                    elif phone.startswith('998'):
+                                        result['phone'] = '+' + phone if not phone.startswith('+') else phone
+                                    elif phone.startswith('+'):
+                                        result['phone'] = phone
+                                    else:
+                                        result['phone'] = '+998' + phone
                                     break
                         
                 except Exception as e:
