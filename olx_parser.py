@@ -25,7 +25,8 @@ class OLXParser:
     PROPERTY_TYPES = {
         'apartment': 'kvartiry',
         'land': 'zemelnye-uchastki',
-        'house': 'doma'
+        'house': 'doma',
+        'commercial': 'kommercheskie-pomeshcheniya'
     }
     
     TASHKENT_DISTRICTS = {

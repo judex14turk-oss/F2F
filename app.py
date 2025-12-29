@@ -2748,117 +2748,132 @@ def webapp_parser_run_stream():
         
         prop_type_enum = PropertyType.SALE if deal_type == 'sale' else PropertyType.RENT
         
+        property_types_to_parse = []
+        if property_type_str == 'house_land':
+            property_types_to_parse = ['house', 'land']
+            listings_per_type = max_listings // 2
+        else:
+            property_types_to_parse = [property_type_str]
+            listings_per_type = max_listings
+        
         try:
-            for event in parser.parse_generator(
-                deal_type=deal_type,
-                property_type=property_type_str,
-                district=district,
-                rooms=rooms if rooms else None,
-                housing_type=housing_type,
-                max_listings=max_listings,
-                get_phone=get_phone,
-                max_days=max_days
-            ):
-                event_type = event.get('event')
-                
-                if event_type == 'start':
-                    yield f"data: {json.dumps({'event': 'start', 'total': event['total'], 'current': 0, 'added': 0})}\n\n"
-                
-                elif event_type == 'skip':
-                    yield f"data: {json.dumps({'event': 'progress', 'current': event['current'], 'total': event['total'], 'added': added_count, 'skipped_old': event.get('skipped_old', 0)})}\n\n"
-                
-                elif event_type == 'listing':
-                    data = event['data']
-                    phone = data.get('phone')
+            total_parsed = 0
+            grand_total = 0
+            
+            for prop_type in property_types_to_parse:
+                for event in parser.parse_generator(
+                    deal_type=deal_type,
+                    property_type=prop_type,
+                    district=district,
+                    rooms=rooms if rooms else None,
+                    housing_type=housing_type,
+                    max_listings=listings_per_type if property_type_str == 'house_land' else max_listings,
+                    get_phone=get_phone,
+                    max_days=max_days
+                ):
+                    event_type = event.get('event')
                     
-                    if not phone:
-                        skipped_no_phone += 1
-                        skipped_urls.append({'url': data.get('url'), 'reason': 'no_phone', 'title': data.get('title')})
-                        yield f"data: {json.dumps({'event': 'progress', 'current': event['current'], 'total': event['total'], 'added': added_count})}\n\n"
-                        continue
+                    if event_type == 'start':
+                        grand_total += event['total']
+                        yield f"data: {json.dumps({'event': 'start', 'total': grand_total, 'current': 0, 'added': 0})}\n\n"
                     
-                    olx_id = data.get('olx_id')
-                    db_check = get_db()
+                    elif event_type == 'skip':
+                        yield f"data: {json.dumps({'event': 'progress', 'current': total_parsed + event['current'], 'total': grand_total, 'added': added_count, 'skipped_old': event.get('skipped_old', 0)})}\n\n"
                     
-                    if olx_id:
-                        existing = db_check.query(Property).filter(Property.olx_id == olx_id).first()
-                        if existing:
-                            skipped_count += 1
-                            skipped_urls.append({'url': data.get('url'), 'reason': 'duplicate', 'title': data.get('title')})
-                            db_check.close()
-                            yield f"data: {json.dumps({'event': 'progress', 'current': event['current'], 'total': event['total'], 'added': added_count, 'skipped_duplicates': skipped_count})}\n\n"
+                    elif event_type == 'listing':
+                        data = event['data']
+                        phone = data.get('phone')
+                        
+                        if not phone:
+                            skipped_no_phone += 1
+                            skipped_urls.append({'url': data.get('url'), 'reason': 'no_phone', 'title': data.get('title')})
+                            yield f"data: {json.dumps({'event': 'progress', 'current': total_parsed + event['current'], 'total': grand_total, 'added': added_count})}\n\n"
                             continue
+                        
+                        olx_id = data.get('olx_id')
+                        db_check = get_db()
+                        
+                        if olx_id:
+                            existing = db_check.query(Property).filter(Property.olx_id == olx_id).first()
+                            if existing:
+                                skipped_count += 1
+                                skipped_urls.append({'url': data.get('url'), 'reason': 'duplicate', 'title': data.get('title')})
+                                db_check.close()
+                                yield f"data: {json.dumps({'event': 'progress', 'current': total_parsed + event['current'], 'total': grand_total, 'added': added_count, 'skipped_duplicates': skipped_count})}\n\n"
+                                continue
+                        
+                        try:
+                            price_str = data.get('price', '0')
+                            price = int(price_str.replace(' ', '').replace(',', '')) if price_str else 0
+                        except:
+                            price = 0
+                        
+                        try:
+                            rooms_count = int(data.get('rooms')) if data.get('rooms') else None
+                        except:
+                            rooms_count = None
+                        
+                        try:
+                            area_val = float(data.get('total_area')) if data.get('total_area') else None
+                        except:
+                            area_val = None
+                        
+                        try:
+                            floor_val = int(data.get('floor')) if data.get('floor') else None
+                        except:
+                            floor_val = None
+                        
+                        try:
+                            total_floors_val = int(data.get('total_floors')) if data.get('total_floors') else None
+                        except:
+                            total_floors_val = None
+                        
+                        photos_list = data.get('photos', [])
+                        photos_str = ','.join(photos_list[:10]) if photos_list else ''
+                        
+                        furnished_val = data.get('furnished')
+                        has_furniture = furnished_val == 'Да' if furnished_val else False
+                        
+                        new_property = Property(
+                            owner_id=admin_user_id,
+                            property_type=prop_type_enum,
+                            district=data.get('district') or data.get('location'),
+                            address=data.get('location'),
+                            rooms=rooms_count,
+                            floor=floor_val,
+                            total_floors=total_floors_val,
+                            area=area_val,
+                            price=price if price > 0 else 1,
+                            description=data.get('description'),
+                            photos=photos_str,
+                            status=PropertyStatus.ACTIVE,
+                            housing_type=data.get('property_type'),
+                            building_type=data.get('building_type'),
+                            renovation=data.get('renovation'),
+                            layout=data.get('layout'),
+                            has_furniture=has_furniture,
+                            phone=phone,
+                            olx_url=data.get('url'),
+                            olx_id=olx_id,
+                            olx_title=data.get('title'),
+                            source='olx',
+                            seller_name=data.get('seller_name')
+                        )
+                        
+                        db_check.add(new_property)
+                        db_check.commit()
+                        db_check.close()
+                        
+                        added_count += 1
+                        yield f"data: {json.dumps({'event': 'progress', 'current': total_parsed + event['current'], 'total': grand_total, 'added': added_count})}\n\n"
                     
-                    try:
-                        price_str = data.get('price', '0')
-                        price = int(price_str.replace(' ', '').replace(',', '')) if price_str else 0
-                    except:
-                        price = 0
+                    elif event_type == 'error':
+                        yield f"data: {json.dumps({'event': 'progress', 'current': total_parsed + event['current'], 'total': grand_total, 'added': added_count, 'error': event.get('error')})}\n\n"
                     
-                    try:
-                        rooms_count = int(data.get('rooms')) if data.get('rooms') else None
-                    except:
-                        rooms_count = None
-                    
-                    try:
-                        area_val = float(data.get('total_area')) if data.get('total_area') else None
-                    except:
-                        area_val = None
-                    
-                    try:
-                        floor_val = int(data.get('floor')) if data.get('floor') else None
-                    except:
-                        floor_val = None
-                    
-                    try:
-                        total_floors_val = int(data.get('total_floors')) if data.get('total_floors') else None
-                    except:
-                        total_floors_val = None
-                    
-                    photos_list = data.get('photos', [])
-                    photos_str = ','.join(photos_list[:10]) if photos_list else ''
-                    
-                    furnished_val = data.get('furnished')
-                    has_furniture = furnished_val == 'Да' if furnished_val else False
-                    
-                    new_property = Property(
-                        owner_id=admin_user_id,
-                        property_type=prop_type_enum,
-                        district=data.get('district') or data.get('location'),
-                        address=data.get('location'),
-                        rooms=rooms_count,
-                        floor=floor_val,
-                        total_floors=total_floors_val,
-                        area=area_val,
-                        price=price if price > 0 else 1,
-                        description=data.get('description'),
-                        photos=photos_str,
-                        status=PropertyStatus.ACTIVE,
-                        housing_type=data.get('property_type'),
-                        building_type=data.get('building_type'),
-                        renovation=data.get('renovation'),
-                        layout=data.get('layout'),
-                        has_furniture=has_furniture,
-                        phone=phone,
-                        olx_url=data.get('url'),
-                        olx_id=olx_id,
-                        olx_title=data.get('title'),
-                        source='olx',
-                        seller_name=data.get('seller_name')
-                    )
-                    
-                    db_check.add(new_property)
-                    db_check.commit()
-                    db_check.close()
-                    
-                    added_count += 1
-                    yield f"data: {json.dumps({'event': 'progress', 'current': event['current'], 'total': event['total'], 'added': added_count})}\n\n"
-                
-                elif event_type == 'error':
-                    yield f"data: {json.dumps({'event': 'progress', 'current': event['current'], 'total': event['total'], 'added': added_count, 'error': event.get('error')})}\n\n"
-                
-                elif event_type == 'complete':
-                    yield f"data: {json.dumps({'event': 'complete', 'parsed': event['parsed'], 'added_to_db': added_count, 'skipped_duplicates': skipped_count, 'skipped_old': event.get('skipped_old', 0), 'skipped_no_phone': skipped_no_phone, 'total_found': event['total'], 'skipped_urls': skipped_urls})}\n\n"
+                    elif event_type == 'complete':
+                        total_parsed += event['parsed']
+                        if prop_type == property_types_to_parse[-1]:
+                            yield f"data: {json.dumps({'event': 'complete', 'parsed': total_parsed, 'added_to_db': added_count, 'skipped_duplicates': skipped_count, 'skipped_old': event.get('skipped_old', 0), 'skipped_no_phone': skipped_no_phone, 'total_found': grand_total, 'skipped_urls': skipped_urls})}\n\n"
             
         except Exception as e:
             yield f"data: {json.dumps({'event': 'error', 'error': str(e)})}\n\n"
