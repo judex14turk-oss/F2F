@@ -1521,10 +1521,14 @@ async def show_property_card(message, property_id, state=None):
     text += f"📞 <b><u>Контакт: {contact_phone}</u></b>\n"
     
     if prop.description:
-        desc = prop.description[:1000] + "..." if len(prop.description) > 1000 else prop.description
+        max_desc_len = 500
+        desc = prop.description[:max_desc_len] + "..." if len(prop.description) > max_desc_len else prop.description
         text += f"\n💬 <i>{desc}</i>"
     
-    text += "\n\n━━━━━━━━━━━━━━━━━━━━\n🔍 Ещё больше вариантов в @F2F_Tashkent_Bot"
+    text += "\n\n🔍 @F2F_Tashkent_Bot"
+    
+    if len(text) > 1024:
+        text = text[:1020] + "..."
     
     search_keyboard = ReplyKeyboardMarkup(
         keyboard=[
