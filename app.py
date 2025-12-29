@@ -2438,7 +2438,7 @@ def webapp_parser_single():
     data = request.get_json()
     tg_id = data.get('tg_id')
     url = data.get('url', '')
-    get_phone = data.get('get_phone', False)
+    get_phone = data.get('get_phone', True)
     
     if not tg_id:
         return jsonify({'error': 'Telegram ID не указан'}), 400
@@ -2585,7 +2585,7 @@ def webapp_parser_run():
     housing_type = data.get('housing_type', 'all')
     max_listings = data.get('max_listings', 50)
     max_days = data.get('max_days', 7)
-    get_phone = data.get('get_phone', False)
+    get_phone = data.get('get_phone', True)
     
     try:
         parser = OLXParser()
@@ -2712,7 +2712,7 @@ def webapp_parser_run_stream():
     housing_type = request.args.get('housing_type', 'all')
     max_listings = int(request.args.get('max_listings', 50))
     max_days = int(request.args.get('max_days', 7))
-    get_phone = request.args.get('get_phone', 'false') == 'true'
+    get_phone = request.args.get('get_phone', 'true') == 'true'
     
     if not tg_id:
         def error_gen():
