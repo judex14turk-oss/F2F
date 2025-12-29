@@ -1386,19 +1386,28 @@ async def view_properties(message: types.Message, state: FSMContext):
         query = query.filter(Property.area <= user.search_area_max)
     
     if user.search_building_type:
-        query = query.filter(Property.building_type.ilike(f"%{user.search_building_type}%"))
+        query = query.filter(or_(
+            Property.building_type.ilike(f"%{user.search_building_type}%"),
+            Property.building_type == None,
+            Property.building_type == ""
+        ))
     
     if user.search_renovation:
-        query = query.filter(Property.renovation.ilike(f"%{user.search_renovation}%"))
+        query = query.filter(or_(
+            Property.renovation.ilike(f"%{user.search_renovation}%"),
+            Property.renovation == None,
+            Property.renovation == ""
+        ))
     
     if user.search_furniture:
-        if "С мебелью" in user.search_furniture or "Mebellik" in user.search_furniture:
-            query = query.filter(Property.has_furniture == True)
-        elif "Без мебели" in user.search_furniture or "Mebelsiz" in user.search_furniture:
-            query = query.filter(Property.has_furniture == False)
+        pass
     
     if user.search_bathroom:
-        query = query.filter(Property.bathroom_type.ilike(f"%{user.search_bathroom}%"))
+        query = query.filter(or_(
+            Property.bathroom_type.ilike(f"%{user.search_bathroom}%"),
+            Property.bathroom_type == None,
+            Property.bathroom_type == ""
+        ))
     
     if liked_ids:
         query = query.filter(Property.id.notin_(liked_ids))
