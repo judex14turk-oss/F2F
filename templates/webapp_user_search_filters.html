@@ -174,8 +174,8 @@
         }
         
         .filter-options {
-            display: flex;
-            flex-wrap: wrap;
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
             gap: 8px;
         }
         
@@ -183,11 +183,15 @@
             background: #1a1a1a;
             border: 1px solid #333;
             border-radius: 8px;
-            padding: 10px 14px;
+            padding: 10px 12px;
             color: #888;
-            font-size: 0.85rem;
+            font-size: 0.8rem;
             cursor: pointer;
             transition: all 0.2s;
+            text-align: center;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
         }
         
         .filter-option:hover {
