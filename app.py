@@ -2795,7 +2795,7 @@ def webapp_parser_run_stream():
                         data = event['data']
                         phone = data.get('phone')
                         
-                        if get_phone and not phone:
+                        if not phone:
                             skipped_no_phone += 1
                             skipped_urls.append({'url': data.get('url'), 'reason': 'no_phone', 'title': data.get('title')})
                             yield f"data: {json.dumps({'event': 'progress', 'current': total_parsed + event['current'], 'total': grand_total, 'added': added_count})}\n\n"
