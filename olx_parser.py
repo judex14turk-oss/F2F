@@ -90,6 +90,9 @@ class OLXParser:
         }
         
     def get_driver(self):
+        import shutil
+        from selenium.webdriver.chrome.service import Service
+        
         chrome_options = Options()
         chrome_options.add_argument('--headless=new')
         chrome_options.add_argument('--no-sandbox')
@@ -113,8 +116,15 @@ class OLXParser:
         }
         chrome_options.add_experimental_option('prefs', prefs)
         
+        chromium_path = shutil.which('chromium') or shutil.which('chromium-browser') or shutil.which('google-chrome')
+        chromedriver_path = shutil.which('chromedriver')
+        
+        if chromium_path:
+            chrome_options.binary_location = chromium_path
+        
         try:
-            driver = webdriver.Chrome(options=chrome_options)
+            service = Service(executable_path=chromedriver_path) if chromedriver_path else Service()
+            driver = webdriver.Chrome(service=service, options=chrome_options)
             driver.execute_cdp_cmd('Page.addScriptToEvaluateOnNewDocument', {
                 'source': '''
                     Object.defineProperty(navigator, 'webdriver', {
