@@ -150,18 +150,21 @@
         }
         
         .filter-row {
-            display: flex;
+            display: grid;
+            grid-template-columns: 1fr 1fr;
             gap: 10px;
         }
         
         .filter-input {
-            flex: 1;
+            width: 100%;
+            min-width: 0;
             background: #1a1a1a;
             border: 1px solid #333;
             border-radius: 8px;
             padding: 12px;
             color: #fff;
             font-size: 0.9rem;
+            box-sizing: border-box;
         }
         
         .filter-input:focus {
