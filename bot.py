@@ -1351,7 +1351,11 @@ async def view_properties(message: types.Message, state: FSMContext):
     if user.search_district and user.search_district not in ["Любой", ""]:
         districts = [d.strip() for d in user.search_district.split(",") if d.strip() and d.strip() != "Любой"]
         if districts:
-            query = query.filter(Property.district.in_(districts))
+            district_filters = []
+            for d in districts:
+                district_base = d.replace("ский", "").replace("ий", "")
+                district_filters.append(Property.district.ilike(f"%{district_base}%"))
+            query = query.filter(or_(*district_filters))
     
     if user.search_budget_max:
         query = query.filter(Property.price <= user.search_budget_max)
