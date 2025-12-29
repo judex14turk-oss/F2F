@@ -298,8 +298,12 @@
                 <input type="text" class="filter-select" id="singleUrl" placeholder="https://www.olx.uz/d/obyavlenie/..." style="margin-bottom: 8px;">
             </div>
             
-            <!-- Phone extraction disabled -->
-            <input type="hidden" id="singleGetPhone" value="false">
+            <div class="filter-group" style="margin-bottom: 12px;">
+                <label style="display: flex; align-items: center; gap: 8px; cursor: pointer;">
+                    <input type="checkbox" id="singleGetPhone" checked style="width: 18px; height: 18px;">
+                    <span style="color: #e2e8f0;">Извлечь номер телефона</span>
+                </label>
+            </div>
             
             <div class="error-msg" id="singleErrorMsg"></div>
             
