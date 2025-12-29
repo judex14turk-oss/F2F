@@ -595,6 +595,15 @@ WEBAPP_TRANSLATIONS = {
         'webapp_filters_reset': "Фильтры сброшены",
         'webapp_error': "Ошибка",
         'webapp_likes_info': "Здесь показаны лайки вашим объектам за последние 30 дней",
+        'webapp_deal_type': "Тип сделки",
+        'webapp_buy': "Покупка",
+        'webapp_rent_filter': "Аренда",
+        'webapp_property_type': "Тип недвижимости",
+        'webapp_apartment': "Квартира",
+        'webapp_house': "Дом",
+        'webapp_land': "Участок",
+        'webapp_commercial': "Коммерция",
+        'webapp_district': "Район",
     },
     'uz': {
         'webapp_detailed_stats': "Batafsil statistika",
@@ -703,6 +712,15 @@ WEBAPP_TRANSLATIONS = {
         'webapp_filters_reset': "Filtrlar tozalandi",
         'webapp_error': "Xatolik",
         'webapp_likes_info': "Bu yerda so'nggi 30 kun ichidagi obyektlaringizga qo'yilgan layklar ko'rsatilgan",
+        'webapp_deal_type': "Bitim turi",
+        'webapp_buy': "Sotib olish",
+        'webapp_rent_filter': "Ijara",
+        'webapp_property_type': "Ko'chmas mulk turi",
+        'webapp_apartment': "Kvartira",
+        'webapp_house': "Uy",
+        'webapp_land': "Yer",
+        'webapp_commercial': "Tijorat",
+        'webapp_district': "Tuman",
     }
 }
 

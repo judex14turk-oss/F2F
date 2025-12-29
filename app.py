@@ -832,6 +832,8 @@ def webapp_user_search_filters():
         db.close()
         return "User not found", 404
     
+    districts = db.query(District).order_by(District.name).all()
+    
     lang = user.language or 'ru'
     t = WEBAPP_TRANSLATIONS.get(lang, WEBAPP_TRANSLATIONS['ru'])
     
@@ -841,7 +843,8 @@ def webapp_user_search_filters():
         user=user,
         tg_id=tg_id,
         lang=lang,
-        t=t
+        t=t,
+        districts=districts
     )
 
 
@@ -860,6 +863,9 @@ def webapp_user_search_filters_save():
     
     data = request.get_json()
     
+    user.search_deal_type = data.get('deal_type') if data.get('deal_type') else None
+    user.search_housing_type = data.get('housing_type') if data.get('housing_type') else None
+    user.search_district = data.get('district') if data.get('district') else None
     user.search_area_min = int(data.get('area_min')) if data.get('area_min') else None
     user.search_area_max = int(data.get('area_max')) if data.get('area_max') else None
     user.search_building_type = data.get('building_type') if data.get('building_type') else None
@@ -886,6 +892,9 @@ def webapp_user_search_filters_reset():
         db.close()
         return jsonify({'error': 'User not found'}), 404
     
+    user.search_deal_type = None
+    user.search_housing_type = None
+    user.search_district = None
     user.search_area_min = None
     user.search_area_max = None
     user.search_building_type = None

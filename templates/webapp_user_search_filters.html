@@ -182,6 +182,12 @@
             gap: 8px;
         }
         
+        .filter-options.district-options {
+            grid-template-columns: repeat(2, 1fr);
+            max-height: 200px;
+            overflow-y: auto;
+        }
+        
         .filter-option {
             background: #1a1a1a;
             border: 1px solid #333;
@@ -310,6 +316,42 @@
     <div class="filters-container">
         <div class="filter-card">
             <div class="filter-header">
+                <i class="bi bi-cart filter-icon"></i>
+                <span class="filter-title">{{ t.get('webapp_deal_type', 'Тип сделки') }}</span>
+            </div>
+            <div class="filter-options" data-filter="deal_type">
+                <div class="filter-option {% if user.search_deal_type == 'Покупка' %}selected{% endif %}" data-value="Покупка">{{ t.get('webapp_buy', 'Покупка') }}</div>
+                <div class="filter-option {% if user.search_deal_type == 'Аренда' %}selected{% endif %}" data-value="Аренда">{{ t.get('webapp_rent_filter', 'Аренда') }}</div>
+            </div>
+        </div>
+        
+        <div class="filter-card">
+            <div class="filter-header">
+                <i class="bi bi-house-door filter-icon"></i>
+                <span class="filter-title">{{ t.get('webapp_property_type', 'Тип недвижимости') }}</span>
+            </div>
+            <div class="filter-options" data-filter="housing_type">
+                <div class="filter-option {% if user.search_housing_type == 'Квартира' %}selected{% endif %}" data-value="Квартира">{{ t.get('webapp_apartment', 'Квартира') }}</div>
+                <div class="filter-option {% if user.search_housing_type == 'Дом' %}selected{% endif %}" data-value="Дом">{{ t.get('webapp_house', 'Дом') }}</div>
+                <div class="filter-option {% if user.search_housing_type == 'Участок' %}selected{% endif %}" data-value="Участок">{{ t.get('webapp_land', 'Участок') }}</div>
+                <div class="filter-option {% if user.search_housing_type == 'Коммерция' %}selected{% endif %}" data-value="Коммерция">{{ t.get('webapp_commercial', 'Коммерция') }}</div>
+            </div>
+        </div>
+        
+        <div class="filter-card">
+            <div class="filter-header">
+                <i class="bi bi-geo-alt filter-icon"></i>
+                <span class="filter-title">{{ t.get('webapp_district', 'Район') }}</span>
+            </div>
+            <div class="filter-options district-options" data-filter="district">
+                {% for district in districts %}
+                <div class="filter-option {% if user.search_district == district.name %}selected{% endif %}" data-value="{{ district.name }}">{{ district.name }}</div>
+                {% endfor %}
+            </div>
+        </div>
+        
+        <div class="filter-card">
+            <div class="filter-header">
                 <i class="bi bi-arrows-expand filter-icon"></i>
                 <span class="filter-title">{{ t.get('webapp_area', 'Площадь') }} (м²)</span>
             </div>
@@ -420,6 +462,9 @@
         
         async function saveFilters() {
             const data = {
+                deal_type: getFilterValue('deal_type'),
+                housing_type: getFilterValue('housing_type'),
+                district: getFilterValue('district'),
                 area_min: document.getElementById('area_min').value,
                 area_max: document.getElementById('area_max').value,
                 building_type: getFilterValue('building_type'),
