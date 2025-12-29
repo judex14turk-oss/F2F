@@ -645,7 +645,7 @@ def get_buyer_menu(lang='ru'):
     return ReplyKeyboardMarkup(
         keyboard=[
             [KeyboardButton(text=get_text('view_properties', lang))],
-            [KeyboardButton(text=get_text('search_settings', lang))],
+            [KeyboardButton(text=get_text('search_settings', lang)), KeyboardButton(text=get_text('detailed_search', lang))],
             [KeyboardButton(text=get_text('profile', lang))]
         ],
         resize_keyboard=True
@@ -1375,6 +1375,26 @@ async def view_properties(message: types.Message, state: FSMContext):
                 query = query.filter(Property.floor >= int(parts[0]), Property.floor <= int(parts[1]))
         elif floor_filter.isdigit():
             query = query.filter(Property.floor == int(floor_filter))
+    
+    if user.search_area_min:
+        query = query.filter(Property.area >= user.search_area_min)
+    if user.search_area_max:
+        query = query.filter(Property.area <= user.search_area_max)
+    
+    if user.search_building_type:
+        query = query.filter(Property.building_type.ilike(f"%{user.search_building_type}%"))
+    
+    if user.search_renovation:
+        query = query.filter(Property.renovation.ilike(f"%{user.search_renovation}%"))
+    
+    if user.search_furniture:
+        if "С мебелью" in user.search_furniture or "Mebellik" in user.search_furniture:
+            query = query.filter(Property.has_furniture == True)
+        elif "Без мебели" in user.search_furniture or "Mebelsiz" in user.search_furniture:
+            query = query.filter(Property.has_furniture == False)
+    
+    if user.search_bathroom:
+        query = query.filter(Property.bathroom_type.ilike(f"%{user.search_bathroom}%"))
     
     if liked_ids:
         query = query.filter(Property.id.notin_(liked_ids))
@@ -4187,6 +4207,558 @@ async def settings_bio_entered(message: types.Message, state: FSMContext):
 PROPERTY_ACTIVE_DAYS = 30
 PROPERTY_ARCHIVE_DAYS = 30
 LIKE_LIFETIME_DAYS = 1
+
+
+class DetailedSearchStates(StatesGroup):
+    menu = State()
+    area_min = State()
+    area_max = State()
+    building_type = State()
+    renovation = State()
+    furniture = State()
+    bathroom = State()
+
+
+def get_detailed_search_menu(lang, user):
+    current_filters = []
+    
+    if user.search_area_min or user.search_area_max:
+        area_text = f"📐 {user.search_area_min or 0}-{user.search_area_max or '∞'} м²"
+        current_filters.append(area_text)
+    if user.search_building_type:
+        current_filters.append(f"🏠 {user.search_building_type}")
+    if user.search_renovation:
+        current_filters.append(f"🔨 {user.search_renovation}")
+    if user.search_furniture:
+        current_filters.append(f"🛋 {user.search_furniture}")
+    if user.search_bathroom:
+        current_filters.append(f"🚿 {user.search_bathroom}")
+    
+    filters_text = "\n".join(current_filters) if current_filters else ("Не заданы" if lang == 'ru' else "Belgilanmagan")
+    
+    return filters_text
+
+
+@dp.message(F.text.in_(["🔍 Подробный поиск", "🔍 Batafsil qidiruv"]))
+async def detailed_search_menu(message: types.Message, state: FSMContext):
+    db = SessionLocal()
+    user = db.query(User).filter(User.telegram_id == message.from_user.id).first()
+    lang = get_user_lang(user)
+    
+    filters_text = get_detailed_search_menu(lang, user)
+    db.close()
+    
+    await state.update_data(user_lang=lang)
+    
+    keyboard = ReplyKeyboardMarkup(
+        keyboard=[
+            [KeyboardButton(text=get_text('area_filter', lang)), KeyboardButton(text=get_text('building_filter', lang))],
+            [KeyboardButton(text=get_text('renovation_filter', lang)), KeyboardButton(text=get_text('furniture_filter', lang))],
+            [KeyboardButton(text=get_text('bathroom_filter', lang))],
+            [KeyboardButton(text=get_text('reset_filters', lang)), KeyboardButton(text=get_text('apply_filters', lang))],
+            [KeyboardButton(text=get_text('back', lang))]
+        ],
+        resize_keyboard=True
+    )
+    
+    title = get_text('detailed_search_title', lang)
+    current = get_text('current_filters', lang)
+    
+    await message.answer(f"{title}\n\n{current}\n{filters_text}", reply_markup=keyboard)
+    await state.set_state(DetailedSearchStates.menu)
+
+
+@dp.message(F.text.in_(["⬅️ Назад", "⬅️ Orqaga"]), DetailedSearchStates.menu)
+async def detailed_back_to_main(message: types.Message, state: FSMContext):
+    data = await state.get_data()
+    lang = data.get('user_lang', 'ru')
+    await state.clear()
+    keyboard = get_buyer_menu(lang)
+    await message.answer(get_text('returned_to_main_menu', lang), reply_markup=keyboard)
+
+
+@dp.message(F.text.in_(["📐 Площадь", "📐 Maydon"]), DetailedSearchStates.menu)
+async def detailed_area_start(message: types.Message, state: FSMContext):
+    data = await state.get_data()
+    lang = data.get('user_lang', 'ru')
+    
+    keyboard = ReplyKeyboardMarkup(
+        keyboard=[[KeyboardButton(text=get_text('back', lang))]],
+        resize_keyboard=True
+    )
+    await message.answer(get_text('enter_area_min', lang), reply_markup=keyboard)
+    await state.set_state(DetailedSearchStates.area_min)
+
+
+@dp.message(F.text.in_(["⬅️ Назад", "⬅️ Orqaga"]), DetailedSearchStates.area_min)
+async def back_from_area_min(message: types.Message, state: FSMContext):
+    data = await state.get_data()
+    lang = data.get('user_lang', 'ru')
+    db = SessionLocal()
+    user = db.query(User).filter(User.telegram_id == message.from_user.id).first()
+    filters_text = get_detailed_search_menu(lang, user)
+    db.close()
+    
+    keyboard = ReplyKeyboardMarkup(
+        keyboard=[
+            [KeyboardButton(text=get_text('area_filter', lang)), KeyboardButton(text=get_text('building_filter', lang))],
+            [KeyboardButton(text=get_text('renovation_filter', lang)), KeyboardButton(text=get_text('furniture_filter', lang))],
+            [KeyboardButton(text=get_text('bathroom_filter', lang))],
+            [KeyboardButton(text=get_text('reset_filters', lang)), KeyboardButton(text=get_text('apply_filters', lang))],
+            [KeyboardButton(text=get_text('back', lang))]
+        ],
+        resize_keyboard=True
+    )
+    title = get_text('detailed_search_title', lang)
+    current = get_text('current_filters', lang)
+    await message.answer(f"{title}\n\n{current}\n{filters_text}", reply_markup=keyboard)
+    await state.set_state(DetailedSearchStates.menu)
+
+
+@dp.message(DetailedSearchStates.area_min)
+async def detailed_area_min_input(message: types.Message, state: FSMContext):
+    data = await state.get_data()
+    lang = data.get('user_lang', 'ru')
+    
+    try:
+        area_min = int(message.text.strip())
+        if area_min < 0:
+            raise ValueError
+        await state.update_data(temp_area_min=area_min)
+        
+        keyboard = ReplyKeyboardMarkup(
+            keyboard=[[KeyboardButton(text=get_text('back', lang))]],
+            resize_keyboard=True
+        )
+        await message.answer(get_text('enter_area_max', lang), reply_markup=keyboard)
+        await state.set_state(DetailedSearchStates.area_max)
+    except:
+        await message.answer(get_text('invalid_area', lang))
+
+
+@dp.message(F.text.in_(["⬅️ Назад", "⬅️ Orqaga"]), DetailedSearchStates.area_max)
+async def back_from_area_max(message: types.Message, state: FSMContext):
+    data = await state.get_data()
+    lang = data.get('user_lang', 'ru')
+    keyboard = ReplyKeyboardMarkup(
+        keyboard=[[KeyboardButton(text=get_text('back', lang))]],
+        resize_keyboard=True
+    )
+    await message.answer(get_text('enter_area_min', lang), reply_markup=keyboard)
+    await state.set_state(DetailedSearchStates.area_min)
+
+
+@dp.message(DetailedSearchStates.area_max)
+async def detailed_area_max_input(message: types.Message, state: FSMContext):
+    data = await state.get_data()
+    lang = data.get('user_lang', 'ru')
+    
+    try:
+        area_max = int(message.text.strip())
+        area_min = data.get('temp_area_min', 0)
+        if area_max < 0 or area_max < area_min:
+            raise ValueError
+        
+        db = SessionLocal()
+        user = db.query(User).filter(User.telegram_id == message.from_user.id).first()
+        user.search_area_min = area_min
+        user.search_area_max = area_max
+        db.commit()
+        filters_text = get_detailed_search_menu(lang, user)
+        db.close()
+        
+        keyboard = ReplyKeyboardMarkup(
+            keyboard=[
+                [KeyboardButton(text=get_text('area_filter', lang)), KeyboardButton(text=get_text('building_filter', lang))],
+                [KeyboardButton(text=get_text('renovation_filter', lang)), KeyboardButton(text=get_text('furniture_filter', lang))],
+                [KeyboardButton(text=get_text('bathroom_filter', lang))],
+                [KeyboardButton(text=get_text('reset_filters', lang)), KeyboardButton(text=get_text('apply_filters', lang))],
+                [KeyboardButton(text=get_text('back', lang))]
+            ],
+            resize_keyboard=True
+        )
+        title = get_text('detailed_search_title', lang)
+        current = get_text('current_filters', lang)
+        await message.answer(f"✅ {get_text('area_filter', lang)}: {area_min}-{area_max} м²\n\n{title}\n\n{current}\n{filters_text}", reply_markup=keyboard)
+        await state.set_state(DetailedSearchStates.menu)
+    except:
+        await message.answer(get_text('invalid_area', lang))
+
+
+@dp.message(F.text.in_(["🏠 Тип дома", "🏠 Uy turi"]), DetailedSearchStates.menu)
+async def detailed_building_type(message: types.Message, state: FSMContext):
+    data = await state.get_data()
+    lang = data.get('user_lang', 'ru')
+    
+    keyboard = ReplyKeyboardMarkup(
+        keyboard=[
+            [KeyboardButton(text=get_text('building_brick', lang)), KeyboardButton(text=get_text('building_monolith', lang))],
+            [KeyboardButton(text=get_text('building_panel', lang)), KeyboardButton(text=get_text('building_block', lang))],
+            [KeyboardButton(text=get_text('no_filter', lang))],
+            [KeyboardButton(text=get_text('back', lang))]
+        ],
+        resize_keyboard=True
+    )
+    await message.answer(get_text('choose_building_type', lang), reply_markup=keyboard)
+    await state.set_state(DetailedSearchStates.building_type)
+
+
+@dp.message(F.text.in_(["⬅️ Назад", "⬅️ Orqaga"]), DetailedSearchStates.building_type)
+async def back_from_building(message: types.Message, state: FSMContext):
+    data = await state.get_data()
+    lang = data.get('user_lang', 'ru')
+    db = SessionLocal()
+    user = db.query(User).filter(User.telegram_id == message.from_user.id).first()
+    filters_text = get_detailed_search_menu(lang, user)
+    db.close()
+    
+    keyboard = ReplyKeyboardMarkup(
+        keyboard=[
+            [KeyboardButton(text=get_text('area_filter', lang)), KeyboardButton(text=get_text('building_filter', lang))],
+            [KeyboardButton(text=get_text('renovation_filter', lang)), KeyboardButton(text=get_text('furniture_filter', lang))],
+            [KeyboardButton(text=get_text('bathroom_filter', lang))],
+            [KeyboardButton(text=get_text('reset_filters', lang)), KeyboardButton(text=get_text('apply_filters', lang))],
+            [KeyboardButton(text=get_text('back', lang))]
+        ],
+        resize_keyboard=True
+    )
+    title = get_text('detailed_search_title', lang)
+    current = get_text('current_filters', lang)
+    await message.answer(f"{title}\n\n{current}\n{filters_text}", reply_markup=keyboard)
+    await state.set_state(DetailedSearchStates.menu)
+
+
+@dp.message(DetailedSearchStates.building_type)
+async def detailed_building_selected(message: types.Message, state: FSMContext):
+    data = await state.get_data()
+    lang = data.get('user_lang', 'ru')
+    
+    building_types = {
+        get_text('building_brick', 'ru'): "Кирпичный",
+        get_text('building_brick', 'uz'): "G'ishtli",
+        get_text('building_monolith', 'ru'): "Монолитный",
+        get_text('building_monolith', 'uz'): "Monolit",
+        get_text('building_panel', 'ru'): "Панельный",
+        get_text('building_panel', 'uz'): "Panelli",
+        get_text('building_block', 'ru'): "Блочный",
+        get_text('building_block', 'uz'): "Blokli",
+        get_text('no_filter', 'ru'): None,
+        get_text('no_filter', 'uz'): None
+    }
+    
+    building = building_types.get(message.text)
+    
+    db = SessionLocal()
+    user = db.query(User).filter(User.telegram_id == message.from_user.id).first()
+    user.search_building_type = building
+    db.commit()
+    filters_text = get_detailed_search_menu(lang, user)
+    db.close()
+    
+    keyboard = ReplyKeyboardMarkup(
+        keyboard=[
+            [KeyboardButton(text=get_text('area_filter', lang)), KeyboardButton(text=get_text('building_filter', lang))],
+            [KeyboardButton(text=get_text('renovation_filter', lang)), KeyboardButton(text=get_text('furniture_filter', lang))],
+            [KeyboardButton(text=get_text('bathroom_filter', lang))],
+            [KeyboardButton(text=get_text('reset_filters', lang)), KeyboardButton(text=get_text('apply_filters', lang))],
+            [KeyboardButton(text=get_text('back', lang))]
+        ],
+        resize_keyboard=True
+    )
+    title = get_text('detailed_search_title', lang)
+    current = get_text('current_filters', lang)
+    await message.answer(f"✅\n\n{title}\n\n{current}\n{filters_text}", reply_markup=keyboard)
+    await state.set_state(DetailedSearchStates.menu)
+
+
+@dp.message(F.text.in_(["🔨 Ремонт", "🔨 Ta'mir"]), DetailedSearchStates.menu)
+async def detailed_renovation(message: types.Message, state: FSMContext):
+    data = await state.get_data()
+    lang = data.get('user_lang', 'ru')
+    
+    keyboard = ReplyKeyboardMarkup(
+        keyboard=[
+            [KeyboardButton(text=get_text('renovation_new', lang)), KeyboardButton(text=get_text('renovation_medium', lang))],
+            [KeyboardButton(text=get_text('renovation_needs', lang)), KeyboardButton(text=get_text('renovation_rough', lang))],
+            [KeyboardButton(text=get_text('no_filter', lang))],
+            [KeyboardButton(text=get_text('back', lang))]
+        ],
+        resize_keyboard=True
+    )
+    await message.answer(get_text('choose_renovation', lang), reply_markup=keyboard)
+    await state.set_state(DetailedSearchStates.renovation)
+
+
+@dp.message(F.text.in_(["⬅️ Назад", "⬅️ Orqaga"]), DetailedSearchStates.renovation)
+async def back_from_renovation(message: types.Message, state: FSMContext):
+    data = await state.get_data()
+    lang = data.get('user_lang', 'ru')
+    db = SessionLocal()
+    user = db.query(User).filter(User.telegram_id == message.from_user.id).first()
+    filters_text = get_detailed_search_menu(lang, user)
+    db.close()
+    
+    keyboard = ReplyKeyboardMarkup(
+        keyboard=[
+            [KeyboardButton(text=get_text('area_filter', lang)), KeyboardButton(text=get_text('building_filter', lang))],
+            [KeyboardButton(text=get_text('renovation_filter', lang)), KeyboardButton(text=get_text('furniture_filter', lang))],
+            [KeyboardButton(text=get_text('bathroom_filter', lang))],
+            [KeyboardButton(text=get_text('reset_filters', lang)), KeyboardButton(text=get_text('apply_filters', lang))],
+            [KeyboardButton(text=get_text('back', lang))]
+        ],
+        resize_keyboard=True
+    )
+    title = get_text('detailed_search_title', lang)
+    current = get_text('current_filters', lang)
+    await message.answer(f"{title}\n\n{current}\n{filters_text}", reply_markup=keyboard)
+    await state.set_state(DetailedSearchStates.menu)
+
+
+@dp.message(DetailedSearchStates.renovation)
+async def detailed_renovation_selected(message: types.Message, state: FSMContext):
+    data = await state.get_data()
+    lang = data.get('user_lang', 'ru')
+    
+    renovation_types = {
+        get_text('renovation_new', 'ru'): "Новый ремонт",
+        get_text('renovation_new', 'uz'): "Yangi ta'mir",
+        get_text('renovation_medium', 'ru'): "Средний ремонт",
+        get_text('renovation_medium', 'uz'): "O'rtacha ta'mir",
+        get_text('renovation_needs', 'ru'): "Требует ремонта",
+        get_text('renovation_needs', 'uz'): "Ta'mir talab qiladi",
+        get_text('renovation_rough', 'ru'): "Чистовая отделка",
+        get_text('renovation_rough', 'uz'): "Toza pardozlash",
+        get_text('no_filter', 'ru'): None,
+        get_text('no_filter', 'uz'): None
+    }
+    
+    renovation = renovation_types.get(message.text)
+    
+    db = SessionLocal()
+    user = db.query(User).filter(User.telegram_id == message.from_user.id).first()
+    user.search_renovation = renovation
+    db.commit()
+    filters_text = get_detailed_search_menu(lang, user)
+    db.close()
+    
+    keyboard = ReplyKeyboardMarkup(
+        keyboard=[
+            [KeyboardButton(text=get_text('area_filter', lang)), KeyboardButton(text=get_text('building_filter', lang))],
+            [KeyboardButton(text=get_text('renovation_filter', lang)), KeyboardButton(text=get_text('furniture_filter', lang))],
+            [KeyboardButton(text=get_text('bathroom_filter', lang))],
+            [KeyboardButton(text=get_text('reset_filters', lang)), KeyboardButton(text=get_text('apply_filters', lang))],
+            [KeyboardButton(text=get_text('back', lang))]
+        ],
+        resize_keyboard=True
+    )
+    title = get_text('detailed_search_title', lang)
+    current = get_text('current_filters', lang)
+    await message.answer(f"✅\n\n{title}\n\n{current}\n{filters_text}", reply_markup=keyboard)
+    await state.set_state(DetailedSearchStates.menu)
+
+
+@dp.message(F.text.in_(["🛋 Мебель", "🛋 Mebel"]), DetailedSearchStates.menu)
+async def detailed_furniture(message: types.Message, state: FSMContext):
+    data = await state.get_data()
+    lang = data.get('user_lang', 'ru')
+    
+    keyboard = ReplyKeyboardMarkup(
+        keyboard=[
+            [KeyboardButton(text=get_text('furniture_yes', lang)), KeyboardButton(text=get_text('furniture_no', lang))],
+            [KeyboardButton(text=get_text('no_filter', lang))],
+            [KeyboardButton(text=get_text('back', lang))]
+        ],
+        resize_keyboard=True
+    )
+    await message.answer(get_text('choose_furniture', lang), reply_markup=keyboard)
+    await state.set_state(DetailedSearchStates.furniture)
+
+
+@dp.message(F.text.in_(["⬅️ Назад", "⬅️ Orqaga"]), DetailedSearchStates.furniture)
+async def back_from_furniture(message: types.Message, state: FSMContext):
+    data = await state.get_data()
+    lang = data.get('user_lang', 'ru')
+    db = SessionLocal()
+    user = db.query(User).filter(User.telegram_id == message.from_user.id).first()
+    filters_text = get_detailed_search_menu(lang, user)
+    db.close()
+    
+    keyboard = ReplyKeyboardMarkup(
+        keyboard=[
+            [KeyboardButton(text=get_text('area_filter', lang)), KeyboardButton(text=get_text('building_filter', lang))],
+            [KeyboardButton(text=get_text('renovation_filter', lang)), KeyboardButton(text=get_text('furniture_filter', lang))],
+            [KeyboardButton(text=get_text('bathroom_filter', lang))],
+            [KeyboardButton(text=get_text('reset_filters', lang)), KeyboardButton(text=get_text('apply_filters', lang))],
+            [KeyboardButton(text=get_text('back', lang))]
+        ],
+        resize_keyboard=True
+    )
+    title = get_text('detailed_search_title', lang)
+    current = get_text('current_filters', lang)
+    await message.answer(f"{title}\n\n{current}\n{filters_text}", reply_markup=keyboard)
+    await state.set_state(DetailedSearchStates.menu)
+
+
+@dp.message(DetailedSearchStates.furniture)
+async def detailed_furniture_selected(message: types.Message, state: FSMContext):
+    data = await state.get_data()
+    lang = data.get('user_lang', 'ru')
+    
+    furniture_options = {
+        get_text('furniture_yes', 'ru'): "С мебелью",
+        get_text('furniture_yes', 'uz'): "Mebellik",
+        get_text('furniture_no', 'ru'): "Без мебели",
+        get_text('furniture_no', 'uz'): "Mebelsiz",
+        get_text('no_filter', 'ru'): None,
+        get_text('no_filter', 'uz'): None
+    }
+    
+    furniture = furniture_options.get(message.text)
+    
+    db = SessionLocal()
+    user = db.query(User).filter(User.telegram_id == message.from_user.id).first()
+    user.search_furniture = furniture
+    db.commit()
+    filters_text = get_detailed_search_menu(lang, user)
+    db.close()
+    
+    keyboard = ReplyKeyboardMarkup(
+        keyboard=[
+            [KeyboardButton(text=get_text('area_filter', lang)), KeyboardButton(text=get_text('building_filter', lang))],
+            [KeyboardButton(text=get_text('renovation_filter', lang)), KeyboardButton(text=get_text('furniture_filter', lang))],
+            [KeyboardButton(text=get_text('bathroom_filter', lang))],
+            [KeyboardButton(text=get_text('reset_filters', lang)), KeyboardButton(text=get_text('apply_filters', lang))],
+            [KeyboardButton(text=get_text('back', lang))]
+        ],
+        resize_keyboard=True
+    )
+    title = get_text('detailed_search_title', lang)
+    current = get_text('current_filters', lang)
+    await message.answer(f"✅\n\n{title}\n\n{current}\n{filters_text}", reply_markup=keyboard)
+    await state.set_state(DetailedSearchStates.menu)
+
+
+@dp.message(F.text.in_(["🚿 Санузел", "🚿 Hojatxona"]), DetailedSearchStates.menu)
+async def detailed_bathroom(message: types.Message, state: FSMContext):
+    data = await state.get_data()
+    lang = data.get('user_lang', 'ru')
+    
+    keyboard = ReplyKeyboardMarkup(
+        keyboard=[
+            [KeyboardButton(text=get_text('bathroom_separate', lang)), KeyboardButton(text=get_text('bathroom_combined', lang))],
+            [KeyboardButton(text=get_text('no_filter', lang))],
+            [KeyboardButton(text=get_text('back', lang))]
+        ],
+        resize_keyboard=True
+    )
+    await message.answer(get_text('choose_bathroom', lang), reply_markup=keyboard)
+    await state.set_state(DetailedSearchStates.bathroom)
+
+
+@dp.message(F.text.in_(["⬅️ Назад", "⬅️ Orqaga"]), DetailedSearchStates.bathroom)
+async def back_from_bathroom(message: types.Message, state: FSMContext):
+    data = await state.get_data()
+    lang = data.get('user_lang', 'ru')
+    db = SessionLocal()
+    user = db.query(User).filter(User.telegram_id == message.from_user.id).first()
+    filters_text = get_detailed_search_menu(lang, user)
+    db.close()
+    
+    keyboard = ReplyKeyboardMarkup(
+        keyboard=[
+            [KeyboardButton(text=get_text('area_filter', lang)), KeyboardButton(text=get_text('building_filter', lang))],
+            [KeyboardButton(text=get_text('renovation_filter', lang)), KeyboardButton(text=get_text('furniture_filter', lang))],
+            [KeyboardButton(text=get_text('bathroom_filter', lang))],
+            [KeyboardButton(text=get_text('reset_filters', lang)), KeyboardButton(text=get_text('apply_filters', lang))],
+            [KeyboardButton(text=get_text('back', lang))]
+        ],
+        resize_keyboard=True
+    )
+    title = get_text('detailed_search_title', lang)
+    current = get_text('current_filters', lang)
+    await message.answer(f"{title}\n\n{current}\n{filters_text}", reply_markup=keyboard)
+    await state.set_state(DetailedSearchStates.menu)
+
+
+@dp.message(DetailedSearchStates.bathroom)
+async def detailed_bathroom_selected(message: types.Message, state: FSMContext):
+    data = await state.get_data()
+    lang = data.get('user_lang', 'ru')
+    
+    bathroom_options = {
+        get_text('bathroom_separate', 'ru'): "Раздельный",
+        get_text('bathroom_separate', 'uz'): "Alohida",
+        get_text('bathroom_combined', 'ru'): "Совмещенный",
+        get_text('bathroom_combined', 'uz'): "Birlashtirilgan",
+        get_text('no_filter', 'ru'): None,
+        get_text('no_filter', 'uz'): None
+    }
+    
+    bathroom = bathroom_options.get(message.text)
+    
+    db = SessionLocal()
+    user = db.query(User).filter(User.telegram_id == message.from_user.id).first()
+    user.search_bathroom = bathroom
+    db.commit()
+    filters_text = get_detailed_search_menu(lang, user)
+    db.close()
+    
+    keyboard = ReplyKeyboardMarkup(
+        keyboard=[
+            [KeyboardButton(text=get_text('area_filter', lang)), KeyboardButton(text=get_text('building_filter', lang))],
+            [KeyboardButton(text=get_text('renovation_filter', lang)), KeyboardButton(text=get_text('furniture_filter', lang))],
+            [KeyboardButton(text=get_text('bathroom_filter', lang))],
+            [KeyboardButton(text=get_text('reset_filters', lang)), KeyboardButton(text=get_text('apply_filters', lang))],
+            [KeyboardButton(text=get_text('back', lang))]
+        ],
+        resize_keyboard=True
+    )
+    title = get_text('detailed_search_title', lang)
+    current = get_text('current_filters', lang)
+    await message.answer(f"✅\n\n{title}\n\n{current}\n{filters_text}", reply_markup=keyboard)
+    await state.set_state(DetailedSearchStates.menu)
+
+
+@dp.message(F.text.in_(["🔄 Сбросить фильтры", "🔄 Filtrlarni tozalash"]), DetailedSearchStates.menu)
+async def reset_detailed_filters(message: types.Message, state: FSMContext):
+    data = await state.get_data()
+    lang = data.get('user_lang', 'ru')
+    
+    db = SessionLocal()
+    user = db.query(User).filter(User.telegram_id == message.from_user.id).first()
+    user.search_area_min = None
+    user.search_area_max = None
+    user.search_building_type = None
+    user.search_renovation = None
+    user.search_furniture = None
+    user.search_bathroom = None
+    db.commit()
+    filters_text = get_detailed_search_menu(lang, user)
+    db.close()
+    
+    keyboard = ReplyKeyboardMarkup(
+        keyboard=[
+            [KeyboardButton(text=get_text('area_filter', lang)), KeyboardButton(text=get_text('building_filter', lang))],
+            [KeyboardButton(text=get_text('renovation_filter', lang)), KeyboardButton(text=get_text('furniture_filter', lang))],
+            [KeyboardButton(text=get_text('bathroom_filter', lang))],
+            [KeyboardButton(text=get_text('reset_filters', lang)), KeyboardButton(text=get_text('apply_filters', lang))],
+            [KeyboardButton(text=get_text('back', lang))]
+        ],
+        resize_keyboard=True
+    )
+    title = get_text('detailed_search_title', lang)
+    current = get_text('current_filters', lang)
+    await message.answer(f"{get_text('filters_reset', lang)}\n\n{title}\n\n{current}\n{filters_text}", reply_markup=keyboard)
+
+
+@dp.message(F.text.in_(["✅ Применить фильтры", "✅ Filtrlarni qo'llash"]), DetailedSearchStates.menu)
+async def apply_detailed_filters(message: types.Message, state: FSMContext):
+    data = await state.get_data()
+    lang = data.get('user_lang', 'ru')
+    
+    await state.clear()
+    keyboard = get_buyer_menu(lang)
+    await message.answer(get_text('filters_applied', lang), reply_markup=keyboard)
 
 
 async def cleanup_old_likes():

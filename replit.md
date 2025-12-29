@@ -8,7 +8,21 @@ The platform has two main user interfaces:
 1. **Telegram Bot** - Primary interface for buyers (swipe-based property discovery) and sellers (property management)
 2. **Web Admin/CRM Panel** - Flask-based dashboard for sellers to manage listings and track deals, plus admin functionality for platform management
 
-## Recent Changes (December 22, 2025)
+## Recent Changes (December 29, 2025)
+
+- **Подробный поиск для искателей**: добавлена расширенная функция поиска с дополнительными фильтрами
+  - Новая кнопка "🔍 Подробный поиск" в меню покупателя
+  - Фильтр по площади (минимум-максимум м²)
+  - Фильтр по типу дома (кирпичный, монолитный, панельный, блочный)
+  - Фильтр по ремонту (новый, средний, требует ремонта, чистовая)
+  - Фильтр по мебели (с мебелью / без мебели)
+  - Фильтр по санузлу (раздельный / совмещенный)
+  - Отображение текущих активных фильтров
+  - Кнопки сброса и применения фильтров
+  - Полная поддержка русского и узбекского языков
+  - Новые поля в модели User: search_area_min, search_area_max, search_building_type, search_renovation, search_furniture, search_bathroom
+
+## Previous Changes (December 22, 2025)
 
 - **Система оплаты тарифов**: добавлена полная система оплаты через страницу тарифов
   - Кнопки "Оплатить" на карточках Про и Премиум

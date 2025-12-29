@@ -79,6 +79,12 @@ class User(Base):
     search_housing_type = Column(String(50))
     search_deal_type = Column(String(20))
     buyer_bio = Column(String(320))
+    search_area_min = Column(Integer)
+    search_area_max = Column(Integer)
+    search_building_type = Column(String(100))
+    search_renovation = Column(String(100))
+    search_furniture = Column(String(20))
+    search_bathroom = Column(String(50))
     
     seller_type = Column(Enum(SellerType))
     company_name = Column(String(200))
