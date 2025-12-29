@@ -548,6 +548,24 @@ class OLXParser:
         return result
     
     def parse_listing(self, url, get_phone=False):
+        if get_phone:
+            driver = None
+            try:
+                driver = self.get_driver()
+                if driver:
+                    result = self.parse_listing_with_driver(driver, url, get_phone=True)
+                    return result
+                else:
+                    print("Warning: Could not create driver, falling back to requests")
+            except Exception as e:
+                print(f"Driver error: {e}, falling back to requests")
+            finally:
+                if driver:
+                    try:
+                        driver.quit()
+                    except:
+                        pass
+        
         result = self.parse_listing_with_requests(url)
         
         if get_phone and not result.get('phone'):
