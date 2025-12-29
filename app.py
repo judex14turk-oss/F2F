@@ -819,6 +819,86 @@ def webapp_user_stats():
     )
 
 
+@app.route('/webapp/user_search_filters')
+def webapp_user_search_filters():
+    tg_id = request.args.get('tg_id', '')
+    if not tg_id:
+        return "Access denied", 403
+    
+    db = get_db()
+    user = db.query(User).filter(User.telegram_id == int(tg_id)).first()
+    
+    if not user:
+        db.close()
+        return "User not found", 404
+    
+    lang = user.language or 'ru'
+    t = WEBAPP_TRANSLATIONS.get(lang, WEBAPP_TRANSLATIONS['ru'])
+    
+    db.close()
+    
+    return render_template('webapp_user_search_filters.html',
+        user=user,
+        tg_id=tg_id,
+        lang=lang,
+        t=t
+    )
+
+
+@app.route('/webapp/user_search_filters/save', methods=['POST'])
+def webapp_user_search_filters_save():
+    tg_id = request.args.get('tg_id', '')
+    if not tg_id:
+        return jsonify({'error': 'Access denied'}), 403
+    
+    db = get_db()
+    user = db.query(User).filter(User.telegram_id == int(tg_id)).first()
+    
+    if not user:
+        db.close()
+        return jsonify({'error': 'User not found'}), 404
+    
+    data = request.get_json()
+    
+    user.search_area_min = int(data.get('area_min')) if data.get('area_min') else None
+    user.search_area_max = int(data.get('area_max')) if data.get('area_max') else None
+    user.search_building_type = data.get('building_type') if data.get('building_type') else None
+    user.search_renovation = data.get('renovation') if data.get('renovation') else None
+    user.search_furniture = data.get('furniture') if data.get('furniture') else None
+    user.search_bathroom = data.get('bathroom') if data.get('bathroom') else None
+    
+    db.commit()
+    db.close()
+    
+    return jsonify({'success': True})
+
+
+@app.route('/webapp/user_search_filters/reset', methods=['POST'])
+def webapp_user_search_filters_reset():
+    tg_id = request.args.get('tg_id', '')
+    if not tg_id:
+        return jsonify({'error': 'Access denied'}), 403
+    
+    db = get_db()
+    user = db.query(User).filter(User.telegram_id == int(tg_id)).first()
+    
+    if not user:
+        db.close()
+        return jsonify({'error': 'User not found'}), 404
+    
+    user.search_area_min = None
+    user.search_area_max = None
+    user.search_building_type = None
+    user.search_renovation = None
+    user.search_furniture = None
+    user.search_bathroom = None
+    
+    db.commit()
+    db.close()
+    
+    return jsonify({'success': True})
+
+
 @app.route('/webapp/user_objects')
 def webapp_user_objects():
     tg_id = request.args.get('tg_id', '')
