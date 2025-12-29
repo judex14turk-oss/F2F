@@ -538,6 +538,7 @@ class OLXParser:
         )
         
         total = len(listing_urls)
+        print(f"parse_generator: collected {total} URLs, starting parsing...")
         district_name = self.TASHKENT_DISTRICTS.get(district, '') if district else ''
         
         yield {
@@ -562,8 +563,12 @@ class OLXParser:
         skipped_error = 0
         
         try:
+            print(f"parse_generator: starting loop, max_listings={max_listings}")
             for i, url in enumerate(listing_urls):
+                if i == 0:
+                    print(f"parse_generator: processing first URL: {url}")
                 if len(results) >= max_listings:
+                    print(f"parse_generator: reached max_listings limit ({max_listings})")
                     break
                 
                 try:
