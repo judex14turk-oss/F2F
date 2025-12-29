@@ -1334,7 +1334,7 @@ async def view_properties(message: types.Message, state: FSMContext):
     )
     
     deal_type = user.search_deal_type or "sale"
-    if deal_type == "rent":
+    if deal_type in ["rent", "Аренда"]:
         query = query.filter(Property.property_type == PropertyType.RENT)
     else:
         query = query.filter(Property.property_type == PropertyType.SALE)
