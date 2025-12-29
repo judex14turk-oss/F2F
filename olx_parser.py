@@ -299,26 +299,87 @@ class OLXParser:
                     
                     time.sleep(1)
                     
-                    try:
-                        phone_btn = WebDriverWait(driver, 3).until(
-                            EC.element_to_be_clickable((By.XPATH, "//button[contains(., 'Показать')]"))
-                        )
-                        driver.execute_script("arguments[0].click();", phone_btn)
-                        time.sleep(2)
-                    except:
-                        pass
+                    phone_button_clicked = False
+                    phone_button_selectors = [
+                        "//button[contains(., 'показать')]",
+                        "//button[contains(., 'Показать')]",
+                        "//button[contains(text(), 'показать')]",
+                        "//button[contains(text(), 'Показать')]",
+                        "//*[contains(@data-testid, 'phones-container')]//button",
+                        "//div[contains(@data-testid, 'phones')]//button",
+                        "//button[contains(@class, 'phones')]",
+                    ]
+                    
+                    for selector in phone_button_selectors:
+                        if phone_button_clicked:
+                            break
+                        try:
+                            phone_btn = WebDriverWait(driver, 2).until(
+                                EC.element_to_be_clickable((By.XPATH, selector))
+                            )
+                            driver.execute_script("arguments[0].click();", phone_btn)
+                            phone_button_clicked = True
+                            time.sleep(2)
+                        except:
+                            pass
+                    
+                    if not phone_button_clicked:
+                        try:
+                            buttons = driver.find_elements(By.TAG_NAME, "button")
+                            for btn in buttons:
+                                btn_text = btn.text.lower() if btn.text else ''
+                                if 'показать' in btn_text or 'show' in btn_text:
+                                    driver.execute_script("arguments[0].click();", btn)
+                                    phone_button_clicked = True
+                                    time.sleep(2)
+                                    break
+                        except:
+                            pass
                     
                     try:
-                        tel_links = driver.find_elements(By.XPATH, "//a[contains(@href, 'tel:')]")
-                        for tel_link in tel_links:
-                            href = tel_link.get_attribute('href')
+                        contact_phone = driver.find_element(By.CSS_SELECTOR, "[data-testid='contact-phone']")
+                        if contact_phone:
+                            href = contact_phone.get_attribute('href')
                             if href and 'tel:' in href:
                                 phone = href.replace('tel:', '').replace(' ', '').replace('-', '').strip()
                                 if len(phone) >= 9:
                                     result['phone'] = phone
-                                    break
+                            else:
+                                phone_text = contact_phone.text.strip()
+                                if phone_text:
+                                    phone = phone_text.replace(' ', '').replace('-', '')
+                                    if len(phone) >= 9:
+                                        result['phone'] = phone if phone.startswith('+') else '+' + phone
                     except:
                         pass
+                    
+                    if not result['phone']:
+                        try:
+                            tel_links = driver.find_elements(By.XPATH, "//a[contains(@href, 'tel:')]")
+                            for tel_link in tel_links:
+                                href = tel_link.get_attribute('href')
+                                if href and 'tel:' in href:
+                                    phone = href.replace('tel:', '').replace(' ', '').replace('-', '').strip()
+                                    if len(phone) >= 9:
+                                        result['phone'] = phone
+                                        break
+                        except:
+                            pass
+                    
+                    if not result['phone']:
+                        try:
+                            phones_container = driver.find_element(By.CSS_SELECTOR, "[data-testid='phones-container']")
+                            if phones_container:
+                                links = phones_container.find_elements(By.TAG_NAME, 'a')
+                                for link in links:
+                                    href = link.get_attribute('href')
+                                    if href and 'tel:' in href:
+                                        phone = href.replace('tel:', '').replace(' ', '').replace('-', '').strip()
+                                        if len(phone) >= 9:
+                                            result['phone'] = phone
+                                            break
+                        except:
+                            pass
                     
                     if not result['phone']:
                         page_text = driver.page_source
