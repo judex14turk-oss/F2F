@@ -413,7 +413,7 @@ class OLXParser:
             result['published_date'] = self._extract_date(soup)
             
             params = self._extract_parameters(soup)
-            result['property_type'] = params.get('Тип жилья')
+            result['property_type'] = params.get('Тип жилья') or params.get('Тип недвижимости')
             result['rooms'] = params.get('Количество комнат')
             result['total_area'] = params.get('Общая площадь')
             result['floor'] = params.get('Этаж')
@@ -425,6 +425,11 @@ class OLXParser:
             result['commission'] = params.get('Комиссионные')
             result['building_type'] = params.get('Тип строения')
             result['renovation'] = params.get('Ремонт')
+            result['land_area'] = params.get('Участок')
+            result['useful_area'] = params.get('Полезная площадь')
+            result['ceiling_height'] = params.get('Высота потолков')
+            result['amenities'] = params.get('В помещении есть')
+            result['location_type'] = params.get('Расположение')
             
             for district_key, district_name in self.TASHKENT_DISTRICTS.items():
                 if district_name and district_name in (result['location'] or ''):
@@ -519,7 +524,7 @@ class OLXParser:
             result['published_date'] = self._extract_date(soup)
             
             params = self._extract_parameters(soup)
-            result['property_type'] = params.get('Тип жилья')
+            result['property_type'] = params.get('Тип жилья') or params.get('Тип недвижимости')
             result['rooms'] = params.get('Количество комнат')
             result['total_area'] = params.get('Общая площадь')
             result['floor'] = params.get('Этаж')
@@ -531,6 +536,11 @@ class OLXParser:
             result['commission'] = params.get('Комиссионные')
             result['building_type'] = params.get('Тип строения')
             result['renovation'] = params.get('Ремонт')
+            result['land_area'] = params.get('Участок')
+            result['useful_area'] = params.get('Полезная площадь')
+            result['ceiling_height'] = params.get('Высота потолков')
+            result['amenities'] = params.get('В помещении есть')
+            result['location_type'] = params.get('Расположение')
             
             phone = self._extract_phone_from_text(result['description'])
             if not phone and result['seller_name']:
@@ -933,31 +943,41 @@ class OLXParser:
         params = {}
         all_text = soup.get_text()
         
-        keywords = ['Тип жилья', 'Количество комнат', 'Общая площадь', 'Этаж', 'Этажность дома',
+        keywords = ['Тип жилья', 'Количество комнат', 'Общая площадь', 'Полезная площадь', 
+                    'Участок', 'Этаж', 'Этажность дома', 'Высота потолков',
                     'Планировка', 'Санузел', 'Меблирована', 'Рядом есть', 'Комиссионные',
-                    'Тип строения', 'Ремонт', 'Год постройки', 'Высота потолков', 'В квартире есть',
-                    'В помещении есть', 'Наличие парковки', 'Тип помещения', 'Коммуникации', 'Цоколь']
+                    'Тип строения', 'Ремонт', 'Год постройки', 'В квартире есть',
+                    'В помещении есть', 'Наличие парковки', 'Тип помещения', 'Коммуникации', 
+                    'Цоколь', 'Тип недвижимости', 'Расположение']
         keyword_pattern = '|'.join(keywords)
         
         patterns = [
             (rf'Тип жилья[:\s]+(.+?)(?={keyword_pattern}|$)', 'Тип жилья'),
+            (rf'Тип недвижимости[:\s]+(.+?)(?={keyword_pattern}|$)', 'Тип недвижимости'),
             (r'Количество комнат[:\s]+(\d+)', 'Количество комнат'),
-            (r'Общая площадь[:\s]+(\d+)', 'Общая площадь'),
+            (r'Общая площадь[:\s]*([\d\s]+)\s*м', 'Общая площадь'),
+            (r'Полезная площадь[:\s]*([\d\s]+)', 'Полезная площадь'),
+            (r'Участок[:\s]*([\d\s.,]+)', 'Участок'),
             (r'Этаж[:\s]+(\d+)', 'Этаж'),
             (r'Этажность дома[:\s]+(\d+)', 'Этажность дома'),
+            (r'Высота потолков[:\s]*([\d\s.,]+)', 'Высота потолков'),
             (rf'Планировка[:\s]+(.+?)(?={keyword_pattern}|$)', 'Планировка'),
             (rf'Санузел[:\s]+(.+?)(?={keyword_pattern}|$)', 'Санузел'),
             (r'Меблирована[:\s]+(Да|Нет)', 'Меблирована'),
             (rf'Рядом есть[:\s]+(.+?)(?={keyword_pattern}|$)', 'Рядом есть'),
             (r'Комиссионные[:\s]+(Да|Нет)', 'Комиссионные'),
             (rf'Тип строения[:\s]+(.+?)(?={keyword_pattern}|$)', 'Тип строения'),
-            (rf'Ремонт[:\s]+(.+?)(?={keyword_pattern}|$)', 'Ремонт'),
+            (r'Ремонт[:\s]*(Черновая отделка|Евроремонт|Косметический|Требует ремонта|Без отделки|Под ключ)', 'Ремонт'),
+            (rf'Расположение[:\s]+(.+?)(?={keyword_pattern}|$)', 'Расположение'),
+            (rf'В помещении есть[:\s]+(.+?)(?={keyword_pattern}|$)', 'В помещении есть'),
         ]
         
         for pattern, key in patterns:
             match = re.search(pattern, all_text, re.IGNORECASE)
             if match:
                 value = match.group(1).strip()
+                if key in ['Общая площадь', 'Полезная площадь']:
+                    value = value.replace(' ', '').replace('\u00a0', '')
                 if len(value) < 100:
                     params[key] = value
                     
