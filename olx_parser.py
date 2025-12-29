@@ -279,13 +279,22 @@ class OLXParser:
                     return result
                     
                 try:
+                    time.sleep(1.5)
+                    
                     phone_selectors = [
-                        "//button[contains(text(), 'Показать')]",
-                        "//button[contains(text(), 'показать')]",
-                        "//button[contains(text(), 'телефон')]",
-                        "//button[contains(text(), 'Телефон')]",
-                        "//*[contains(@data-cy, 'phone')]",
-                        "//*[contains(@data-testid, 'phone')]",
+                        "//button[contains(., 'Показать телефон')]",
+                        "//button[contains(., 'Показать')]",
+                        "//button[contains(., 'показать')]",
+                        "//*[contains(@class, 'phone') and contains(@class, 'button')]",
+                        "//*[contains(@class, 'contact')]//button",
+                        "//button[contains(@class, 'css-') and contains(., 'телефон')]",
+                        "//div[contains(@class, 'contact')]//button",
+                        "//*[@data-cy='ad-contact-phone']",
+                        "//*[@data-testid='ad-contact-phone']",
+                        "//*[contains(@data-cy, 'phone')]//button",
+                        "//*[contains(@data-testid, 'phone')]//button",
+                        "//button[contains(@data-cy, 'phone')]",
+                        "//button[contains(@data-testid, 'phone')]",
                     ]
                     
                     clicked = False
@@ -296,10 +305,25 @@ class OLXParser:
                             elements = driver.find_elements(By.XPATH, selector)
                             for el in elements:
                                 try:
-                                    el.click()
-                                    time.sleep(1)
-                                    clicked = True
-                                    break
+                                    if el.is_displayed() and el.is_enabled():
+                                        try:
+                                            driver.execute_script("arguments[0].scrollIntoView({block: 'center'});", el)
+                                            time.sleep(0.3)
+                                        except:
+                                            pass
+                                        try:
+                                            driver.execute_script("arguments[0].click();", el)
+                                            time.sleep(1.5)
+                                            clicked = True
+                                            break
+                                        except:
+                                            try:
+                                                el.click()
+                                                time.sleep(1.5)
+                                                clicked = True
+                                                break
+                                            except:
+                                                continue
                                 except:
                                     continue
                             if clicked:
@@ -307,10 +331,32 @@ class OLXParser:
                         except:
                             continue
                     
+                    if not clicked:
+                        try:
+                            buttons = driver.find_elements(By.TAG_NAME, "button")
+                            for btn in buttons:
+                                try:
+                                    btn_text = btn.text.lower()
+                                    if 'показать' in btn_text or 'телефон' in btn_text or 'phone' in btn_text:
+                                        if btn.is_displayed() and btn.is_enabled():
+                                            driver.execute_script("arguments[0].scrollIntoView({block: 'center'});", btn)
+                                            time.sleep(0.3)
+                                            driver.execute_script("arguments[0].click();", btn)
+                                            time.sleep(1.5)
+                                            clicked = True
+                                            break
+                                except:
+                                    continue
+                        except:
+                            pass
+                    
                     phone_patterns = [
                         "//a[starts-with(@href, 'tel:')]",
                         "//*[contains(@class, 'phone-number')]",
                         "//*[contains(@data-testid, 'phone')]//a",
+                        "//*[contains(@class, 'phone')]//a[starts-with(@href, 'tel:')]",
+                        "//a[contains(@href, 'tel:+998')]",
+                        "//a[contains(@href, 'tel:998')]",
                     ]
                     
                     for pattern in phone_patterns:
@@ -336,6 +382,10 @@ class OLXParser:
                         phone_match = re.search(r'\+998[\s\-]?\d{2}[\s\-]?\d{3}[\s\-]?\d{2}[\s\-]?\d{2}', page_text)
                         if phone_match:
                             result['phone'] = phone_match.group(0).replace(' ', '').replace('-', '')
+                        else:
+                            phone_match = re.search(r'998\d{9}', page_text)
+                            if phone_match:
+                                result['phone'] = '+' + phone_match.group(0)
                         
                 except Exception as e:
                     result['phone_error'] = str(e)
