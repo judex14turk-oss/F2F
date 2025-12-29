@@ -1419,11 +1419,16 @@ async def view_properties(message: types.Message, state: FSMContext):
         else_=0
     )
     
-    properties = query.join(User, Property.owner_id == User.id).order_by(
-        source_priority.asc(),
-        tariff_priority.asc(),
-        Property.created_at.desc()
-    ).all()
+    try:
+        properties = query.join(User, Property.owner_id == User.id).order_by(
+            source_priority.asc(),
+            tariff_priority.asc(),
+            Property.created_at.desc()
+        ).all()
+        print(f"DEBUG: Found {len(properties)} properties for user {user.telegram_id}, district filter: {user.search_district}")
+    except Exception as e:
+        print(f"DEBUG ERROR: {e}")
+        properties = []
     
     db.close()
     
