@@ -484,16 +484,20 @@ class OLXParser:
         return result
     
     def parse_listing(self, url, get_phone=False):
-        if get_phone:
-            driver = self.get_driver()
-            if not driver:
-                return {'url': url, 'error': 'Failed to initialize browser'}
-            try:
-                return self.parse_listing_with_driver(driver, url, get_phone=True)
-            finally:
-                driver.quit()
-        else:
-            return self.parse_listing_with_requests(url)
+        result = self.parse_listing_with_requests(url)
+        
+        if get_phone and not result.get('phone'):
+            if result.get('seller_name'):
+                phone = self._extract_phone_from_text(result['seller_name'])
+                if phone:
+                    result['phone'] = phone
+            
+            if not result.get('phone') and result.get('description'):
+                phone = self._extract_phone_from_text(result['description'])
+                if phone:
+                    result['phone'] = phone
+        
+        return result
     
     def parse_listing_with_phone(self, url):
         return self.parse_listing(url, get_phone=True)
