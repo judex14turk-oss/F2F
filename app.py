@@ -2783,7 +2783,9 @@ def webapp_parser_run_stream():
                         current_type_total = event['total']
                         grand_total += event['total']
                         if not start_sent:
-                            yield f"data: {json.dumps({'event': 'start', 'total': grand_total, 'current': 0, 'added': 0})}\n\n"
+                            msg = f"data: {json.dumps({'event': 'start', 'total': grand_total, 'current': 0, 'added': 0})}\n\n"
+                            print(f"Sending start event: total={grand_total}")
+                            yield msg
                             start_sent = True
                         else:
                             yield f"data: {json.dumps({'event': 'progress', 'current': total_parsed, 'total': grand_total, 'added': added_count})}\n\n"
@@ -2794,11 +2796,13 @@ def webapp_parser_run_stream():
                     elif event_type == 'listing':
                         data = event['data']
                         phone = data.get('phone')
+                        current_num = event.get('current', 0)
+                        print(f"Processing listing {current_num}/{grand_total}: {data.get('title', 'N/A')[:50]}")
                         
                         if not phone:
                             skipped_no_phone += 1
                             skipped_urls.append({'url': data.get('url'), 'reason': 'no_phone', 'title': data.get('title')})
-                            yield f"data: {json.dumps({'event': 'progress', 'current': total_parsed + event['current'], 'total': grand_total, 'added': added_count})}\n\n"
+                            yield f"data: {json.dumps({'event': 'progress', 'current': total_parsed + current_num, 'total': grand_total, 'added': added_count})}\n\n"
                             continue
                         
                         olx_id = data.get('olx_id')
