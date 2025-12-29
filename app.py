@@ -863,15 +863,15 @@ def webapp_user_search_filters_save():
     
     data = request.get_json()
     
-    user.search_deal_type = data.get('deal_type') if data.get('deal_type') else None
-    user.search_housing_type = data.get('housing_type') if data.get('housing_type') else None
-    user.search_district = data.get('district') if data.get('district') else None
-    user.search_area_min = int(data.get('area_min')) if data.get('area_min') else None
-    user.search_area_max = int(data.get('area_max')) if data.get('area_max') else None
-    user.search_building_type = data.get('building_type') if data.get('building_type') else None
-    user.search_renovation = data.get('renovation') if data.get('renovation') else None
-    user.search_furniture = data.get('furniture') if data.get('furniture') else None
-    user.search_bathroom = data.get('bathroom') if data.get('bathroom') else None
+    user.web_search_deal_type = data.get('deal_type') if data.get('deal_type') else None
+    user.web_search_housing_type = data.get('housing_type') if data.get('housing_type') else None
+    user.web_search_district = data.get('district') if data.get('district') else None
+    user.web_search_area_min = int(data.get('area_min')) if data.get('area_min') else None
+    user.web_search_area_max = int(data.get('area_max')) if data.get('area_max') else None
+    user.web_search_building_type = data.get('building_type') if data.get('building_type') else None
+    user.web_search_renovation = data.get('renovation') if data.get('renovation') else None
+    user.web_search_furniture = data.get('furniture') if data.get('furniture') else None
+    user.web_search_bathroom = data.get('bathroom') if data.get('bathroom') else None
     
     db.commit()
     db.close()
@@ -892,15 +892,15 @@ def webapp_user_search_filters_reset():
         db.close()
         return jsonify({'error': 'User not found'}), 404
     
-    user.search_deal_type = None
-    user.search_housing_type = None
-    user.search_district = None
-    user.search_area_min = None
-    user.search_area_max = None
-    user.search_building_type = None
-    user.search_renovation = None
-    user.search_furniture = None
-    user.search_bathroom = None
+    user.web_search_deal_type = None
+    user.web_search_housing_type = None
+    user.web_search_district = None
+    user.web_search_area_min = None
+    user.web_search_area_max = None
+    user.web_search_building_type = None
+    user.web_search_renovation = None
+    user.web_search_furniture = None
+    user.web_search_bathroom = None
     
     db.commit()
     db.close()
@@ -924,38 +924,38 @@ def webapp_user_search_filters_search():
     query = db.query(Property).filter(Property.status == PropertyStatus.ACTIVE)
     query = query.filter(Property.owner_id != user.id)
     
-    if user.search_deal_type:
-        if user.search_deal_type == 'Покупка':
+    if user.web_search_deal_type:
+        if user.web_search_deal_type == 'Покупка':
             query = query.filter(Property.property_type == PropertyType.SALE)
-        elif user.search_deal_type == 'Аренда':
+        elif user.web_search_deal_type == 'Аренда':
             query = query.filter(Property.property_type == PropertyType.RENT)
     
-    if user.search_housing_type and user.search_housing_type not in ["Квартира", "Дом", "Участок", "Коммерция", "Kvartira", "Uy", "Yer", "Tijorat"]:
-        query = query.filter(Property.housing_type == user.search_housing_type)
+    if user.web_search_housing_type and user.web_search_housing_type not in ["Квартира", "Дом", "Участок", "Коммерция", "Kvartira", "Uy", "Yer", "Tijorat"]:
+        query = query.filter(Property.housing_type == user.web_search_housing_type)
     
-    if user.search_district:
-        query = query.filter(Property.district == user.search_district)
+    if user.web_search_district:
+        query = query.filter(Property.district == user.web_search_district)
     
-    if user.search_area_min:
-        query = query.filter(Property.area >= user.search_area_min)
+    if user.web_search_area_min:
+        query = query.filter(Property.area >= user.web_search_area_min)
     
-    if user.search_area_max:
-        query = query.filter(Property.area <= user.search_area_max)
+    if user.web_search_area_max:
+        query = query.filter(Property.area <= user.web_search_area_max)
     
-    if user.search_building_type:
-        query = query.filter(Property.building_type == user.search_building_type)
+    if user.web_search_building_type:
+        query = query.filter(Property.building_type == user.web_search_building_type)
     
-    if user.search_renovation:
-        query = query.filter(Property.renovation == user.search_renovation)
+    if user.web_search_renovation:
+        query = query.filter(Property.renovation == user.web_search_renovation)
     
-    if user.search_furniture:
-        if user.search_furniture == 'С мебелью':
+    if user.web_search_furniture:
+        if user.web_search_furniture == 'С мебелью':
             query = query.filter(Property.has_furniture == True)
-        elif user.search_furniture == 'Без мебели':
+        elif user.web_search_furniture == 'Без мебели':
             query = query.filter(Property.has_furniture == False)
     
-    if user.search_bathroom:
-        query = query.filter(Property.bathroom_type == user.search_bathroom)
+    if user.web_search_bathroom:
+        query = query.filter(Property.bathroom_type == user.web_search_bathroom)
     
     properties = query.order_by(Property.created_at.desc()).limit(20).all()
     

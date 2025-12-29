@@ -429,8 +429,8 @@
                 <span class="filter-title">{{ t.get('webapp_deal_type', 'Тип сделки') }}</span>
             </div>
             <div class="filter-options" data-filter="deal_type">
-                <div class="filter-option {% if user.search_deal_type == 'Покупка' %}selected{% endif %}" data-value="Покупка">{{ t.get('webapp_buy', 'Покупка') }}</div>
-                <div class="filter-option {% if user.search_deal_type == 'Аренда' %}selected{% endif %}" data-value="Аренда">{{ t.get('webapp_rent_filter', 'Аренда') }}</div>
+                <div class="filter-option {% if user.web_search_deal_type == 'Покупка' %}selected{% endif %}" data-value="Покупка">{{ t.get('webapp_buy', 'Покупка') }}</div>
+                <div class="filter-option {% if user.web_search_deal_type == 'Аренда' %}selected{% endif %}" data-value="Аренда">{{ t.get('webapp_rent_filter', 'Аренда') }}</div>
             </div>
         </div>
         
@@ -440,10 +440,10 @@
                 <span class="filter-title">{{ t.get('webapp_property_type', 'Тип недвижимости') }}</span>
             </div>
             <div class="filter-options" data-filter="housing_type">
-                <div class="filter-option {% if user.search_housing_type == 'Квартира' %}selected{% endif %}" data-value="Квартира">{{ t.get('webapp_apartment', 'Квартира') }}</div>
-                <div class="filter-option {% if user.search_housing_type == 'Дом' %}selected{% endif %}" data-value="Дом">{{ t.get('webapp_house', 'Дом') }}</div>
-                <div class="filter-option {% if user.search_housing_type == 'Участок' %}selected{% endif %}" data-value="Участок">{{ t.get('webapp_land', 'Участок') }}</div>
-                <div class="filter-option {% if user.search_housing_type == 'Коммерция' %}selected{% endif %}" data-value="Коммерция">{{ t.get('webapp_commercial', 'Коммерция') }}</div>
+                <div class="filter-option {% if user.web_search_housing_type == 'Квартира' %}selected{% endif %}" data-value="Квартира">{{ t.get('webapp_apartment', 'Квартира') }}</div>
+                <div class="filter-option {% if user.web_search_housing_type == 'Дом' %}selected{% endif %}" data-value="Дом">{{ t.get('webapp_house', 'Дом') }}</div>
+                <div class="filter-option {% if user.web_search_housing_type == 'Участок' %}selected{% endif %}" data-value="Участок">{{ t.get('webapp_land', 'Участок') }}</div>
+                <div class="filter-option {% if user.web_search_housing_type == 'Коммерция' %}selected{% endif %}" data-value="Коммерция">{{ t.get('webapp_commercial', 'Коммерция') }}</div>
             </div>
         </div>
         
@@ -454,7 +454,7 @@
             </div>
             <div class="filter-options district-options" data-filter="district">
                 {% for district in districts %}
-                <div class="filter-option {% if user.search_district == district.name %}selected{% endif %}" data-value="{{ district.name }}">{{ district.name }}</div>
+                <div class="filter-option {% if user.web_search_district == district.name %}selected{% endif %}" data-value="{{ district.name }}">{{ district.name }}</div>
                 {% endfor %}
             </div>
         </div>
@@ -465,8 +465,8 @@
                 <span class="filter-title">{{ t.get('webapp_area', 'Площадь') }} (м²)</span>
             </div>
             <div class="filter-row">
-                <input type="number" class="filter-input" id="area_min" placeholder="{{ t.get('webapp_from', 'От') }}" value="{{ user.search_area_min or '' }}">
-                <input type="number" class="filter-input" id="area_max" placeholder="{{ t.get('webapp_to', 'До') }}" value="{{ user.search_area_max or '' }}">
+                <input type="number" class="filter-input" id="area_min" placeholder="{{ t.get('webapp_from', 'От') }}" value="{{ user.web_search_area_min or '' }}">
+                <input type="number" class="filter-input" id="area_max" placeholder="{{ t.get('webapp_to', 'До') }}" value="{{ user.web_search_area_max or '' }}">
             </div>
         </div>
         
@@ -476,10 +476,10 @@
                 <span class="filter-title">{{ t.get('webapp_building_type', 'Тип дома') }}</span>
             </div>
             <div class="filter-options" data-filter="building_type">
-                <div class="filter-option {% if user.search_building_type == 'Кирпичный' %}selected{% endif %}" data-value="Кирпичный">{{ t.get('webapp_brick', 'Кирпичный') }}</div>
-                <div class="filter-option {% if user.search_building_type == 'Монолитный' %}selected{% endif %}" data-value="Монолитный">{{ t.get('webapp_monolith', 'Монолитный') }}</div>
-                <div class="filter-option {% if user.search_building_type == 'Панельный' %}selected{% endif %}" data-value="Панельный">{{ t.get('webapp_panel', 'Панельный') }}</div>
-                <div class="filter-option {% if user.search_building_type == 'Блочный' %}selected{% endif %}" data-value="Блочный">{{ t.get('webapp_block', 'Блочный') }}</div>
+                <div class="filter-option {% if user.web_search_building_type == 'Кирпичный' %}selected{% endif %}" data-value="Кирпичный">{{ t.get('webapp_brick', 'Кирпичный') }}</div>
+                <div class="filter-option {% if user.web_search_building_type == 'Монолитный' %}selected{% endif %}" data-value="Монолитный">{{ t.get('webapp_monolith', 'Монолитный') }}</div>
+                <div class="filter-option {% if user.web_search_building_type == 'Панельный' %}selected{% endif %}" data-value="Панельный">{{ t.get('webapp_panel', 'Панельный') }}</div>
+                <div class="filter-option {% if user.web_search_building_type == 'Блочный' %}selected{% endif %}" data-value="Блочный">{{ t.get('webapp_block', 'Блочный') }}</div>
             </div>
         </div>
         
@@ -489,10 +489,10 @@
                 <span class="filter-title">{{ t.get('webapp_renovation', 'Ремонт') }}</span>
             </div>
             <div class="filter-options" data-filter="renovation">
-                <div class="filter-option {% if user.search_renovation == 'Новый ремонт' %}selected{% endif %}" data-value="Новый ремонт">{{ t.get('webapp_renovation_new', 'Новый') }}</div>
-                <div class="filter-option {% if user.search_renovation == 'Средний ремонт' %}selected{% endif %}" data-value="Средний ремонт">{{ t.get('webapp_renovation_medium', 'Средний') }}</div>
-                <div class="filter-option {% if user.search_renovation == 'Требует ремонта' %}selected{% endif %}" data-value="Требует ремонта">{{ t.get('webapp_renovation_needs', 'Требует ремонта') }}</div>
-                <div class="filter-option {% if user.search_renovation == 'Чистовая отделка' %}selected{% endif %}" data-value="Чистовая отделка">{{ t.get('webapp_renovation_rough', 'Чистовая') }}</div>
+                <div class="filter-option {% if user.web_search_renovation == 'Новый ремонт' %}selected{% endif %}" data-value="Новый ремонт">{{ t.get('webapp_renovation_new', 'Новый') }}</div>
+                <div class="filter-option {% if user.web_search_renovation == 'Средний ремонт' %}selected{% endif %}" data-value="Средний ремонт">{{ t.get('webapp_renovation_medium', 'Средний') }}</div>
+                <div class="filter-option {% if user.web_search_renovation == 'Требует ремонта' %}selected{% endif %}" data-value="Требует ремонта">{{ t.get('webapp_renovation_needs', 'Требует ремонта') }}</div>
+                <div class="filter-option {% if user.web_search_renovation == 'Чистовая отделка' %}selected{% endif %}" data-value="Чистовая отделка">{{ t.get('webapp_renovation_rough', 'Чистовая') }}</div>
             </div>
         </div>
         
@@ -502,8 +502,8 @@
                 <span class="filter-title">{{ t.get('webapp_furniture', 'Мебель') }}</span>
             </div>
             <div class="filter-options" data-filter="furniture">
-                <div class="filter-option {% if user.search_furniture == 'С мебелью' %}selected{% endif %}" data-value="С мебелью">{{ t.get('webapp_with_furniture', 'С мебелью') }}</div>
-                <div class="filter-option {% if user.search_furniture == 'Без мебели' %}selected{% endif %}" data-value="Без мебели">{{ t.get('webapp_without_furniture', 'Без мебели') }}</div>
+                <div class="filter-option {% if user.web_search_furniture == 'С мебелью' %}selected{% endif %}" data-value="С мебелью">{{ t.get('webapp_with_furniture', 'С мебелью') }}</div>
+                <div class="filter-option {% if user.web_search_furniture == 'Без мебели' %}selected{% endif %}" data-value="Без мебели">{{ t.get('webapp_without_furniture', 'Без мебели') }}</div>
             </div>
         </div>
         
@@ -513,8 +513,8 @@
                 <span class="filter-title">{{ t.get('webapp_bathroom', 'Санузел') }}</span>
             </div>
             <div class="filter-options" data-filter="bathroom">
-                <div class="filter-option {% if user.search_bathroom == 'Раздельный' %}selected{% endif %}" data-value="Раздельный">{{ t.get('webapp_separate', 'Раздельный') }}</div>
-                <div class="filter-option {% if user.search_bathroom == 'Совмещенный' %}selected{% endif %}" data-value="Совмещенный">{{ t.get('webapp_combined', 'Совмещенный') }}</div>
+                <div class="filter-option {% if user.web_search_bathroom == 'Раздельный' %}selected{% endif %}" data-value="Раздельный">{{ t.get('webapp_separate', 'Раздельный') }}</div>
+                <div class="filter-option {% if user.web_search_bathroom == 'Совмещенный' %}selected{% endif %}" data-value="Совмещенный">{{ t.get('webapp_combined', 'Совмещенный') }}</div>
             </div>
         </div>
     </div>
