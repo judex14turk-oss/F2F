@@ -908,6 +908,84 @@ def webapp_user_search_filters_reset():
     return jsonify({'success': True})
 
 
+@app.route('/webapp/user_search_filters/search')
+def webapp_user_search_filters_search():
+    tg_id = request.args.get('tg_id', '')
+    if not tg_id:
+        return jsonify({'error': 'Access denied'}), 403
+    
+    db = get_db()
+    user = db.query(User).filter(User.telegram_id == int(tg_id)).first()
+    
+    if not user:
+        db.close()
+        return jsonify({'error': 'User not found'}), 404
+    
+    query = db.query(Property).filter(Property.status == PropertyStatus.ACTIVE)
+    query = query.filter(Property.owner_id != user.id)
+    
+    if user.search_deal_type:
+        if user.search_deal_type == 'Покупка':
+            query = query.filter(Property.property_type == PropertyType.SALE)
+        elif user.search_deal_type == 'Аренда':
+            query = query.filter(Property.property_type == PropertyType.RENT)
+    
+    if user.search_housing_type:
+        query = query.filter(Property.housing_type == user.search_housing_type)
+    
+    if user.search_district:
+        query = query.filter(Property.district == user.search_district)
+    
+    if user.search_area_min:
+        query = query.filter(Property.area >= user.search_area_min)
+    
+    if user.search_area_max:
+        query = query.filter(Property.area <= user.search_area_max)
+    
+    if user.search_building_type:
+        query = query.filter(Property.building_type == user.search_building_type)
+    
+    if user.search_renovation:
+        query = query.filter(Property.renovation == user.search_renovation)
+    
+    if user.search_furniture:
+        if user.search_furniture == 'С мебелью':
+            query = query.filter(Property.has_furniture == True)
+        elif user.search_furniture == 'Без мебели':
+            query = query.filter(Property.has_furniture == False)
+    
+    if user.search_bathroom:
+        query = query.filter(Property.bathroom_type == user.search_bathroom)
+    
+    properties = query.order_by(Property.created_at.desc()).limit(20).all()
+    
+    results = []
+    for prop in properties:
+        photo_ids = prop.photos.split(',') if prop.photos else []
+        first_photo = None
+        if photo_ids and photo_ids[0]:
+            pid = photo_ids[0]
+            if pid.startswith('http://') or pid.startswith('https://'):
+                first_photo = pid
+            else:
+                first_photo = url_for('telegram_photo', file_id=pid)
+        
+        results.append({
+            'id': prop.id,
+            'rooms': prop.rooms,
+            'area': prop.area,
+            'floor': prop.floor,
+            'total_floors': prop.total_floors,
+            'price': prop.price,
+            'district': prop.district,
+            'photo': first_photo,
+            'property_type': 'sale' if prop.property_type == PropertyType.SALE else 'rent'
+        })
+    
+    db.close()
+    return jsonify({'properties': results, 'count': len(results)})
+
+
 @app.route('/webapp/user_objects')
 def webapp_user_objects():
     tg_id = request.args.get('tg_id', '')

@@ -188,6 +188,115 @@
             overflow-y: auto;
         }
         
+        .results-section {
+            padding: 0 12px 100px;
+        }
+        
+        .results-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 16px 0 8px;
+        }
+        
+        .results-title {
+            font-size: 1rem;
+            font-weight: 600;
+            color: #fff;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        
+        .results-count {
+            background: #3b82f6;
+            color: #fff;
+            padding: 4px 10px;
+            border-radius: 12px;
+            font-size: 0.8rem;
+        }
+        
+        .property-card {
+            background: #151515;
+            border: 1px solid #252525;
+            border-radius: 12px;
+            margin-bottom: 12px;
+            overflow: hidden;
+        }
+        
+        .property-image {
+            width: 100%;
+            height: 180px;
+            object-fit: cover;
+            background: #1a1a1a;
+        }
+        
+        .property-info {
+            padding: 12px;
+        }
+        
+        .property-title {
+            font-size: 1rem;
+            font-weight: 600;
+            color: #fff;
+            margin-bottom: 8px;
+        }
+        
+        .property-details {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+            margin-bottom: 8px;
+        }
+        
+        .property-detail {
+            background: #1a1a1a;
+            padding: 4px 8px;
+            border-radius: 6px;
+            font-size: 0.75rem;
+            color: #888;
+        }
+        
+        .property-price {
+            font-size: 1.1rem;
+            font-weight: 700;
+            color: #10b981;
+        }
+        
+        .property-district {
+            font-size: 0.8rem;
+            color: #888;
+            margin-top: 4px;
+        }
+        
+        .no-results {
+            text-align: center;
+            padding: 40px 20px;
+            color: #666;
+        }
+        
+        .no-results i {
+            font-size: 3rem;
+            margin-bottom: 16px;
+            color: #333;
+        }
+        
+        .loading {
+            text-align: center;
+            padding: 40px;
+            color: #888;
+        }
+        
+        .loading i {
+            font-size: 2rem;
+            animation: spin 1s linear infinite;
+        }
+        
+        @keyframes spin {
+            from { transform: rotate(0deg); }
+            to { transform: rotate(360deg); }
+        }
+        
         .filter-option {
             background: #1a1a1a;
             border: 1px solid #333;
@@ -410,14 +519,25 @@
         </div>
     </div>
     
+    <div class="results-section" id="resultsSection" style="display: none;">
+        <div class="results-header">
+            <div class="results-title">
+                <i class="bi bi-house-door"></i>
+                {{ t.get('webapp_search_results', 'Результаты поиска') }}
+            </div>
+            <span class="results-count" id="resultsCount">0</span>
+        </div>
+        <div id="propertiesList"></div>
+    </div>
+    
     <div class="bottom-actions">
         <button class="btn btn-secondary" onclick="resetFilters()">
             <i class="bi bi-arrow-counterclockwise"></i>
             {{ t.get('webapp_reset', 'Сбросить') }}
         </button>
         <button class="btn btn-primary" onclick="saveFilters()">
-            <i class="bi bi-check-lg"></i>
-            {{ t.get('webapp_save', 'Сохранить') }}
+            <i class="bi bi-search"></i>
+            {{ t.get('webapp_search', 'Искать') }}
         </button>
     </div>
     
@@ -460,6 +580,68 @@
             setTimeout(() => toast.classList.remove('show'), 2000);
         }
         
+        function formatPrice(price) {
+            if (price >= 1000000000) {
+                return (price / 1000000000).toFixed(1) + ' млрд';
+            } else if (price >= 1000000) {
+                return (price / 1000000).toFixed(0) + ' млн';
+            } else if (price >= 1000) {
+                return (price / 1000).toFixed(0) + ' тыс';
+            }
+            return price.toLocaleString();
+        }
+        
+        function renderProperties(properties) {
+            const container = document.getElementById('propertiesList');
+            const section = document.getElementById('resultsSection');
+            const countEl = document.getElementById('resultsCount');
+            
+            countEl.textContent = properties.length;
+            
+            if (properties.length === 0) {
+                container.innerHTML = `
+                    <div class="no-results">
+                        <i class="bi bi-search"></i>
+                        <div>{{ t.get('webapp_no_results', 'Ничего не найдено') }}</div>
+                        <div style="font-size: 0.85rem; margin-top: 8px;">{{ t.get('webapp_try_change_filters', 'Попробуйте изменить фильтры') }}</div>
+                    </div>
+                `;
+            } else {
+                container.innerHTML = properties.map(p => `
+                    <div class="property-card">
+                        ${p.photo ? `<img src="${p.photo}" class="property-image" alt="">` : '<div class="property-image"></div>'}
+                        <div class="property-info">
+                            <div class="property-title">${p.rooms || '?'}-комн. квартира, ${p.area || '?'} м²</div>
+                            <div class="property-details">
+                                <span class="property-detail"><i class="bi bi-layers"></i> ${p.floor || '?'}/${p.total_floors || '?'} этаж</span>
+                                <span class="property-detail">${p.property_type === 'rent' ? '{{ t.get("webapp_rent_filter", "Аренда") }}' : '{{ t.get("webapp_buy", "Покупка") }}'}</span>
+                            </div>
+                            <div class="property-price">${formatPrice(p.price)} сум</div>
+                            <div class="property-district"><i class="bi bi-geo-alt"></i> ${p.district || '{{ t.get("webapp_not_specified", "Не указан") }}'}</div>
+                        </div>
+                    </div>
+                `).join('');
+            }
+            
+            section.style.display = 'block';
+            section.scrollIntoView({ behavior: 'smooth' });
+        }
+        
+        async function loadResults() {
+            const container = document.getElementById('propertiesList');
+            const section = document.getElementById('resultsSection');
+            section.style.display = 'block';
+            container.innerHTML = '<div class="loading"><i class="bi bi-arrow-repeat"></i></div>';
+            
+            try {
+                const response = await fetch(`/webapp/user_search_filters/search?tg_id=${tgId}`);
+                const data = await response.json();
+                renderProperties(data.properties || []);
+            } catch (e) {
+                container.innerHTML = '<div class="no-results"><i class="bi bi-exclamation-circle"></i><div>{{ t.get("webapp_error", "Ошибка") }}</div></div>';
+            }
+        }
+        
         async function saveFilters() {
             const data = {
                 deal_type: getFilterValue('deal_type'),
@@ -481,7 +663,8 @@
                 });
                 
                 if (response.ok) {
-                    showToast('{{ t.get("webapp_saved", "Сохранено!") }}');
+                    showToast('{{ t.get("webapp_searching", "Поиск...") }}');
+                    await loadResults();
                 } else {
                     showToast('{{ t.get("webapp_error", "Ошибка") }}', true);
                 }

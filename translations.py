@@ -604,6 +604,11 @@ WEBAPP_TRANSLATIONS = {
         'webapp_land': "Участок",
         'webapp_commercial': "Коммерция",
         'webapp_district': "Район",
+        'webapp_search_results': "Результаты поиска",
+        'webapp_no_results': "Ничего не найдено",
+        'webapp_try_change_filters': "Попробуйте изменить фильтры",
+        'webapp_searching': "Поиск...",
+        'webapp_search': "Искать",
     },
     'uz': {
         'webapp_detailed_stats': "Batafsil statistika",
@@ -721,6 +726,11 @@ WEBAPP_TRANSLATIONS = {
         'webapp_land': "Yer",
         'webapp_commercial': "Tijorat",
         'webapp_district': "Tuman",
+        'webapp_search_results': "Qidiruv natijalari",
+        'webapp_no_results': "Hech narsa topilmadi",
+        'webapp_try_change_filters': "Filtrlarni o'zgartirib ko'ring",
+        'webapp_searching': "Qidirilmoqda...",
+        'webapp_search': "Qidirish",
     }
 }
 
