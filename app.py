@@ -933,8 +933,9 @@ def webapp_user_search_filters_search():
     if user.web_search_housing_type and user.web_search_housing_type not in ["Квартира", "Дом", "Участок", "Коммерция", "Kvartira", "Uy", "Yer", "Tijorat"]:
         query = query.filter(Property.housing_type == user.web_search_housing_type)
     
-    if user.web_search_district:
-        query = query.filter(Property.district == user.web_search_district)
+    if user.web_search_district and user.web_search_district not in ["Любой", ""]:
+        district_base = user.web_search_district.replace("ский", "").replace("ий", "")
+        query = query.filter(Property.district.ilike(f"%{district_base}%"))
     
     if user.web_search_area_min:
         query = query.filter(Property.area >= user.web_search_area_min)
@@ -943,19 +944,31 @@ def webapp_user_search_filters_search():
         query = query.filter(Property.area <= user.web_search_area_max)
     
     if user.web_search_building_type:
-        query = query.filter(Property.building_type == user.web_search_building_type)
+        from sqlalchemy import or_
+        query = query.filter(or_(
+            Property.building_type.ilike(f"%{user.web_search_building_type}%"),
+            Property.building_type == None,
+            Property.building_type == ""
+        ))
     
     if user.web_search_renovation:
-        query = query.filter(Property.renovation == user.web_search_renovation)
+        from sqlalchemy import or_
+        query = query.filter(or_(
+            Property.renovation.ilike(f"%{user.web_search_renovation}%"),
+            Property.renovation == None,
+            Property.renovation == ""
+        ))
     
     if user.web_search_furniture:
-        if user.web_search_furniture == 'С мебелью':
-            query = query.filter(Property.has_furniture == True)
-        elif user.web_search_furniture == 'Без мебели':
-            query = query.filter(Property.has_furniture == False)
+        pass
     
     if user.web_search_bathroom:
-        query = query.filter(Property.bathroom_type == user.web_search_bathroom)
+        from sqlalchemy import or_
+        query = query.filter(or_(
+            Property.bathroom_type.ilike(f"%{user.web_search_bathroom}%"),
+            Property.bathroom_type == None,
+            Property.bathroom_type == ""
+        ))
     
     properties = query.order_by(Property.created_at.desc()).limit(20).all()
     
