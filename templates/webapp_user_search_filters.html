@@ -429,19 +429,14 @@
         }
         
         .tinder-extra-details {
-            max-height: 0;
-            overflow: hidden;
-            transition: max-height 0.3s ease;
-        }
-        
-        .tinder-extra-details.show {
-            max-height: 200px;
-        }
-        
-        .tinder-extra-details .tinder-details {
+            display: none;
             margin-top: 10px;
             padding-top: 10px;
             border-top: 1px solid #252525;
+        }
+        
+        .tinder-extra-details.show {
+            display: block;
         }
         
         .tinder-actions {
@@ -1061,17 +1056,26 @@
             const details = document.getElementById('extraDetails');
             if (!btn || !details) return;
             
-            btn.addEventListener('click', function(e) {
+            function toggleDetails(e) {
                 e.stopPropagation();
                 e.preventDefault();
-                btn.classList.toggle('expanded');
-                details.classList.toggle('show');
-                if (btn.classList.contains('expanded')) {
-                    btn.innerHTML = '<i class="bi bi-chevron-up"></i> {{ t.get("webapp_hide_details", "Скрыть") }}';
-                } else {
+                const isExpanded = details.classList.contains('show');
+                if (isExpanded) {
+                    details.classList.remove('show');
+                    btn.classList.remove('expanded');
                     btn.innerHTML = '<i class="bi bi-chevron-down"></i> {{ t.get("webapp_more_details", "Подробнее") }}';
+                } else {
+                    details.classList.add('show');
+                    btn.classList.add('expanded');
+                    btn.innerHTML = '<i class="bi bi-chevron-up"></i> {{ t.get("webapp_hide_details", "Скрыть") }}';
                 }
-            });
+            }
+            
+            btn.onclick = toggleDetails;
+            btn.ontouchend = function(e) {
+                e.preventDefault();
+                toggleDetails(e);
+            };
         }
         
         function renderProgress() {
