@@ -413,6 +413,11 @@
             font-size: 0.85rem;
             cursor: pointer;
             transition: all 0.2s ease;
+            -webkit-tap-highlight-color: transparent;
+            touch-action: manipulation;
+            user-select: none;
+            position: relative;
+            z-index: 5;
         }
         
         .tinder-more-btn:hover {
@@ -1056,6 +1061,8 @@
             const details = document.getElementById('extraDetails');
             if (!btn || !details) return;
             
+            let touchMoved = false;
+            
             function toggleDetails(e) {
                 e.stopPropagation();
                 e.preventDefault();
@@ -1071,11 +1078,25 @@
                 }
             }
             
-            btn.onclick = toggleDetails;
-            btn.ontouchend = function(e) {
-                e.preventDefault();
+            btn.addEventListener('touchstart', function(e) {
+                touchMoved = false;
+            }, { passive: true });
+            
+            btn.addEventListener('touchmove', function(e) {
+                touchMoved = true;
+            }, { passive: true });
+            
+            btn.addEventListener('touchend', function(e) {
+                if (!touchMoved) {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    toggleDetails(e);
+                }
+            }, { passive: false });
+            
+            btn.addEventListener('click', function(e) {
                 toggleDetails(e);
-            };
+            });
         }
         
         function renderProgress() {
