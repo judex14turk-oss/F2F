@@ -2951,7 +2951,10 @@ def webapp_delete_all_broken_properties():
     if property_ids:
         ids_list = [int(id.strip()) for id in property_ids.split(',') if id.strip().isdigit()]
         if ids_list:
-            db.execute(text("DELETE FROM likes WHERE property_id IN :ids"), {'ids': tuple(ids_list)})
+            from models import Like, Match, Offer
+            db.query(Like).filter(Like.property_id.in_(ids_list)).delete(synchronize_session=False)
+            db.query(Match).filter(Match.property_id.in_(ids_list)).delete(synchronize_session=False)
+            db.query(Offer).filter(Offer.property_id.in_(ids_list)).delete(synchronize_session=False)
             db.query(Property).filter(Property.id.in_(ids_list)).delete(synchronize_session=False)
             db.commit()
     
