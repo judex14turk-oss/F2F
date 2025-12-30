@@ -334,6 +334,132 @@
             font-weight: 600;
             font-size: 0.95rem;
         }
+        
+        .edit-profile-btn {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+            width: 100%;
+            padding: 12px;
+            background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%);
+            border: none;
+            border-radius: 8px;
+            color: #fff;
+            font-size: 0.9rem;
+            font-weight: 600;
+            cursor: pointer;
+            margin-top: 12px;
+        }
+        
+        .modal-overlay {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0, 0, 0, 0.8);
+            z-index: 1000;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+        }
+        
+        .modal-overlay.active {
+            display: flex;
+        }
+        
+        .modal-content {
+            background: #1a1a1a;
+            border-radius: 16px;
+            width: 100%;
+            max-width: 400px;
+            max-height: 80vh;
+            overflow-y: auto;
+        }
+        
+        .modal-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 16px;
+            border-bottom: 1px solid #333;
+        }
+        
+        .modal-title {
+            font-size: 1.1rem;
+            font-weight: 600;
+            color: #fff;
+        }
+        
+        .modal-close {
+            background: none;
+            border: none;
+            color: #888;
+            font-size: 1.5rem;
+            cursor: pointer;
+            padding: 0;
+            line-height: 1;
+        }
+        
+        .modal-body {
+            padding: 16px;
+        }
+        
+        .form-group {
+            margin-bottom: 16px;
+        }
+        
+        .form-label {
+            display: block;
+            font-size: 0.85rem;
+            color: #888;
+            margin-bottom: 6px;
+        }
+        
+        .form-input {
+            width: 100%;
+            padding: 12px;
+            background: #252525;
+            border: 1px solid #333;
+            border-radius: 8px;
+            color: #fff;
+            font-size: 0.95rem;
+        }
+        
+        .form-input:focus {
+            outline: none;
+            border-color: #3b82f6;
+        }
+        
+        .form-select {
+            width: 100%;
+            padding: 12px;
+            background: #252525;
+            border: 1px solid #333;
+            border-radius: 8px;
+            color: #fff;
+            font-size: 0.95rem;
+        }
+        
+        .btn-save {
+            width: 100%;
+            padding: 14px;
+            background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+            border: none;
+            border-radius: 10px;
+            color: #fff;
+            font-size: 1rem;
+            font-weight: 600;
+            cursor: pointer;
+            margin-top: 8px;
+        }
+        
+        .btn-save:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+        }
     </style>
 </head>
 <body>
@@ -384,6 +510,46 @@
         <div class="user-info-row">
             <span class="user-info-label"><i class="bi bi-telephone"></i> {{ t.get('webapp_phone', 'Телефон') }}</span>
             <span class="user-info-value">{{ user.phone or t.get('webapp_not_specified', 'Не указан') }}</span>
+        </div>
+        <button class="edit-profile-btn" onclick="openEditModal()">
+            <i class="bi bi-pencil"></i>
+            {{ t.get('webapp_edit_profile', 'Редактировать профиль') }}
+        </button>
+    </div>
+    
+    <div class="modal-overlay" id="editModal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <span class="modal-title"><i class="bi bi-pencil"></i> {{ t.get('webapp_edit_profile', 'Редактировать профиль') }}</span>
+                <button class="modal-close" onclick="closeEditModal()">&times;</button>
+            </div>
+            <div class="modal-body">
+                <form id="editProfileForm">
+                    <div class="form-group">
+                        <label class="form-label">{{ t.get('webapp_type', 'Тип') }}</label>
+                        <select class="form-select" id="sellerType" name="seller_type">
+                            <option value="owner" {% if user.seller_type and user.seller_type.name == 'OWNER' %}selected{% endif %}>{{ t.get('webapp_owner', 'Собственник') }}</option>
+                            <option value="agent" {% if user.seller_type and user.seller_type.name == 'REALTOR' %}selected{% endif %}>{{ t.get('webapp_agent', 'Риелтор') }}</option>
+                            <option value="developer" {% if user.seller_type and user.seller_type.name == 'DEVELOPER' %}selected{% endif %}>{{ t.get('webapp_developer', 'Застройщик') }}</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">{{ t.get('webapp_company', 'Компания') }}</label>
+                        <input type="text" class="form-input" id="companyName" name="company_name" value="{{ user.company_name or '' }}" placeholder="{{ t.get('webapp_enter_company', 'Введите название компании') }}">
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">{{ t.get('webapp_manager', 'Менеджер') }}</label>
+                        <input type="text" class="form-input" id="managerName" name="manager_name" value="{{ user.manager_name or '' }}" placeholder="{{ t.get('webapp_enter_manager', 'Введите имя менеджера') }}">
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">{{ t.get('webapp_phone', 'Телефон') }}</label>
+                        <input type="tel" class="form-input" id="phone" name="phone" value="{{ user.phone or '' }}" placeholder="+998901234567">
+                    </div>
+                    <button type="submit" class="btn-save" id="saveBtn">
+                        <i class="bi bi-check-lg"></i> {{ t.get('webapp_save', 'Сохранить') }}
+                    </button>
+                </form>
+            </div>
         </div>
     </div>
     
@@ -542,6 +708,59 @@
         const tg = window.Telegram.WebApp;
         tg.ready();
         tg.expand();
+        
+        function openEditModal() {
+            document.getElementById('editModal').classList.add('active');
+        }
+        
+        function closeEditModal() {
+            document.getElementById('editModal').classList.remove('active');
+        }
+        
+        document.getElementById('editModal').addEventListener('click', function(e) {
+            if (e.target === this) {
+                closeEditModal();
+            }
+        });
+        
+        document.getElementById('editProfileForm').addEventListener('submit', async function(e) {
+            e.preventDefault();
+            
+            const saveBtn = document.getElementById('saveBtn');
+            saveBtn.disabled = true;
+            saveBtn.innerHTML = '<i class="bi bi-hourglass-split"></i> {{ t.get("webapp_saving", "Сохранение...") }}';
+            
+            const formData = {
+                seller_type: document.getElementById('sellerType').value,
+                company_name: document.getElementById('companyName').value,
+                manager_name: document.getElementById('managerName').value,
+                phone: document.getElementById('phone').value
+            };
+            
+            try {
+                const response = await fetch('/api/user/update?tg_id={{ tg_id }}', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify(formData)
+                });
+                
+                const result = await response.json();
+                
+                if (result.success) {
+                    closeEditModal();
+                    window.location.reload();
+                } else {
+                    alert(result.error || '{{ t.get("webapp_error", "Ошибка") }}');
+                }
+            } catch (error) {
+                alert('{{ t.get("webapp_connection_error", "Ошибка соединения") }}');
+            } finally {
+                saveBtn.disabled = false;
+                saveBtn.innerHTML = '<i class="bi bi-check-lg"></i> {{ t.get("webapp_save", "Сохранить") }}';
+            }
+        });
     </script>
 </body>
 </html>

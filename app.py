@@ -1184,6 +1184,46 @@ def webapp_user_search_filters_like():
     return jsonify({'success': True})
 
 
+@app.route('/api/user/update', methods=['POST'])
+def api_user_update():
+    tg_id = request.args.get('tg_id', '')
+    if not tg_id:
+        return jsonify({'error': 'Access denied'}), 403
+    
+    db = get_db()
+    user = db.query(User).filter(User.telegram_id == int(tg_id)).first()
+    
+    if not user:
+        db.close()
+        return jsonify({'error': 'User not found'}), 404
+    
+    data = request.get_json()
+    
+    seller_type_map = {
+        'owner': SellerType.OWNER,
+        'agent': SellerType.REALTOR,
+        'agency': SellerType.REALTOR,
+        'developer': SellerType.DEVELOPER
+    }
+    
+    if 'seller_type' in data and data['seller_type']:
+        user.seller_type = seller_type_map.get(data['seller_type'], SellerType.OWNER)
+    
+    if 'company_name' in data:
+        user.company_name = data['company_name'].strip() if data['company_name'] else None
+    
+    if 'manager_name' in data:
+        user.manager_name = data['manager_name'].strip() if data['manager_name'] else None
+    
+    if 'phone' in data:
+        user.phone = data['phone'].strip() if data['phone'] else None
+    
+    db.commit()
+    db.close()
+    
+    return jsonify({'success': True})
+
+
 @app.route('/webapp/user_objects')
 def webapp_user_objects():
     tg_id = request.args.get('tg_id', '')
