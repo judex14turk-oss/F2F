@@ -946,6 +946,8 @@ def webapp_user_search_filters_search():
                     or_(Property.housing_type == None, Property.housing_type == '')
                 )
             ))
+        elif user.web_search_housing_type == 'Новостройки':
+            query = query.filter(Property.housing_type.ilike('%новостройк%'))
         elif user.web_search_housing_type == 'Дом':
             query = query.filter(or_(
                 Property.housing_type.ilike('%дом%'),
