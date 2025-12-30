@@ -222,7 +222,9 @@ DISTRICT_TRANSLATIONS = {
     "Шайхантаурский": "Shayxontohur",
     "Юнусабадский": "Yunusobod",
     "Яккасарайский": "Yakkasaroy",
-    "Яшнабадский": "Yashnobod"
+    "Яшнабадский": "Yashnobod",
+    "Янгихаётский": "Yangihayot",
+    "Новый Ташкент": "Yangi Toshkent"
 }
 
 def get_district_name(name_ru: str, lang: str) -> str:
