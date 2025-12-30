@@ -245,11 +245,104 @@
             opacity: 0;
         }
         
+        .tinder-gallery {
+            position: relative;
+            width: 100%;
+            height: 280px;
+            overflow: hidden;
+            background: #1a1a1a;
+        }
+        
+        .tinder-gallery-inner {
+            display: flex;
+            height: 100%;
+            transition: transform 0.3s ease;
+        }
+        
         .tinder-image {
+            min-width: 100%;
             width: 100%;
             height: 280px;
             object-fit: cover;
             background: #1a1a1a;
+            flex-shrink: 0;
+        }
+        
+        .gallery-nav {
+            position: absolute;
+            top: 0;
+            bottom: 0;
+            width: 40%;
+            display: flex;
+            align-items: center;
+            cursor: pointer;
+            z-index: 10;
+        }
+        
+        .gallery-nav-left {
+            left: 0;
+            justify-content: flex-start;
+            padding-left: 10px;
+        }
+        
+        .gallery-nav-right {
+            right: 0;
+            justify-content: flex-end;
+            padding-right: 10px;
+        }
+        
+        .gallery-nav-btn {
+            width: 36px;
+            height: 36px;
+            background: rgba(0,0,0,0.5);
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: #fff;
+            font-size: 1rem;
+            opacity: 0;
+            transition: opacity 0.2s ease;
+        }
+        
+        .tinder-gallery:hover .gallery-nav-btn {
+            opacity: 1;
+        }
+        
+        .gallery-dots {
+            position: absolute;
+            bottom: 10px;
+            left: 50%;
+            transform: translateX(-50%);
+            display: flex;
+            gap: 6px;
+            z-index: 10;
+        }
+        
+        .gallery-dot {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            background: rgba(255,255,255,0.4);
+            transition: all 0.2s ease;
+        }
+        
+        .gallery-dot.active {
+            background: #fff;
+            width: 20px;
+            border-radius: 4px;
+        }
+        
+        .gallery-counter {
+            position: absolute;
+            top: 10px;
+            right: 10px;
+            background: rgba(0,0,0,0.6);
+            color: #fff;
+            padding: 4px 10px;
+            border-radius: 12px;
+            font-size: 0.75rem;
+            z-index: 10;
         }
         
         .tinder-info {
@@ -773,13 +866,105 @@
         let currentIndex = 0;
         let likedCount = 0;
         let isAnimating = false;
+        let currentPhotoIndex = 0;
+        
+        function renderGallery(photos) {
+            if (!photos || photos.length === 0) {
+                return '<div class="tinder-image" style="display:flex;align-items:center;justify-content:center;"><i class="bi bi-image" style="font-size:3rem;color:#333;"></i></div>';
+            }
+            
+            const images = photos.map((url, i) => `<img src="${url}" class="tinder-image" alt="">`).join('');
+            const dots = photos.length > 1 ? photos.map((_, i) => `<div class="gallery-dot ${i === 0 ? 'active' : ''}" data-index="${i}"></div>`).join('') : '';
+            
+            return `
+                <div class="tinder-gallery" id="photoGallery">
+                    <div class="tinder-gallery-inner" id="galleryInner" style="transform: translateX(0%);">
+                        ${images}
+                    </div>
+                    ${photos.length > 1 ? `
+                        <div class="gallery-nav gallery-nav-left" onclick="prevPhoto(event)">
+                            <div class="gallery-nav-btn"><i class="bi bi-chevron-left"></i></div>
+                        </div>
+                        <div class="gallery-nav gallery-nav-right" onclick="nextPhoto(event)">
+                            <div class="gallery-nav-btn"><i class="bi bi-chevron-right"></i></div>
+                        </div>
+                        <div class="gallery-dots" id="galleryDots">${dots}</div>
+                        <div class="gallery-counter" id="galleryCounter">1/${photos.length}</div>
+                    ` : ''}
+                </div>
+            `;
+        }
+        
+        function prevPhoto(event) {
+            event.stopPropagation();
+            const prop = allProperties[currentIndex];
+            if (!prop || !prop.photos || prop.photos.length <= 1) return;
+            
+            currentPhotoIndex = (currentPhotoIndex - 1 + prop.photos.length) % prop.photos.length;
+            updateGalleryPosition();
+        }
+        
+        function nextPhoto(event) {
+            event.stopPropagation();
+            const prop = allProperties[currentIndex];
+            if (!prop || !prop.photos || prop.photos.length <= 1) return;
+            
+            currentPhotoIndex = (currentPhotoIndex + 1) % prop.photos.length;
+            updateGalleryPosition();
+        }
+        
+        function updateGalleryPosition() {
+            const inner = document.getElementById('galleryInner');
+            const counter = document.getElementById('galleryCounter');
+            const dots = document.querySelectorAll('.gallery-dot');
+            const prop = allProperties[currentIndex];
+            
+            if (inner) {
+                inner.style.transform = `translateX(-${currentPhotoIndex * 100}%)`;
+            }
+            if (counter && prop && prop.photos) {
+                counter.textContent = `${currentPhotoIndex + 1}/${prop.photos.length}`;
+            }
+            dots.forEach((dot, i) => {
+                dot.classList.toggle('active', i === currentPhotoIndex);
+            });
+        }
+        
+        function initGallerySwipe() {
+            const gallery = document.getElementById('photoGallery');
+            if (!gallery) return;
+            
+            let startX = 0;
+            let isDragging = false;
+            
+            gallery.addEventListener('touchstart', (e) => {
+                startX = e.touches[0].clientX;
+                isDragging = true;
+            }, { passive: true });
+            
+            gallery.addEventListener('touchend', (e) => {
+                if (!isDragging) return;
+                isDragging = false;
+                const endX = e.changedTouches[0].clientX;
+                const diff = startX - endX;
+                
+                if (Math.abs(diff) > 50) {
+                    if (diff > 0) {
+                        nextPhoto(e);
+                    } else {
+                        prevPhoto(e);
+                    }
+                }
+            }, { passive: true });
+        }
         
         function renderTinderCard(property) {
             if (!property) return '';
             const p = property;
+            currentPhotoIndex = 0;
             return `
                 <div class="tinder-card" id="tinderCard">
-                    ${p.photo ? `<img src="${p.photo}" class="tinder-image" alt="">` : '<div class="tinder-image" style="display:flex;align-items:center;justify-content:center;"><i class="bi bi-image" style="font-size:3rem;color:#333;"></i></div>'}
+                    ${renderGallery(p.photos || (p.photo ? [p.photo] : []))}
                     <div class="tinder-overlay" id="tinderOverlay">
                         <div class="tinder-stamp" id="tinderStamp"></div>
                     </div>
@@ -845,6 +1030,8 @@
                 </div>
                 <div class="tinder-counter">${currentIndex + 1} из ${allProperties.length}</div>
             `;
+            
+            setTimeout(() => initGallerySwipe(), 100);
         }
         
         async function handleSwipe(action) {

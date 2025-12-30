@@ -986,13 +986,13 @@ def webapp_user_search_filters_search():
     results = []
     for prop in properties:
         photo_ids = prop.photos.split(',') if prop.photos else []
-        first_photo = None
-        if photo_ids and photo_ids[0]:
-            pid = photo_ids[0]
-            if pid.startswith('http://') or pid.startswith('https://'):
-                first_photo = pid
-            else:
-                first_photo = url_for('telegram_photo', file_id=pid)
+        photos = []
+        for pid in photo_ids:
+            if pid:
+                if pid.startswith('http://') or pid.startswith('https://'):
+                    photos.append(pid)
+                else:
+                    photos.append(url_for('telegram_photo', file_id=pid))
         
         results.append({
             'id': prop.id,
@@ -1003,7 +1003,8 @@ def webapp_user_search_filters_search():
             'price': prop.price,
             'currency': prop.currency or 'сум',
             'district': prop.district,
-            'photo': first_photo,
+            'photo': photos[0] if photos else None,
+            'photos': photos,
             'property_type': 'sale' if prop.property_type == PropertyType.SALE else 'rent'
         })
     
