@@ -105,6 +105,7 @@
         .menu-card.payments .menu-card-icon { color: #22c55e; }
         .menu-card.parser .menu-card-icon { color: #f97316; }
         .menu-card.ads .menu-card-icon { color: #ef4444; }
+        .menu-card.broken .menu-card-icon { color: #f87171; }
         
         .menu-card.has-badge {
             position: relative;
@@ -236,6 +237,12 @@
             <div class="menu-card-desc">Управление рекламой</div>
         </a>
         {% endif %}
+        
+        <a href="{{ url_for('webapp_broken_properties', tg_id=tg_id) }}" class="menu-card broken">
+            <i class="bi bi-exclamation-triangle menu-card-icon"></i>
+            <div class="menu-card-title">Удалённые OLX</div>
+            <div class="menu-card-desc">Объекты без фото</div>
+        </a>
     </div>
     
     <div class="bottom-nav">

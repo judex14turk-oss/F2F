@@ -2877,6 +2877,106 @@ def webapp_reactivate_property(property_id):
     return redirect(url_for('webapp_properties', tg_id=tg_id))
 
 
+@app.route('/webapp/admin/broken-properties')
+def webapp_broken_properties():
+    tg_id = request.args.get('tg_id')
+    
+    if not tg_id:
+        return "Telegram ID не указан", 400
+    
+    db = get_db()
+    admin_user = db.query(User).filter(User.telegram_id == int(tg_id)).first()
+    
+    if not admin_user or not admin_user.is_admin:
+        db.close()
+        return "Доступ запрещён", 403
+    
+    permissions = get_admin_permissions(admin_user.admin_role)
+    
+    all_olx_properties = db.query(Property).filter(Property.source == 'olx').all()
+    
+    broken_properties = []
+    for prop in all_olx_properties:
+        if not prop.photos or prop.photos.strip() == '':
+            broken_properties.append(prop)
+            continue
+        
+        photo_list = prop.photos.split(',')
+        has_valid_photo = False
+        for photo in photo_list:
+            photo = photo.strip()
+            if photo and (photo.startswith('http://') or photo.startswith('https://')):
+                try:
+                    resp = requests.head(photo, timeout=3, allow_redirects=True)
+                    if resp.status_code == 200:
+                        has_valid_photo = True
+                        break
+                except:
+                    pass
+            elif photo:
+                has_valid_photo = True
+                break
+        
+        if not has_valid_photo:
+            broken_properties.append(prop)
+    
+    db.close()
+    
+    return render_template('webapp_broken_properties.html',
+        tg_id=tg_id,
+        permissions=permissions,
+        admin_user=admin_user,
+        properties=broken_properties,
+        total_count=len(broken_properties)
+    )
+
+
+@app.route('/webapp/admin/broken-properties/delete-all', methods=['POST'])
+def webapp_delete_all_broken_properties():
+    tg_id = request.form.get('tg_id')
+    
+    db = get_db()
+    admin = db.query(User).filter(User.telegram_id == int(tg_id)).first() if tg_id else None
+    
+    if not admin or not admin.is_admin:
+        db.close()
+        return "Доступ запрещён", 403
+    
+    all_olx_properties = db.query(Property).filter(Property.source == 'olx').all()
+    
+    deleted_count = 0
+    for prop in all_olx_properties:
+        if not prop.photos or prop.photos.strip() == '':
+            db.delete(prop)
+            deleted_count += 1
+            continue
+        
+        photo_list = prop.photos.split(',')
+        has_valid_photo = False
+        for photo in photo_list:
+            photo = photo.strip()
+            if photo and (photo.startswith('http://') or photo.startswith('https://')):
+                try:
+                    resp = requests.head(photo, timeout=3, allow_redirects=True)
+                    if resp.status_code == 200:
+                        has_valid_photo = True
+                        break
+                except:
+                    pass
+            elif photo:
+                has_valid_photo = True
+                break
+        
+        if not has_valid_photo:
+            db.delete(prop)
+            deleted_count += 1
+    
+    db.commit()
+    db.close()
+    
+    return redirect(url_for('webapp_broken_properties', tg_id=tg_id))
+
+
 @app.route('/webapp/admin/parser')
 def webapp_parser():
     tg_id = request.args.get('tg_id')

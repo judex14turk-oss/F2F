@@ -1,0 +1,267 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Удалённые объекты OLX</title>
+    <script src="https://telegram.org/js/telegram-web-app.js"></script>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.0/font/bootstrap-icons.css" rel="stylesheet">
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            background: #0a0a0a;
+            color: #e5e5e5;
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            padding-bottom: 100px;
+        }
+        .header {
+            background: linear-gradient(135deg, #4a1a1a 0%, #2e1616 100%);
+            padding: 20px 16px;
+            border-bottom: 1px solid #3a2a2a;
+        }
+        .header h1 {
+            font-size: 1.2rem;
+            font-weight: 600;
+            color: #fff;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        .header-role {
+            font-size: 0.8rem;
+            color: #888;
+            margin-top: 4px;
+        }
+        .stats-row {
+            display: flex;
+            gap: 6px;
+            margin-top: 12px;
+            flex-wrap: wrap;
+        }
+        .stat-badge {
+            background: rgba(239, 68, 68, 0.2);
+            padding: 4px 8px;
+            border-radius: 6px;
+            font-size: 0.7rem;
+            color: #ef4444;
+        }
+        .bottom-nav {
+            position: fixed;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            background: #111;
+            border-top: 1px solid #2a2a2a;
+            display: flex;
+            justify-content: space-around;
+            padding: 8px 0;
+            z-index: 100;
+        }
+        .bottom-nav-item {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            text-decoration: none;
+            color: #666;
+            font-size: 0.65rem;
+            padding: 4px 8px;
+        }
+        .bottom-nav-item.active {
+            color: #ef4444;
+        }
+        .bottom-nav-item i {
+            font-size: 1.3rem;
+            margin-bottom: 2px;
+        }
+        .action-section {
+            padding: 12px;
+            background: #111;
+            border-bottom: 1px solid #2a2a2a;
+        }
+        .btn-delete-all {
+            width: 100%;
+            background: #dc2626;
+            color: white;
+            border: none;
+            border-radius: 8px;
+            padding: 12px;
+            font-size: 0.9rem;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+        }
+        .btn-delete-all:hover {
+            background: #b91c1c;
+        }
+        .properties-grid {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 10px;
+            padding: 12px;
+        }
+        .property-card {
+            background: #151515;
+            border: 1px solid #3a2525;
+            border-radius: 12px;
+            overflow: hidden;
+        }
+        .property-photo-placeholder {
+            width: 100%;
+            height: 100px;
+            background: #2a1a1a;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: #ef4444;
+            font-size: 2rem;
+        }
+        .property-id {
+            padding: 8px 10px;
+            font-size: 0.75rem;
+            color: #888;
+            text-align: center;
+            border-bottom: 1px solid #252525;
+        }
+        .property-id strong {
+            color: #fff;
+        }
+        .property-actions {
+            display: flex;
+            gap: 4px;
+            padding: 8px;
+        }
+        .btn-action {
+            flex: 1;
+            padding: 8px 4px;
+            border: none;
+            border-radius: 6px;
+            font-size: 0.7rem;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 3px;
+            text-decoration: none;
+        }
+        .btn-view { background: #3b82f6; color: white; }
+        .btn-delete { background: #dc2626; color: white; }
+        .empty-state {
+            text-align: center;
+            padding: 60px 20px;
+            color: #666;
+            grid-column: span 2;
+        }
+        .empty-state i {
+            font-size: 3rem;
+            margin-bottom: 12px;
+            color: #10b981;
+        }
+        .empty-state p {
+            color: #10b981;
+        }
+        .count-info {
+            text-align: center;
+            padding: 8px;
+            color: #888;
+            font-size: 0.8rem;
+            background: #111;
+        }
+        .warning-banner {
+            background: rgba(239, 68, 68, 0.1);
+            border: 1px solid rgba(239, 68, 68, 0.3);
+            padding: 12px;
+            margin: 12px;
+            border-radius: 8px;
+            font-size: 0.8rem;
+            color: #fca5a5;
+        }
+        .warning-banner i {
+            margin-right: 6px;
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <h1><i class="bi bi-exclamation-triangle"></i> Удалённые с OLX</h1>
+        <div class="header-role">{{ permissions.role_name }}</div>
+        <div class="stats-row">
+            <span class="stat-badge">Найдено: {{ total_count }} объектов</span>
+        </div>
+    </div>
+    
+    {% if properties %}
+    <div class="warning-banner">
+        <i class="bi bi-info-circle"></i>
+        Эти объекты были спарсены с OLX, но сейчас их фотографии недоступны (объявления удалены с OLX).
+    </div>
+    
+    <div class="action-section">
+        <form method="POST" action="{{ url_for('webapp_delete_all_broken_properties') }}" onsubmit="return confirm('Удалить все {{ total_count }} объектов? Это действие нельзя отменить!')">
+            <input type="hidden" name="tg_id" value="{{ tg_id }}">
+            <button type="submit" class="btn-delete-all">
+                <i class="bi bi-trash"></i> Удалить все {{ total_count }} объектов
+            </button>
+        </form>
+    </div>
+    {% endif %}
+    
+    <div class="count-info">Показано: {{ properties|length }} объектов</div>
+    
+    <div class="properties-grid">
+        {% for prop in properties %}
+        <div class="property-card">
+            <div class="property-photo-placeholder"><i class="bi bi-image-alt"></i></div>
+            <div class="property-id">
+                ID: <strong>{{ prop.unique_id or prop.id }}</strong>
+                <br>
+                <span style="color: #ef4444; font-size: 0.6rem;">Фото недоступны</span>
+            </div>
+            <div class="property-actions">
+                <a href="{{ url_for('webapp_property_view', property_id=prop.id, tg_id=tg_id) }}" class="btn-action btn-view">
+                    <i class="bi bi-eye"></i>
+                </a>
+                <form method="POST" action="{{ url_for('webapp_property_delete', property_id=prop.id) }}" style="flex:1; display:flex;">
+                    <input type="hidden" name="tg_id" value="{{ tg_id }}">
+                    <button type="submit" class="btn-action btn-delete" style="width:100%;" onclick="return confirm('Удалить этот объект?')">
+                        <i class="bi bi-trash"></i> Удалить
+                    </button>
+                </form>
+            </div>
+        </div>
+        {% else %}
+        <div class="empty-state">
+            <i class="bi bi-check-circle"></i>
+            <p>Все объекты OLX в порядке!</p>
+        </div>
+        {% endfor %}
+    </div>
+    
+    <div class="bottom-nav">
+        <a href="{{ url_for('webapp_admin_home', tg_id=tg_id) }}" class="bottom-nav-item">
+            <i class="bi bi-house"></i>
+            <span>Главная</span>
+        </a>
+        <a href="{{ url_for('webapp_properties', tg_id=tg_id) }}" class="bottom-nav-item">
+            <i class="bi bi-building"></i>
+            <span>Объекты</span>
+        </a>
+        <a href="{{ url_for('webapp_payments', tg_id=tg_id) }}" class="bottom-nav-item">
+            <i class="bi bi-credit-card"></i>
+            <span>Оплаты</span>
+        </a>
+        <a href="{{ url_for('webapp_moderation', tg_id=tg_id) }}" class="bottom-nav-item">
+            <i class="bi bi-check-circle"></i>
+            <span>Модерация</span>
+        </a>
+    </div>
+    
+    <script>
+        if (window.Telegram && window.Telegram.WebApp) {
+            Telegram.WebApp.ready();
+            Telegram.WebApp.expand();
+        }
+    </script>
+</body>
+</html>
