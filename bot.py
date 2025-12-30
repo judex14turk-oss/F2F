@@ -121,10 +121,11 @@ def get_district_keyboard(selected_districts: list = None, lang: str = 'ru'):
     keyboard_buttons = []
     row = []
     for district in districts:
+        display_name = get_district_name(district.name, lang)
         if district.name in selected_districts:
-            button_text = f"✅ {district.name}"
+            button_text = f"✅ {display_name}"
         else:
-            button_text = district.name
+            button_text = display_name
         row.append(KeyboardButton(text=button_text))
         if len(row) == 2:
             keyboard_buttons.append(row)
@@ -133,7 +134,7 @@ def get_district_keyboard(selected_districts: list = None, lang: str = 'ru'):
         keyboard_buttons.append(row)
     
     if selected_districts:
-        keyboard_buttons.append([KeyboardButton(text="✅ Готово")])
+        keyboard_buttons.append([KeyboardButton(text=get_text('done', lang))])
     keyboard_buttons.append([KeyboardButton(text=get_text('any_district', lang))])
     keyboard_buttons.append([KeyboardButton(text=get_text('back', lang))])
     
@@ -209,6 +210,25 @@ BATHROOM_TYPES = {
     "separate": "Раздельный",
     "combined": "Совмещенный"
 }
+
+DISTRICT_TRANSLATIONS = {
+    "Алмазарский": "Olmazor",
+    "Бектемирский": "Bektemir",
+    "Мирабадский": "Mirobod",
+    "Мирзо-Улугбекский": "Mirzo Ulug'bek",
+    "Сергелийский": "Sergeli",
+    "Учтепинский": "Uchtepa",
+    "Чиланзарский": "Chilonzor",
+    "Шайхантаурский": "Shayxontohur",
+    "Юнусабадский": "Yunusobod",
+    "Яккасарайский": "Yakkasaroy",
+    "Яшнабадский": "Yashnobod"
+}
+
+def get_district_name(name_ru: str, lang: str) -> str:
+    if lang == 'uz' and name_ru in DISTRICT_TRANSLATIONS:
+        return DISTRICT_TRANSLATIONS[name_ru]
+    return name_ru
 
 
 @dp.message(CommandStart())
@@ -342,13 +362,18 @@ async def back_to_role_from_deal(message: types.Message, state: FSMContext):
 
 @dp.message(RegistrationStates.buyer_deal_type)
 async def process_buyer_deal_type(message: types.Message, state: FSMContext):
-    deal_map = {"🏷 купить": "sale", "🔑 снять": "rent"}
+    db = SessionLocal()
+    user = db.query(User).filter(User.telegram_id == message.from_user.id).first()
+    lang = get_user_lang(user)
+    db.close()
+    
+    deal_map = {"🏷 купить": "sale", "🔑 снять": "rent", "🏷 sotib olish": "sale", "🔑 ijaraga olish": "rent"}
     deal_type = deal_map.get(message.text.lower(), "sale")
-    await state.update_data(deal_type=deal_type, selected_districts=[])
+    await state.update_data(deal_type=deal_type, selected_districts=[], user_lang=lang)
     
     await message.answer(
-        "📍 Выберите район (можно выбрать несколько):",
-        reply_markup=get_district_keyboard([])
+        get_text('choose_district', lang),
+        reply_markup=get_district_keyboard([], lang)
     )
     await state.set_state(RegistrationStates.buyer_district)
 
@@ -405,17 +430,23 @@ async def back_to_rooms_from_housing(message: types.Message, state: FSMContext):
 
 @dp.message(RegistrationStates.buyer_housing_type)
 async def process_housing_type(message: types.Message, state: FSMContext):
+    data = await state.get_data()
+    lang = data.get('user_lang', 'ru')
+    
     housing_map = {
         "🏗 новостройка": "Новостройка",
         "🏠 вторичный рынок": "Вторичный рынок",
-        "любой тип": "Любой"
+        "любой тип": "Любой",
+        "🏗 yangi bino": "Новостройка",
+        "🏠 ikkilamchi bozor": "Вторичный рынок",
+        "istalgan tur": "Любой"
     }
     housing_type = housing_map.get(message.text.lower(), message.text)
     await state.update_data(housing_type=housing_type, selected_districts=[])
     
     await message.answer(
-        "📍 Выберите район (можно выбрать несколько):",
-        reply_markup=get_district_keyboard([])
+        get_text('choose_district', lang),
+        reply_markup=get_district_keyboard([], lang)
     )
     await state.set_state(RegistrationStates.buyer_district)
 
@@ -438,36 +469,37 @@ async def back_to_deal_type(message: types.Message, state: FSMContext):
 async def process_district(message: types.Message, state: FSMContext):
     data = await state.get_data()
     selected_districts = data.get('selected_districts', [])
+    lang = data.get('user_lang', 'ru')
     
-    if message.text == "Любой район":
+    if message.text in ["Любой район", "Istalgan tuman"]:
         await state.update_data(district="Любой", selected_districts=[])
         keyboard = ReplyKeyboardMarkup(
             keyboard=[
-                [KeyboardButton(text="📱 Отправить номер", request_contact=True)],
-                [KeyboardButton(text="⬅️ Назад")]
+                [KeyboardButton(text=get_text('share_phone', lang), request_contact=True)],
+                [KeyboardButton(text=get_text('back', lang))]
             ],
             resize_keyboard=True
         )
         await message.answer(
-            "📞 Поделитесь номером телефона, чтобы продавцы могли с вами связаться:",
+            get_text('share_phone_text', lang),
             reply_markup=keyboard
         )
         await state.set_state(RegistrationStates.buyer_phone)
         return
     
-    if message.text == "✅ Готово":
+    if message.text in ["✅ Готово", "✅ Tayyor"]:
         if selected_districts:
             district_str = ", ".join(selected_districts)
             await state.update_data(district=district_str)
             keyboard = ReplyKeyboardMarkup(
                 keyboard=[
-                    [KeyboardButton(text="📱 Отправить номер", request_contact=True)],
-                    [KeyboardButton(text="⬅️ Назад")]
+                    [KeyboardButton(text=get_text('share_phone', lang), request_contact=True)],
+                    [KeyboardButton(text=get_text('back', lang))]
                 ],
                 resize_keyboard=True
             )
             await message.answer(
-                "📞 Поделитесь номером телефона, чтобы продавцы могли с вами связаться:",
+                get_text('share_phone_text', lang),
                 reply_markup=keyboard
             )
             await state.set_state(RegistrationStates.buyer_phone)
@@ -475,28 +507,41 @@ async def process_district(message: types.Message, state: FSMContext):
     
     district_name = message.text.replace("✅ ", "")
     
-    if district_name in selected_districts:
-        selected_districts.remove(district_name)
+    db = SessionLocal()
+    user = db.query(User).filter(User.telegram_id == message.from_user.id).first()
+    lang = get_user_lang(user)
+    db.close()
+    
+    district_name_ru = district_name
+    for ru_name, uz_name in DISTRICT_TRANSLATIONS.items():
+        if district_name == uz_name:
+            district_name_ru = ru_name
+            break
+    
+    if district_name_ru in selected_districts:
+        selected_districts.remove(district_name_ru)
     else:
-        selected_districts.append(district_name)
+        selected_districts.append(district_name_ru)
     
     await state.update_data(selected_districts=selected_districts)
     
-    selected_text = ", ".join(selected_districts) if selected_districts else "не выбрано"
+    selected_display = [get_district_name(d, lang) for d in selected_districts]
+    selected_text = ", ".join(selected_display) if selected_display else (get_text('not_selected', lang) if lang == 'uz' else "не выбрано")
     await message.answer(
-        f"📍 Выберите район (можно выбрать несколько):\n\nВыбрано: {selected_text}",
-        reply_markup=get_district_keyboard(selected_districts)
+        f"{get_text('choose_district', lang)}\n\n{'Tanlangan' if lang == 'uz' else 'Выбрано'}: {selected_text}",
+        reply_markup=get_district_keyboard(selected_districts, lang)
     )
 
 
-@dp.message(F.text == "⬅️ Назад", RegistrationStates.buyer_budget)
+@dp.message(F.text.in_(["⬅️ Назад", "⬅️ Orqaga"]), RegistrationStates.buyer_budget)
 async def back_to_district(message: types.Message, state: FSMContext):
     data = await state.get_data()
     selected_districts = data.get('selected_districts', [])
+    lang = data.get('user_lang', 'ru')
     
     await message.answer(
-        "📍 Выберите район (можно выбрать несколько):",
-        reply_markup=get_district_keyboard(selected_districts)
+        get_text('choose_district', lang),
+        reply_markup=get_district_keyboard(selected_districts, lang)
     )
     await state.set_state(RegistrationStates.buyer_district)
 
@@ -563,15 +608,17 @@ async def process_payment(message: types.Message, state: FSMContext):
     await state.set_state(RegistrationStates.buyer_phone)
 
 
-@dp.message(F.text == "⬅️ Назад", RegistrationStates.buyer_phone)
+@dp.message(F.text.in_(["⬅️ Назад", "⬅️ Orqaga"]), RegistrationStates.buyer_phone)
 async def back_to_district_from_phone(message: types.Message, state: FSMContext):
     data = await state.get_data()
     selected_districts = data.get('selected_districts', [])
+    lang = data.get('user_lang', 'ru')
     
-    selected_text = ", ".join(selected_districts) if selected_districts else "не выбрано"
+    selected_display = [get_district_name(d, lang) for d in selected_districts]
+    selected_text = ", ".join(selected_display) if selected_display else ("tanlanmagan" if lang == 'uz' else "не выбрано")
     await message.answer(
-        f"📍 Выберите район (можно выбрать несколько):\n\nВыбрано: {selected_text}",
-        reply_markup=get_district_keyboard(selected_districts)
+        f"{get_text('choose_district', lang)}\n\n{'Tanlangan' if lang == 'uz' else 'Выбрано'}: {selected_text}",
+        reply_markup=get_district_keyboard(selected_districts, lang)
     )
     await state.set_state(RegistrationStates.buyer_district)
 
