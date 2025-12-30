@@ -216,57 +216,196 @@
             font-size: 0.8rem;
         }
         
-        .property-card {
-            background: #151515;
-            border: 1px solid #252525;
-            border-radius: 12px;
-            margin-bottom: 12px;
-            overflow: hidden;
+        .tinder-container {
+            position: relative;
+            width: 100%;
+            height: 480px;
+            perspective: 1000px;
         }
         
-        .property-image {
+        .tinder-card {
+            position: absolute;
             width: 100%;
-            height: 180px;
+            height: 100%;
+            background: #151515;
+            border: 1px solid #252525;
+            border-radius: 16px;
+            overflow: hidden;
+            transition: transform 0.5s ease, opacity 0.3s ease;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.3);
+        }
+        
+        .tinder-card.swipe-left {
+            transform: translateX(-150%) rotate(-30deg);
+            opacity: 0;
+        }
+        
+        .tinder-card.swipe-right {
+            transform: translateX(150%) rotate(30deg);
+            opacity: 0;
+        }
+        
+        .tinder-image {
+            width: 100%;
+            height: 280px;
             object-fit: cover;
             background: #1a1a1a;
         }
         
-        .property-info {
-            padding: 12px;
+        .tinder-info {
+            padding: 16px;
         }
         
-        .property-title {
-            font-size: 1rem;
-            font-weight: 600;
+        .tinder-title {
+            font-size: 1.2rem;
+            font-weight: 700;
             color: #fff;
-            margin-bottom: 8px;
+            margin-bottom: 10px;
         }
         
-        .property-details {
+        .tinder-details {
             display: flex;
             flex-wrap: wrap;
             gap: 8px;
-            margin-bottom: 8px;
+            margin-bottom: 12px;
         }
         
-        .property-detail {
+        .tinder-detail {
             background: #1a1a1a;
-            padding: 4px 8px;
-            border-radius: 6px;
-            font-size: 0.75rem;
-            color: #888;
-        }
-        
-        .property-price {
-            font-size: 1.1rem;
-            font-weight: 700;
-            color: #10b981;
-        }
-        
-        .property-district {
+            padding: 6px 10px;
+            border-radius: 8px;
             font-size: 0.8rem;
             color: #888;
-            margin-top: 4px;
+            display: flex;
+            align-items: center;
+            gap: 4px;
+        }
+        
+        .tinder-price {
+            font-size: 1.3rem;
+            font-weight: 700;
+            color: #10b981;
+            margin-bottom: 4px;
+        }
+        
+        .tinder-district {
+            font-size: 0.9rem;
+            color: #888;
+            display: flex;
+            align-items: center;
+            gap: 4px;
+        }
+        
+        .tinder-actions {
+            display: flex;
+            justify-content: center;
+            gap: 30px;
+            padding: 20px;
+        }
+        
+        .tinder-btn {
+            width: 70px;
+            height: 70px;
+            border-radius: 50%;
+            border: none;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.8rem;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.3);
+        }
+        
+        .tinder-btn:active {
+            transform: scale(0.9);
+        }
+        
+        .tinder-btn-dislike {
+            background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%);
+            color: #fff;
+        }
+        
+        .tinder-btn-dislike:hover {
+            box-shadow: 0 6px 20px rgba(239, 68, 68, 0.4);
+        }
+        
+        .tinder-btn-like {
+            background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+            color: #fff;
+        }
+        
+        .tinder-btn-like:hover {
+            box-shadow: 0 6px 20px rgba(16, 185, 129, 0.4);
+        }
+        
+        .tinder-counter {
+            text-align: center;
+            padding: 10px;
+            color: #888;
+            font-size: 0.9rem;
+        }
+        
+        .tinder-progress {
+            display: flex;
+            justify-content: center;
+            gap: 4px;
+            margin-bottom: 15px;
+        }
+        
+        .tinder-dot {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            background: #333;
+            transition: all 0.3s ease;
+        }
+        
+        .tinder-dot.active {
+            background: #3b82f6;
+            width: 24px;
+            border-radius: 4px;
+        }
+        
+        .tinder-dot.seen {
+            background: #555;
+        }
+        
+        .tinder-overlay {
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            pointer-events: none;
+            opacity: 0;
+            transition: opacity 0.2s ease;
+        }
+        
+        .tinder-overlay.show {
+            opacity: 1;
+        }
+        
+        .tinder-stamp {
+            font-size: 3rem;
+            font-weight: 900;
+            padding: 10px 30px;
+            border-radius: 10px;
+            border: 5px solid;
+            transform: rotate(-20deg);
+        }
+        
+        .tinder-stamp.like {
+            color: #10b981;
+            border-color: #10b981;
+        }
+        
+        .tinder-stamp.dislike {
+            color: #ef4444;
+            border-color: #ef4444;
         }
         
         .no-results {
@@ -295,6 +434,34 @@
         @keyframes spin {
             from { transform: rotate(0deg); }
             to { transform: rotate(360deg); }
+        }
+        
+        .all-done {
+            text-align: center;
+            padding: 60px 20px;
+            color: #888;
+        }
+        
+        .all-done i {
+            font-size: 4rem;
+            margin-bottom: 20px;
+            color: #10b981;
+        }
+        
+        .all-done h3 {
+            color: #fff;
+            font-size: 1.3rem;
+            margin-bottom: 10px;
+        }
+        
+        .liked-count {
+            background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+            color: #fff;
+            padding: 8px 20px;
+            border-radius: 20px;
+            display: inline-block;
+            margin-top: 15px;
+            font-size: 0.95rem;
         }
         
         .filter-option {
@@ -602,14 +769,140 @@
             return price.toLocaleString();
         }
         
+        let allProperties = [];
+        let currentIndex = 0;
+        let likedCount = 0;
+        let isAnimating = false;
+        
+        function renderTinderCard(property) {
+            if (!property) return '';
+            const p = property;
+            return `
+                <div class="tinder-card" id="tinderCard">
+                    ${p.photo ? `<img src="${p.photo}" class="tinder-image" alt="">` : '<div class="tinder-image" style="display:flex;align-items:center;justify-content:center;"><i class="bi bi-image" style="font-size:3rem;color:#333;"></i></div>'}
+                    <div class="tinder-overlay" id="tinderOverlay">
+                        <div class="tinder-stamp" id="tinderStamp"></div>
+                    </div>
+                    <div class="tinder-info">
+                        <div class="tinder-title">${p.rooms || '?'}-комн. квартира, ${p.area || '?'} м²</div>
+                        <div class="tinder-details">
+                            <span class="tinder-detail"><i class="bi bi-layers"></i> ${p.floor || '?'}/${p.total_floors || '?'} этаж</span>
+                            <span class="tinder-detail">${p.property_type === 'rent' ? '{{ t.get("webapp_rent_filter", "Аренда") }}' : '{{ t.get("webapp_buy", "Покупка") }}'}</span>
+                        </div>
+                        <div class="tinder-price">${p.currency === '$' || p.currency === 'USD' ? '$' + formatPrice(p.price) : formatPrice(p.price) + ' ' + (p.currency || 'сум')}</div>
+                        <div class="tinder-district"><i class="bi bi-geo-alt"></i> ${p.district || '{{ t.get("webapp_not_specified", "Не указан") }}'}</div>
+                    </div>
+                </div>
+            `;
+        }
+        
+        function renderProgress() {
+            const maxDots = Math.min(allProperties.length, 10);
+            let dots = '';
+            for (let i = 0; i < maxDots; i++) {
+                let cls = 'tinder-dot';
+                if (i === currentIndex % maxDots) cls += ' active';
+                else if (i < currentIndex % maxDots) cls += ' seen';
+                dots += `<div class="${cls}"></div>`;
+            }
+            return dots;
+        }
+        
+        function renderAllDone() {
+            return `
+                <div class="all-done">
+                    <i class="bi bi-check-circle"></i>
+                    <h3>{{ t.get('webapp_all_viewed', 'Все просмотрено!') }}</h3>
+                    <div>{{ t.get('webapp_checked_all', 'Вы просмотрели все объекты') }}</div>
+                    <div class="liked-count"><i class="bi bi-heart-fill"></i> {{ t.get('webapp_liked', 'Понравилось') }}: ${likedCount}</div>
+                </div>
+            `;
+        }
+        
+        function updateTinderView() {
+            const container = document.getElementById('propertiesList');
+            const countEl = document.getElementById('resultsCount');
+            
+            if (currentIndex >= allProperties.length) {
+                container.innerHTML = renderAllDone();
+                return;
+            }
+            
+            countEl.textContent = `${currentIndex + 1}/${allProperties.length}`;
+            
+            container.innerHTML = `
+                <div class="tinder-progress">${renderProgress()}</div>
+                <div class="tinder-container">
+                    ${renderTinderCard(allProperties[currentIndex])}
+                </div>
+                <div class="tinder-actions">
+                    <button class="tinder-btn tinder-btn-dislike" onclick="handleSwipe('dislike')">
+                        <i class="bi bi-x-lg"></i>
+                    </button>
+                    <button class="tinder-btn tinder-btn-like" onclick="handleSwipe('like')">
+                        <i class="bi bi-heart-fill"></i>
+                    </button>
+                </div>
+                <div class="tinder-counter">${currentIndex + 1} из ${allProperties.length}</div>
+            `;
+        }
+        
+        async function handleSwipe(action) {
+            if (isAnimating || currentIndex >= allProperties.length) return;
+            isAnimating = true;
+            
+            const card = document.getElementById('tinderCard');
+            const overlay = document.getElementById('tinderOverlay');
+            const stamp = document.getElementById('tinderStamp');
+            
+            if (action === 'like') {
+                stamp.textContent = '{{ t.get("webapp_like_stamp", "НРАВИТСЯ") }}';
+                stamp.className = 'tinder-stamp like';
+                overlay.classList.add('show');
+                
+                const prop = allProperties[currentIndex];
+                try {
+                    await fetch(`/webapp/user_search_filters/like?tg_id=${tgId}`, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ property_id: prop.id })
+                    });
+                    likedCount++;
+                } catch (e) {
+                    console.error('Like error:', e);
+                }
+                
+                setTimeout(() => {
+                    card.classList.add('swipe-right');
+                }, 200);
+            } else {
+                stamp.textContent = '{{ t.get("webapp_dislike_stamp", "ПРОПУСК") }}';
+                stamp.className = 'tinder-stamp dislike';
+                overlay.classList.add('show');
+                
+                setTimeout(() => {
+                    card.classList.add('swipe-left');
+                }, 200);
+            }
+            
+            setTimeout(() => {
+                currentIndex++;
+                isAnimating = false;
+                updateTinderView();
+            }, 600);
+        }
+        
         function renderProperties(properties) {
             const container = document.getElementById('propertiesList');
             const section = document.getElementById('resultsSection');
             const countEl = document.getElementById('resultsCount');
             
-            countEl.textContent = properties.length;
+            allProperties = properties;
+            currentIndex = 0;
+            likedCount = 0;
             
             if (properties.length === 0) {
+                countEl.textContent = '0';
                 container.innerHTML = `
                     <div class="no-results">
                         <i class="bi bi-search"></i>
@@ -618,20 +911,7 @@
                     </div>
                 `;
             } else {
-                container.innerHTML = properties.map(p => `
-                    <div class="property-card">
-                        ${p.photo ? `<img src="${p.photo}" class="property-image" alt="">` : '<div class="property-image"></div>'}
-                        <div class="property-info">
-                            <div class="property-title">${p.rooms || '?'}-комн. квартира, ${p.area || '?'} м²</div>
-                            <div class="property-details">
-                                <span class="property-detail"><i class="bi bi-layers"></i> ${p.floor || '?'}/${p.total_floors || '?'} этаж</span>
-                                <span class="property-detail">${p.property_type === 'rent' ? '{{ t.get("webapp_rent_filter", "Аренда") }}' : '{{ t.get("webapp_buy", "Покупка") }}'}</span>
-                            </div>
-                            <div class="property-price">${p.currency === '$' || p.currency === 'USD' ? '$' + formatPrice(p.price) : formatPrice(p.price) + ' ' + (p.currency || 'сум')}</div>
-                            <div class="property-district"><i class="bi bi-geo-alt"></i> ${p.district || '{{ t.get("webapp_not_specified", "Не указан") }}'}</div>
-                        </div>
-                    </div>
-                `).join('');
+                updateTinderView();
             }
             
             section.style.display = 'block';

@@ -1011,6 +1011,55 @@ def webapp_user_search_filters_search():
     return jsonify({'properties': results, 'count': len(results)})
 
 
+@app.route('/webapp/user_search_filters/like', methods=['POST'])
+def webapp_user_search_filters_like():
+    tg_id = request.args.get('tg_id', '')
+    if not tg_id:
+        return jsonify({'error': 'Access denied'}), 403
+    
+    db = get_db()
+    user = db.query(User).filter(User.telegram_id == int(tg_id)).first()
+    
+    if not user:
+        db.close()
+        return jsonify({'error': 'User not found'}), 404
+    
+    data = request.get_json()
+    property_id = data.get('property_id')
+    
+    if not property_id:
+        db.close()
+        return jsonify({'error': 'Property ID required'}), 400
+    
+    prop = db.query(Property).filter(Property.id == property_id).first()
+    if not prop:
+        db.close()
+        return jsonify({'error': 'Property not found'}), 404
+    
+    existing_like = db.query(Like).filter(
+        Like.user_id == user.id,
+        Like.property_id == property_id
+    ).first()
+    
+    if existing_like:
+        db.close()
+        return jsonify({'success': True, 'message': 'Already liked'})
+    
+    new_like = Like(
+        user_id=user.id,
+        property_id=property_id,
+        property_owner_id=prop.owner_id
+    )
+    db.add(new_like)
+    
+    prop.likes_count = (prop.likes_count or 0) + 1
+    
+    db.commit()
+    db.close()
+    
+    return jsonify({'success': True})
+
+
 @app.route('/webapp/user_objects')
 def webapp_user_objects():
     tg_id = request.args.get('tg_id', '')
