@@ -398,6 +398,52 @@
             gap: 4px;
         }
         
+        .tinder-more-btn {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 6px;
+            width: 100%;
+            padding: 10px;
+            margin-top: 10px;
+            background: #1a1a1a;
+            border: 1px solid #333;
+            border-radius: 8px;
+            color: #888;
+            font-size: 0.85rem;
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+        
+        .tinder-more-btn:hover {
+            background: #252525;
+            color: #fff;
+        }
+        
+        .tinder-more-btn i {
+            transition: transform 0.3s ease;
+        }
+        
+        .tinder-more-btn.expanded i {
+            transform: rotate(180deg);
+        }
+        
+        .tinder-extra-details {
+            max-height: 0;
+            overflow: hidden;
+            transition: max-height 0.3s ease;
+        }
+        
+        .tinder-extra-details.show {
+            max-height: 200px;
+        }
+        
+        .tinder-extra-details .tinder-details {
+            margin-top: 10px;
+            padding-top: 10px;
+            border-top: 1px solid #252525;
+        }
+        
         .tinder-actions {
             display: flex;
             justify-content: center;
@@ -977,6 +1023,10 @@
             if (p.renovation) extraDetails.push(`<span class="tinder-detail"><i class="bi bi-hammer"></i> ${p.renovation}</span>`);
             if (p.has_furniture) extraDetails.push(`<span class="tinder-detail"><i class="bi bi-lamp"></i> {{ t.get("webapp_with_furniture", "С мебелью") }}</span>`);
             if (p.bathroom_type) extraDetails.push(`<span class="tinder-detail"><i class="bi bi-droplet"></i> ${p.bathroom_type}</span>`);
+            if (p.residential_complex) extraDetails.push(`<span class="tinder-detail"><i class="bi bi-buildings"></i> ${p.residential_complex}</span>`);
+            if (p.address) extraDetails.push(`<span class="tinder-detail"><i class="bi bi-signpost"></i> ${p.address}</span>`);
+            
+            const hasExtra = extraDetails.length > 0;
             
             return `
                 <div class="tinder-card" id="tinderCard">
@@ -990,13 +1040,31 @@
                             <span class="tinder-detail"><i class="bi bi-layers"></i> ${p.floor || '?'}/${p.total_floors || '?'} {{ t.get("webapp_floor", "этаж") }}</span>
                             <span class="tinder-detail">${p.property_type === 'rent' ? '{{ t.get("webapp_rent_filter", "Аренда") }}' : '{{ t.get("webapp_buy", "Покупка") }}'}</span>
                         </div>
-                        ${extraDetails.length > 0 ? `<div class="tinder-details">${extraDetails.join('')}</div>` : ''}
                         <div class="tinder-price">${p.currency === '$' || p.currency === 'USD' ? '$' + formatPrice(p.price) : formatPrice(p.price) + ' ' + (p.currency || 'сум')}</div>
-                        <div class="tinder-district"><i class="bi bi-geo-alt"></i> ${p.district || '{{ t.get("webapp_not_specified", "Не указан") }}'}${p.residential_complex ? ' • ' + p.residential_complex : ''}</div>
-                        ${p.address ? `<div class="tinder-address"><i class="bi bi-signpost"></i> ${p.address}</div>` : ''}
+                        <div class="tinder-district"><i class="bi bi-geo-alt"></i> ${p.district || '{{ t.get("webapp_not_specified", "Не указан") }}'}</div>
+                        ${hasExtra ? `
+                            <button class="tinder-more-btn" onclick="toggleExtraDetails(event)">
+                                <i class="bi bi-chevron-down"></i>
+                                {{ t.get("webapp_more_details", "Подробнее") }}
+                            </button>
+                            <div class="tinder-extra-details" id="extraDetails">
+                                <div class="tinder-details">${extraDetails.join('')}</div>
+                            </div>
+                        ` : ''}
                     </div>
                 </div>
             `;
+        }
+        
+        function toggleExtraDetails(event) {
+            event.stopPropagation();
+            const btn = event.currentTarget;
+            const details = document.getElementById('extraDetails');
+            btn.classList.toggle('expanded');
+            details.classList.toggle('show');
+            btn.innerHTML = btn.classList.contains('expanded') 
+                ? '<i class="bi bi-chevron-up"></i> {{ t.get("webapp_hide_details", "Скрыть") }}'
+                : '<i class="bi bi-chevron-down"></i> {{ t.get("webapp_more_details", "Подробнее") }}';
         }
         
         function renderProgress() {
