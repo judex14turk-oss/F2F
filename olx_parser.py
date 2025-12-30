@@ -873,8 +873,46 @@ class OLXParser:
         }
     
     def _extract_title(self, soup):
-        title_el = soup.find('h1') or soup.find('h4')
-        return title_el.get_text(strip=True) if title_el else None
+        # Сначала ищем в JSON-LD (самый надёжный способ)
+        for script in soup.find_all('script', type='application/ld+json'):
+            try:
+                data = json.loads(script.string)
+                if isinstance(data, dict) and 'name' in data:
+                    title = data['name']
+                    if title and len(title) > 3:
+                        return title
+            except:
+                pass
+        
+        # Ищем по data-cy атрибуту (OLX использует это для заголовка)
+        title_el = soup.find(attrs={'data-cy': 'ad_title'})
+        if title_el:
+            text = title_el.get_text(strip=True)
+            if text:
+                return text
+        
+        # Ищем h1 с классом или без
+        for h1 in soup.find_all('h1'):
+            text = h1.get_text(strip=True)
+            # Проверяем что это не служебный текст
+            if text and len(text) > 5 and not any(skip in text.lower() for skip in ['olx', 'войти', 'регистрация']):
+                return text
+        
+        # Ищем h4
+        for h4 in soup.find_all('h4'):
+            text = h4.get_text(strip=True)
+            if text and len(text) > 5:
+                return text
+        
+        # Последняя попытка - ищем заголовок по классу
+        for el in soup.find_all(['h1', 'h2', 'h3', 'h4', 'div', 'span']):
+            class_name = ' '.join(el.get('class', []))
+            if 'title' in class_name.lower() or 'heading' in class_name.lower():
+                text = el.get_text(strip=True)
+                if text and len(text) > 5:
+                    return text
+        
+        return None
     
     def _extract_price(self, soup):
         # Ищем цену в JSON-LD данных (самый надёжный способ)
@@ -957,42 +995,56 @@ class OLXParser:
         params = {}
         all_text = soup.get_text()
         
-        keywords = ['Тип жилья', 'Количество комнат', 'Общая площадь', 'Полезная площадь', 
+        keywords = ['Тип жилья', 'Количество комнат', 'Общая площадь', 'Площадь', 'Полезная площадь', 
                     'Участок', 'Этаж', 'Этажность дома', 'Высота потолков',
                     'Планировка', 'Санузел', 'Меблирована', 'Рядом есть', 'Комиссионные',
                     'Тип строения', 'Ремонт', 'Год постройки', 'В квартире есть',
                     'В помещении есть', 'Наличие парковки', 'Тип помещения', 'Коммуникации', 
-                    'Цоколь', 'Тип недвижимости', 'Расположение']
+                    'Цоколь', 'Тип недвижимости', 'Расположение', 'Комнат', 'Бизнес']
         keyword_pattern = '|'.join(keywords)
         
         patterns = [
             (rf'Тип жилья[:\s]+(.+?)(?={keyword_pattern}|$)', 'Тип жилья'),
             (rf'Тип недвижимости[:\s]+(.+?)(?={keyword_pattern}|$)', 'Тип недвижимости'),
-            (r'Количество комнат[:\s]+(\d+)', 'Количество комнат'),
-            (r'Общая площадь[:\s]*([\d\s]+)\s*м', 'Общая площадь'),
+            (r'Количество комнат[:\s]*(\d+)', 'Количество комнат'),
+            (r'Общая площадь[:\s]*([\d\s.,]+)(?:\s*м|$|\s)', 'Общая площадь'),
+            (r'Площадь[:\s]*([\d\s.,]+)(?:\s*м|$|\s)', 'Общая площадь'),
             (r'Полезная площадь[:\s]*([\d\s]+)', 'Полезная площадь'),
             (r'Участок[:\s]*([\d\s.,]+)', 'Участок'),
-            (r'Этаж[:\s]+(\d+)', 'Этаж'),
-            (r'Этажность дома[:\s]+(\d+)', 'Этажность дома'),
+            (r'Этаж[:\s]*(\d+)', 'Этаж'),
+            (r'Этажность дома[:\s]*(\d+)', 'Этажность дома'),
             (r'Высота потолков[:\s]*([\d\s.,]+)', 'Высота потолков'),
             (rf'Планировка[:\s]+(.+?)(?={keyword_pattern}|$)', 'Планировка'),
             (rf'Санузел[:\s]+(.+?)(?={keyword_pattern}|$)', 'Санузел'),
-            (r'Меблирована[:\s]+(Да|Нет)', 'Меблирована'),
+            (r'Меблирована[:\s]*(Да|Нет)', 'Меблирована'),
             (rf'Рядом есть[:\s]+(.+?)(?={keyword_pattern}|$)', 'Рядом есть'),
-            (r'Комиссионные[:\s]+(Да|Нет)', 'Комиссионные'),
+            (r'Комиссионные[:\s]*(Да|Нет)', 'Комиссионные'),
             (rf'Тип строения[:\s]+(.+?)(?={keyword_pattern}|$)', 'Тип строения'),
             (r'Ремонт[:\s]*(Черновая отделка|Евроремонт|Косметический|Требует ремонта|Без отделки|Под ключ)', 'Ремонт'),
             (rf'Расположение[:\s]+(.+?)(?={keyword_pattern}|$)', 'Расположение'),
             (rf'В помещении есть[:\s]+(.+?)(?={keyword_pattern}|$)', 'В помещении есть'),
+            (rf'В квартире есть[:\s]+(.+?)(?={keyword_pattern}|$)', 'В квартире есть'),
+            (r'Комнат[:\s]*(\d+)', 'Количество комнат'),
         ]
         
         for pattern, key in patterns:
+            # Не перезаписываем уже найденные значения
+            if key in params:
+                continue
             match = re.search(pattern, all_text, re.IGNORECASE)
             if match:
                 value = match.group(1).strip()
                 if key in ['Общая площадь', 'Полезная площадь']:
-                    value = value.replace(' ', '').replace('\u00a0', '')
-                if len(value) < 100:
+                    value = value.replace(' ', '').replace('\u00a0', '').replace(',', '.')
+                    # Убираем всё после точки если это целое число
+                    if '.' in value:
+                        try:
+                            num = float(value)
+                            if num == int(num):
+                                value = str(int(num))
+                        except:
+                            pass
+                if len(value) < 100 and value:
                     params[key] = value
                     
         return params
