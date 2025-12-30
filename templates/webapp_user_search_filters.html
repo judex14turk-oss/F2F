@@ -446,31 +446,114 @@
             display: block;
         }
         
-        .tinder-details-grid {
+        .detail-section {
+            margin-bottom: 16px;
+        }
+        
+        .detail-section-title {
             display: flex;
-            flex-wrap: wrap;
+            align-items: center;
             gap: 8px;
-            margin-bottom: 12px;
+            font-size: 0.85rem;
+            font-weight: 600;
+            color: #888;
+            margin-bottom: 10px;
+            padding-bottom: 6px;
+            border-bottom: 1px solid #252525;
         }
         
-        .tinder-detail.full-width {
-            width: 100%;
-            flex-basis: 100%;
+        .detail-section-title i {
+            color: #3b82f6;
         }
         
-        .tinder-description {
+        .detail-specs-grid {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 10px;
+        }
+        
+        .detail-spec-item {
+            background: #1a1a1a;
+            border-radius: 8px;
+            padding: 10px 12px;
+        }
+        
+        .detail-spec-label {
+            font-size: 0.75rem;
+            color: #666;
+            margin-bottom: 4px;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+        
+        .detail-spec-label i {
+            color: #555;
+        }
+        
+        .detail-spec-value {
+            font-size: 0.9rem;
+            color: #fff;
+            font-weight: 500;
+        }
+        
+        .detail-address {
             background: #1a1a1a;
             border-radius: 8px;
             padding: 12px;
-            margin-bottom: 12px;
-            font-size: 0.85rem;
-            color: #aaa;
-            line-height: 1.5;
+            font-size: 0.9rem;
+            color: #ccc;
+            line-height: 1.4;
         }
         
-        .tinder-description i {
-            color: #666;
-            margin-right: 8px;
+        .detail-contact-card {
+            background: #1a1a1a;
+            border-radius: 8px;
+            padding: 12px;
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+        
+        .detail-contact-name {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-size: 0.95rem;
+            color: #fff;
+            font-weight: 500;
+        }
+        
+        .detail-contact-name i {
+            color: #3b82f6;
+        }
+        
+        .detail-contact-phone {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-size: 0.9rem;
+            color: #10b981;
+            text-decoration: none;
+            padding: 8px 12px;
+            background: rgba(16, 185, 129, 0.1);
+            border-radius: 6px;
+            transition: background 0.2s ease;
+        }
+        
+        .detail-contact-phone:hover {
+            background: rgba(16, 185, 129, 0.2);
+        }
+        
+        .detail-description {
+            background: #1a1a1a;
+            border-radius: 8px;
+            padding: 12px;
+            font-size: 0.85rem;
+            color: #aaa;
+            line-height: 1.6;
+            white-space: pre-wrap;
+            word-wrap: break-word;
         }
         
         .tinder-olx-link {
@@ -479,14 +562,15 @@
             justify-content: center;
             gap: 8px;
             width: 100%;
-            padding: 12px;
+            padding: 14px;
             background: #2563eb;
             color: #fff;
             text-decoration: none;
-            border-radius: 8px;
-            font-size: 0.9rem;
-            font-weight: 500;
+            border-radius: 10px;
+            font-size: 0.95rem;
+            font-weight: 600;
             transition: background 0.2s ease;
+            margin-top: 8px;
         }
         
         .tinder-olx-link:hover {
@@ -1067,21 +1151,63 @@
             const p = property;
             currentPhotoIndex = 0;
             
-            let extraDetails = [];
-            if (p.building_type) extraDetails.push(`<span class="tinder-detail"><i class="bi bi-building"></i> ${p.building_type}</span>`);
-            if (p.renovation) extraDetails.push(`<span class="tinder-detail"><i class="bi bi-hammer"></i> ${p.renovation}</span>`);
-            if (p.has_furniture) extraDetails.push(`<span class="tinder-detail"><i class="bi bi-lamp"></i> {{ t.get("webapp_with_furniture", "С мебелью") }}</span>`);
-            if (p.bathroom_type) extraDetails.push(`<span class="tinder-detail"><i class="bi bi-droplet"></i> ${p.bathroom_type}</span>`);
-            if (p.residential_complex) extraDetails.push(`<span class="tinder-detail"><i class="bi bi-buildings"></i> ЖК: ${p.residential_complex}</span>`);
-            if (p.layout) extraDetails.push(`<span class="tinder-detail"><i class="bi bi-grid"></i> ${p.layout}</span>`);
-            if (p.room_type) extraDetails.push(`<span class="tinder-detail"><i class="bi bi-door-open"></i> ${p.room_type}</span>`);
-            if (p.address) extraDetails.push(`<span class="tinder-detail full-width"><i class="bi bi-signpost"></i> ${p.address}</span>`);
-            if (p.seller_name) extraDetails.push(`<span class="tinder-detail"><i class="bi bi-person"></i> ${p.seller_name}</span>`);
-            if (p.phone) extraDetails.push(`<span class="tinder-detail"><i class="bi bi-telephone"></i> ${p.phone}</span>`);
+            let propertySpecs = [];
+            if (p.building_type) propertySpecs.push({icon: 'bi-building', label: '{{ t.get("webapp_building_type", "Дом") }}', value: p.building_type});
+            if (p.renovation) propertySpecs.push({icon: 'bi-hammer', label: '{{ t.get("webapp_renovation", "Ремонт") }}', value: p.renovation});
+            if (p.bathroom_type) propertySpecs.push({icon: 'bi-droplet', label: '{{ t.get("webapp_bathroom", "Санузел") }}', value: p.bathroom_type});
+            if (p.layout) propertySpecs.push({icon: 'bi-grid', label: '{{ t.get("webapp_layout", "Планировка") }}', value: p.layout});
+            if (p.room_type) propertySpecs.push({icon: 'bi-door-open', label: '{{ t.get("webapp_room_type", "Комнаты") }}', value: p.room_type});
+            if (p.has_furniture) propertySpecs.push({icon: 'bi-lamp', label: '{{ t.get("webapp_furniture", "Мебель") }}', value: '{{ t.get("webapp_yes", "Да") }}'});
+            if (p.residential_complex) propertySpecs.push({icon: 'bi-buildings', label: '{{ t.get("webapp_complex", "ЖК") }}', value: p.residential_complex});
+            
+            let specsHtml = '';
+            if (propertySpecs.length > 0) {
+                specsHtml = `
+                    <div class="detail-section">
+                        <div class="detail-section-title"><i class="bi bi-house-door"></i> {{ t.get("webapp_characteristics", "Характеристики") }}</div>
+                        <div class="detail-specs-grid">
+                            ${propertySpecs.map(s => `
+                                <div class="detail-spec-item">
+                                    <div class="detail-spec-label"><i class="bi ${s.icon}"></i> ${s.label}</div>
+                                    <div class="detail-spec-value">${s.value}</div>
+                                </div>
+                            `).join('')}
+                        </div>
+                    </div>
+                `;
+            }
+            
+            let locationHtml = '';
+            if (p.address) {
+                locationHtml = `
+                    <div class="detail-section">
+                        <div class="detail-section-title"><i class="bi bi-geo-alt"></i> {{ t.get("webapp_location", "Расположение") }}</div>
+                        <div class="detail-address">${p.address}</div>
+                    </div>
+                `;
+            }
+            
+            let contactHtml = '';
+            if (p.seller_name || p.phone) {
+                contactHtml = `
+                    <div class="detail-section">
+                        <div class="detail-section-title"><i class="bi bi-person-lines-fill"></i> {{ t.get("webapp_contact", "Контакт") }}</div>
+                        <div class="detail-contact-card">
+                            ${p.seller_name ? `<div class="detail-contact-name"><i class="bi bi-person"></i> ${p.seller_name}</div>` : ''}
+                            ${p.phone ? `<a href="tel:${p.phone}" class="detail-contact-phone"><i class="bi bi-telephone"></i> ${p.phone}</a>` : ''}
+                        </div>
+                    </div>
+                `;
+            }
             
             let descriptionHtml = '';
             if (p.description) {
-                descriptionHtml = `<div class="tinder-description"><i class="bi bi-card-text"></i> ${p.description}</div>`;
+                descriptionHtml = `
+                    <div class="detail-section">
+                        <div class="detail-section-title"><i class="bi bi-card-text"></i> {{ t.get("webapp_description", "Описание") }}</div>
+                        <div class="detail-description">${p.description}</div>
+                    </div>
+                `;
             }
             
             let olxLinkHtml = '';
@@ -1110,7 +1236,9 @@
                             {{ t.get("webapp_more_details", "Подробнее") }}
                         </div>
                         <div class="tinder-extra-details" id="extraDetails">
-                            ${extraDetails.length > 0 ? `<div class="tinder-details-grid">${extraDetails.join('')}</div>` : ''}
+                            ${specsHtml}
+                            ${locationHtml}
+                            ${contactHtml}
                             ${descriptionHtml}
                             ${olxLinkHtml}
                         </div>
