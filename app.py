@@ -2893,32 +2893,10 @@ def webapp_broken_properties():
     
     permissions = get_admin_permissions(admin_user.admin_role)
     
-    all_olx_properties = db.query(Property).filter(Property.source == 'olx').all()
-    
-    broken_properties = []
-    for prop in all_olx_properties:
-        if not prop.photos or prop.photos.strip() == '':
-            broken_properties.append(prop)
-            continue
-        
-        photo_list = prop.photos.split(',')
-        has_valid_photo = False
-        for photo in photo_list:
-            photo = photo.strip()
-            if photo and (photo.startswith('http://') or photo.startswith('https://')):
-                try:
-                    resp = requests.head(photo, timeout=3, allow_redirects=True)
-                    if resp.status_code == 200:
-                        has_valid_photo = True
-                        break
-                except:
-                    pass
-            elif photo:
-                has_valid_photo = True
-                break
-        
-        if not has_valid_photo:
-            broken_properties.append(prop)
+    broken_properties = db.query(Property).filter(
+        Property.source == 'olx',
+        (Property.photos == None) | (Property.photos == '') | (Property.photos == ' ')
+    ).order_by(Property.created_at.desc()).all()
     
     db.close()
     
@@ -2942,34 +2920,10 @@ def webapp_delete_all_broken_properties():
         db.close()
         return "Доступ запрещён", 403
     
-    all_olx_properties = db.query(Property).filter(Property.source == 'olx').all()
-    
-    deleted_count = 0
-    for prop in all_olx_properties:
-        if not prop.photos or prop.photos.strip() == '':
-            db.delete(prop)
-            deleted_count += 1
-            continue
-        
-        photo_list = prop.photos.split(',')
-        has_valid_photo = False
-        for photo in photo_list:
-            photo = photo.strip()
-            if photo and (photo.startswith('http://') or photo.startswith('https://')):
-                try:
-                    resp = requests.head(photo, timeout=3, allow_redirects=True)
-                    if resp.status_code == 200:
-                        has_valid_photo = True
-                        break
-                except:
-                    pass
-            elif photo:
-                has_valid_photo = True
-                break
-        
-        if not has_valid_photo:
-            db.delete(prop)
-            deleted_count += 1
+    db.query(Property).filter(
+        Property.source == 'olx',
+        (Property.photos == None) | (Property.photos == '') | (Property.photos == ' ')
+    ).delete(synchronize_session=False)
     
     db.commit()
     db.close()
