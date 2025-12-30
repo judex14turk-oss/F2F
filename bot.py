@@ -3364,6 +3364,7 @@ async def buyer_likes(message: types.Message):
 async def buyer_messages(message: types.Message):
     db = SessionLocal()
     user = db.query(User).filter(User.telegram_id == message.from_user.id).first()
+    lang = get_user_lang(user)
     
     matches = db.query(Like).filter(
         Like.user_id == user.id,
@@ -3372,28 +3373,38 @@ async def buyer_messages(message: types.Message):
     db.close()
     
     if not matches:
-        await message.answer(
-            "💬 У вас пока нет контактов.\n\n"
-            "Лайкайте квартиры и ждите, когда продавец откроет контакт!",
-            reply_markup=get_buyer_profile_menu()
-        )
+        if lang == 'uz':
+            no_contacts_text = "💬 Sizda hali kontaktlar yo'q.\n\nKvartiralarni yoqtiring va sotuvchi kontaktni ochishini kuting!"
+        else:
+            no_contacts_text = "💬 У вас пока нет контактов.\n\nЛайкайте квартиры и ждите, когда продавец откроет контакт!"
+        await message.answer(no_contacts_text, reply_markup=get_buyer_profile_menu(lang))
         return
     
-    text = f"💬 Ваши контакты ({len(matches)}):\n\n"
+    if lang == 'uz':
+        text = f"💬 Sizning kontaktlaringiz ({len(matches)}):\n\n"
+        rooms_text = "xona"
+        not_specified = "Ko'rsatilmagan"
+        obj_text = "Obyekt"
+    else:
+        text = f"💬 Ваши контакты ({len(matches)}):\n\n"
+        rooms_text = "комн."
+        not_specified = "Не указан"
+        obj_text = "Объект"
     
     for match in matches[:20]:
         db = SessionLocal()
         prop = db.query(Property).filter(Property.id == match.property_id).first()
         if prop:
             seller = db.query(User).filter(User.id == prop.owner_id).first()
+            district_display = get_district_name(prop.district, lang) if prop.district else obj_text
             text += (
-                f"📍 {prop.district or 'Объект'}\n"
-                f"   {prop.rooms} комн. | ${prop.price:,}\n"
-                f"   📞 {seller.phone if seller else 'Не указан'}\n\n"
+                f"📍 {district_display}\n"
+                f"   {prop.rooms} {rooms_text} | ${prop.price:,}\n"
+                f"   📞 {seller.phone if seller else not_specified}\n\n"
             )
         db.close()
     
-    await message.answer(text, reply_markup=get_buyer_profile_menu())
+    await message.answer(text, reply_markup=get_buyer_profile_menu(lang))
 
 
 @dp.message(F.text.in_(["⬅️ Назад", "⬅️ Orqaga", "🔙 Назад", "🔙 Orqaga"]))
