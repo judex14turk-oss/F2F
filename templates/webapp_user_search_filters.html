@@ -1156,13 +1156,17 @@
             currentPhotoIndex = 0;
             
             let propertySpecs = [];
-            if (p.building_type) propertySpecs.push({icon: 'bi-building', label: '{{ t.get("webapp_building_type", "Дом") }}', value: p.building_type});
+            if (p.housing_type) propertySpecs.push({icon: 'bi-house', label: '{{ t.get("webapp_housing_type", "Тип жилья") }}', value: p.housing_type});
+            if (p.rooms) propertySpecs.push({icon: 'bi-door-closed', label: '{{ t.get("webapp_rooms_count", "Комнат") }}', value: p.rooms});
+            if (p.area) propertySpecs.push({icon: 'bi-rulers', label: '{{ t.get("webapp_area", "Площадь") }}', value: p.area + ' м²'});
+            if (p.floor && p.total_floors) propertySpecs.push({icon: 'bi-layers', label: '{{ t.get("webapp_floor_info", "Этаж") }}', value: p.floor + ' из ' + p.total_floors});
+            if (p.building_type) propertySpecs.push({icon: 'bi-building', label: '{{ t.get("webapp_building_type", "Тип дома") }}', value: p.building_type});
             if (p.renovation) propertySpecs.push({icon: 'bi-hammer', label: '{{ t.get("webapp_renovation", "Ремонт") }}', value: p.renovation});
-            if (p.bathroom_type) propertySpecs.push({icon: 'bi-droplet', label: '{{ t.get("webapp_bathroom", "Санузел") }}', value: p.bathroom_type});
             if (p.layout) propertySpecs.push({icon: 'bi-grid', label: '{{ t.get("webapp_layout", "Планировка") }}', value: p.layout});
-            if (p.room_type) propertySpecs.push({icon: 'bi-door-open', label: '{{ t.get("webapp_room_type", "Комнаты") }}', value: p.room_type});
-            if (p.has_furniture) propertySpecs.push({icon: 'bi-lamp', label: '{{ t.get("webapp_furniture", "Мебель") }}', value: '{{ t.get("webapp_yes", "Да") }}'});
+            if (p.bathroom_type) propertySpecs.push({icon: 'bi-droplet', label: '{{ t.get("webapp_bathroom", "Санузел") }}', value: p.bathroom_type});
+            propertySpecs.push({icon: 'bi-lamp', label: '{{ t.get("webapp_furniture", "Мебель") }}', value: p.has_furniture ? '{{ t.get("webapp_yes", "Да") }}' : '{{ t.get("webapp_no", "Нет") }}'});
             if (p.residential_complex) propertySpecs.push({icon: 'bi-buildings', label: '{{ t.get("webapp_complex", "ЖК") }}', value: p.residential_complex});
+            if (p.room_type) propertySpecs.push({icon: 'bi-door-open', label: '{{ t.get("webapp_room_type", "Тип комнат") }}', value: p.room_type});
             
             let specsHtml = '';
             if (propertySpecs.length > 0) {
