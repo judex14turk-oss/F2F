@@ -1112,6 +1112,44 @@ def webapp_user_search_filters_search():
     return jsonify({'properties': results, 'count': len(results)})
 
 
+@app.route('/webapp/user_search_filters/random_ad')
+def webapp_random_ad():
+    """Получить случайную активную рекламу"""
+    import random
+    db = get_db()
+    active_ads = db.query(Advertisement).filter(Advertisement.is_active == True).all()
+    
+    if not active_ads:
+        db.close()
+        return jsonify({'ad': None})
+    
+    ad = random.choice(active_ads)
+    
+    photos = []
+    if ad.media:
+        photo_ids = ad.media.split(',')
+        for pid in photo_ids:
+            if pid:
+                if pid.startswith('http://') or pid.startswith('https://'):
+                    photos.append(pid)
+                else:
+                    photos.append(url_for('telegram_photo', file_id=pid))
+    
+    ad.views_count += 1
+    db.commit()
+    
+    result = {
+        'id': ad.id,
+        'title': ad.title,
+        'description': ad.description,
+        'photos': photos,
+        'media_type': ad.media_type
+    }
+    
+    db.close()
+    return jsonify({'ad': result})
+
+
 @app.route('/webapp/user_search_filters/like', methods=['POST'])
 def webapp_user_search_filters_like():
     tg_id = request.args.get('tg_id', '')

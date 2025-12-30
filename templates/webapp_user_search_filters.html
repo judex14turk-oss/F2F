@@ -1165,6 +1165,8 @@
         let likedCount = 0;
         let isAnimating = false;
         let currentPhotoIndex = 0;
+        let viewedCount = 0;
+        let showingAd = false;
         
         function renderGallery(photos) {
             if (!photos || photos.length === 0) {
@@ -1525,11 +1527,72 @@
                 }, 200);
             }
             
-            setTimeout(() => {
+            setTimeout(async () => {
                 currentIndex++;
+                viewedCount++;
                 isAnimating = false;
-                updateTinderView();
+                
+                if (viewedCount > 0 && viewedCount % 5 === 0) {
+                    await showAdvertisement();
+                } else {
+                    updateTinderView();
+                }
             }, 600);
+        }
+        
+        async function showAdvertisement() {
+            try {
+                const response = await fetch('/webapp/user_search_filters/random_ad');
+                const data = await response.json();
+                
+                if (!data.ad) {
+                    updateTinderView();
+                    return;
+                }
+                
+                showingAd = true;
+                const ad = data.ad;
+                const container = document.getElementById('propertiesList');
+                
+                let photoHtml = '';
+                if (ad.photos && ad.photos.length > 0) {
+                    photoHtml = `<img src="${ad.photos[0]}" class="tinder-image" alt="">`;
+                }
+                
+                container.innerHTML = `
+                    <div class="tinder-progress">${renderProgress()}</div>
+                    <div class="tinder-container">
+                        <div class="tinder-card" id="tinderCard" style="border: 3px solid #ffc107;">
+                            <div class="tinder-overlay" id="tinderOverlay">
+                                <div class="tinder-stamp" id="tinderStamp"></div>
+                            </div>
+                            <div class="tinder-image-container">
+                                ${photoHtml || '<div class="tinder-image" style="display:flex;align-items:center;justify-content:center;background:linear-gradient(135deg,#667eea 0%,#764ba2 100%);"><i class="bi bi-megaphone" style="font-size:4rem;color:#fff;"></i></div>'}
+                            </div>
+                            <div class="tinder-info">
+                                <div style="background:#ffc107;color:#000;padding:4px 12px;border-radius:20px;font-size:0.75rem;font-weight:600;display:inline-block;margin-bottom:8px;">
+                                    <i class="bi bi-megaphone-fill"></i> РЕКЛАМА
+                                </div>
+                                <div class="tinder-title">${ad.title || 'Рекламное объявление'}</div>
+                                <div class="tinder-description" style="margin-top:8px;font-size:0.9rem;color:#aaa;">${ad.description || ''}</div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="tinder-actions">
+                        <button class="tinder-btn" onclick="continueAfterAd()" style="background:linear-gradient(135deg,#667eea 0%,#764ba2 100%);width:auto;padding:12px 40px;border-radius:30px;">
+                            <span style="font-size:1rem;color:#fff;">Далее <i class="bi bi-arrow-right"></i></span>
+                        </button>
+                    </div>
+                `;
+            } catch (e) {
+                console.error('Ad error:', e);
+                updateTinderView();
+            }
+        }
+        
+        function continueAfterAd() {
+            showingAd = false;
+            updateTinderView();
         }
         
         function renderProperties(properties) {
@@ -1540,6 +1603,8 @@
             allProperties = properties;
             currentIndex = 0;
             likedCount = 0;
+            viewedCount = 0;
+            showingAd = false;
             
             if (properties.length === 0) {
                 countEl.textContent = '0';
