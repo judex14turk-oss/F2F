@@ -871,6 +871,9 @@ def webapp_user_search_filters_save():
     user.web_search_price_max = int(data.get('price_max')) if data.get('price_max') else None
     user.web_search_area_min = int(data.get('area_min')) if data.get('area_min') else None
     user.web_search_area_max = int(data.get('area_max')) if data.get('area_max') else None
+    user.web_search_floor_min = int(data.get('floor_min')) if data.get('floor_min') else None
+    user.web_search_floor_max = int(data.get('floor_max')) if data.get('floor_max') else None
+    user.web_search_rooms = data.get('rooms') if data.get('rooms') else None
     user.web_search_building_type = data.get('building_type') if data.get('building_type') else None
     user.web_search_renovation = data.get('renovation') if data.get('renovation') else None
     user.web_search_furniture = data.get('furniture') if data.get('furniture') else None
@@ -902,6 +905,9 @@ def webapp_user_search_filters_reset():
     user.web_search_price_max = None
     user.web_search_area_min = None
     user.web_search_area_max = None
+    user.web_search_floor_min = None
+    user.web_search_floor_max = None
+    user.web_search_rooms = None
     user.web_search_building_type = None
     user.web_search_renovation = None
     user.web_search_furniture = None
@@ -977,6 +983,25 @@ def webapp_user_search_filters_search():
     
     if user.web_search_area_max:
         query = query.filter(Property.area <= user.web_search_area_max)
+    
+    if user.web_search_floor_min:
+        query = query.filter(Property.floor >= user.web_search_floor_min)
+    
+    if user.web_search_floor_max:
+        query = query.filter(Property.floor <= user.web_search_floor_max)
+    
+    if user.web_search_rooms:
+        from sqlalchemy import or_
+        rooms_list = user.web_search_rooms.split(',')
+        room_conditions = []
+        for r in rooms_list:
+            r = r.strip()
+            if r == '5+':
+                room_conditions.append(Property.rooms >= 5)
+            elif r.isdigit():
+                room_conditions.append(Property.rooms == int(r))
+        if room_conditions:
+            query = query.filter(or_(*room_conditions))
     
     if user.web_search_building_type:
         from sqlalchemy import or_
