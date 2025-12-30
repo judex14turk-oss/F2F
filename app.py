@@ -2951,6 +2951,7 @@ def webapp_delete_all_broken_properties():
     if property_ids:
         ids_list = [int(id.strip()) for id in property_ids.split(',') if id.strip().isdigit()]
         if ids_list:
+            db.execute(text("DELETE FROM likes WHERE property_id IN :ids"), {'ids': tuple(ids_list)})
             db.query(Property).filter(Property.id.in_(ids_list)).delete(synchronize_session=False)
             db.commit()
     
