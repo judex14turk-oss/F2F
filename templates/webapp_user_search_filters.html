@@ -247,6 +247,48 @@
             opacity: 0;
         }
         
+        .tinder-card.tariff-premium {
+            border: 2px solid #fbbf24;
+            box-shadow: 0 0 20px rgba(251, 191, 36, 0.3), 0 10px 30px rgba(0,0,0,0.3);
+        }
+        
+        .tinder-card.tariff-pro {
+            border: 2px solid #10b981;
+            box-shadow: 0 0 15px rgba(16, 185, 129, 0.25), 0 10px 30px rgba(0,0,0,0.3);
+        }
+        
+        .tinder-card.tariff-free {
+            border: 2px solid #eab308;
+            box-shadow: 0 0 12px rgba(234, 179, 8, 0.2), 0 10px 30px rgba(0,0,0,0.3);
+        }
+        
+        .tariff-badge {
+            position: absolute;
+            top: 12px;
+            left: 12px;
+            padding: 4px 10px;
+            border-radius: 12px;
+            font-size: 0.7rem;
+            font-weight: 600;
+            z-index: 15;
+            text-transform: uppercase;
+        }
+        
+        .tariff-badge.premium {
+            background: linear-gradient(135deg, #fbbf24, #f59e0b);
+            color: #000;
+        }
+        
+        .tariff-badge.pro {
+            background: linear-gradient(135deg, #10b981, #059669);
+            color: #fff;
+        }
+        
+        .tariff-badge.free {
+            background: linear-gradient(135deg, #eab308, #ca8a04);
+            color: #000;
+        }
+        
         .tinder-gallery {
             position: relative;
             width: 100%;
@@ -1246,8 +1288,24 @@
             
             const hasExtra = true;
             
+            let tariffClass = '';
+            let tariffBadge = '';
+            if (p.owner_tariff) {
+                if (p.owner_tariff === 'PREMIUM') {
+                    tariffClass = 'tariff-premium';
+                    tariffBadge = '<div class="tariff-badge premium">Premium</div>';
+                } else if (p.owner_tariff === 'PRO' || p.owner_tariff === 'AGENCY_START' || p.owner_tariff === 'DEVELOPER_PRO') {
+                    tariffClass = 'tariff-pro';
+                    tariffBadge = '<div class="tariff-badge pro">Pro</div>';
+                } else if (p.owner_tariff === 'FREE') {
+                    tariffClass = 'tariff-free';
+                    tariffBadge = '';
+                }
+            }
+            
             return `
-                <div class="tinder-card" id="tinderCard">
+                <div class="tinder-card ${tariffClass}" id="tinderCard">
+                    ${tariffBadge}
                     ${renderGallery(p.photos || (p.photo ? [p.photo] : []))}
                     <div class="tinder-overlay" id="tinderOverlay">
                         <div class="tinder-stamp" id="tinderStamp"></div>

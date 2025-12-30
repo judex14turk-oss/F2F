@@ -1012,6 +1012,12 @@ def webapp_user_search_filters_search():
                 else:
                     photos.append(url_for('telegram_photo', file_id=pid))
         
+        owner_tariff = None
+        source = prop.source or 'manual'
+        if source not in ['olx', 'parser', 'parsing']:
+            if prop.owner and prop.owner.tariff:
+                owner_tariff = prop.owner.tariff.value
+        
         results.append({
             'id': prop.id,
             'rooms': prop.rooms,
@@ -1036,7 +1042,9 @@ def webapp_user_search_filters_search():
             'room_type': prop.room_type,
             'phone': prop.phone,
             'seller_name': prop.seller_name,
-            'olx_url': prop.olx_url
+            'olx_url': prop.olx_url,
+            'source': source,
+            'owner_tariff': owner_tariff
         })
     
     db.close()
