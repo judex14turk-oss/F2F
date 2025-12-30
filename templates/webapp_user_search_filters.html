@@ -899,8 +899,7 @@
             </div>
             <div class="filter-options" data-filter="housing_type">
                 <div class="filter-option {% if user.web_search_housing_type == 'Квартира' %}selected{% endif %}" data-value="Квартира">{{ t.get('webapp_apartment', 'Квартира') }}</div>
-                <div class="filter-option {% if user.web_search_housing_type == 'Дом' %}selected{% endif %}" data-value="Дом">{{ t.get('webapp_house', 'Дом') }}</div>
-                <div class="filter-option {% if user.web_search_housing_type == 'Участок' %}selected{% endif %}" data-value="Участок">{{ t.get('webapp_land', 'Участок') }}</div>
+                <div class="filter-option {% if user.web_search_housing_type == 'Дом' or user.web_search_housing_type == 'Участок' %}selected{% endif %}" data-value="Дом">{{ t.get('webapp_house_land', 'Дом / Участок') }}</div>
                 <div class="filter-option {% if user.web_search_housing_type == 'Коммерция' %}selected{% endif %}" data-value="Коммерция">{{ t.get('webapp_commercial', 'Коммерция') }}</div>
             </div>
         </div>

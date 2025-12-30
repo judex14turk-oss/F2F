@@ -935,8 +935,30 @@ def webapp_user_search_filters_search():
         elif user.web_search_deal_type == 'Аренда':
             query = query.filter(Property.property_type == PropertyType.RENT)
     
-    if user.web_search_housing_type and user.web_search_housing_type not in ["Квартира", "Дом", "Участок", "Коммерция", "Kvartira", "Uy", "Yer", "Tijorat"]:
-        query = query.filter(Property.housing_type == user.web_search_housing_type)
+    if user.web_search_housing_type:
+        from sqlalchemy import or_
+        if user.web_search_housing_type == 'Квартира':
+            query = query.filter(or_(
+                Property.housing_type.ilike('%квартира%'),
+                Property.housing_type.ilike('%вторичн%'),
+                Property.housing_type.ilike('%новостройка%'),
+                Property.category == 'apartment'
+            ))
+        elif user.web_search_housing_type == 'Дом':
+            query = query.filter(or_(
+                Property.housing_type.ilike('%дом%'),
+                Property.housing_type.ilike('%участок%'),
+                Property.housing_type.ilike('%земл%'),
+                Property.category == 'house',
+                Property.category == 'land'
+            ))
+        elif user.web_search_housing_type == 'Коммерция':
+            query = query.filter(or_(
+                Property.housing_type.ilike('%коммерц%'),
+                Property.housing_type.ilike('%офис%'),
+                Property.housing_type.ilike('%магазин%'),
+                Property.category == 'commercial'
+            ))
     
     if user.web_search_district and user.web_search_district not in ["Любой", ""]:
         district_base = user.web_search_district.replace("ский", "").replace("ий", "")
