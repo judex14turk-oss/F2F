@@ -1449,15 +1449,15 @@ def webapp_user_likes():
     one_month_ago = get_tashkent_now() - timedelta(days=30)
     
     likes = db.query(Like).filter(
-        Like.property_owner_id == user.id,
+        Like.user_id == user.id,
         Like.created_at >= one_month_ago
     ).order_by(Like.created_at.desc()).all()
     
     likes_data = []
     for like in likes:
         prop = like.property
-        liker = like.user
-        if prop and liker:
+        owner = like.property_owner
+        if prop:
             photo_id = None
             if prop.photos:
                 photo_id = prop.photos.split(',')[0].strip()
@@ -1469,19 +1469,25 @@ def webapp_user_likes():
                 elif prop.property_type.name == 'RENT':
                     property_type_name = 'Аренда'
             
+            owner_name = 'Владелец'
+            owner_username = None
+            if owner:
+                owner_name = owner.first_name or owner.username or 'Владелец'
+                owner_username = owner.username
+            
             likes_data.append({
                 'id': like.id,
                 'property_id': prop.id,
                 'property_type': property_type_name,
                 'rooms': prop.rooms,
                 'district': prop.district,
+                'area': prop.area,
                 'price': prop.price,
                 'currency': prop.currency or 'сум',
                 'photo_id': photo_id,
-                'liker_id': liker.id,
-                'liker_telegram_id': liker.telegram_id,
-                'liker_username': liker.username,
-                'liker_name': liker.first_name or liker.username or 'Пользователь',
+                'owner_name': owner_name,
+                'owner_username': owner_username,
+                'is_matched': like.is_matched,
                 'created_at': like.created_at
             })
     

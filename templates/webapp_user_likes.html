@@ -270,7 +270,7 @@
     
     <div class="info-note">
         <i class="bi bi-info-circle"></i>
-        {{ t.get('webapp_likes_info', 'Здесь показаны лайки вашим объектам за последние 30 дней') }}
+        {{ t.get('webapp_my_likes_info', 'Здесь показаны объекты, которые вам понравились за последние 30 дней') }}
     </div>
     
     {% if likes %}
@@ -290,28 +290,35 @@
                 <div class="like-info">
                     <div class="like-property-type">
                         {{ like.property_type }}{% if like.rooms %}, {{ like.rooms }} {{ t.get('webapp_rooms', 'комн.') }}{% endif %}
+                        {% if like.is_matched %}
+                        <span style="color: #10b981; margin-left: 8px;"><i class="bi bi-check-circle-fill"></i> Мэтч!</span>
+                        {% endif %}
                     </div>
                     <div class="like-property-details">
-                        {% if like.district %}{{ like.district }}{% endif %}
+                        {% if like.district %}{{ like.district }}{% endif %}{% if like.area %} • {{ like.area }} м²{% endif %}
                     </div>
                     <div class="like-price">{% if like.currency == '$' or like.currency == 'USD' %}${{ "{:,}".format(like.price).replace(',', ' ') }}{% else %}{{ "{:,}".format(like.price).replace(',', ' ') }} {{ like.currency or 'сум' }}{% endif %}</div>
                     <div class="like-user">
                         <i class="bi bi-heart-fill"></i>
-                        {{ like.liker_name }} • {{ like.created_at.strftime('%d.%m.%Y') }}
+                        {{ t.get('webapp_liked', 'Лайкнули') }} {{ like.created_at.strftime('%d.%m.%Y') }}
                     </div>
                 </div>
             </div>
             <div class="like-actions">
-                {% if like.liker_username %}
-                <button class="btn-write" onclick="openChat('{{ like.liker_username }}')">
+                {% if like.is_matched and like.owner_username %}
+                <button class="btn-write" onclick="openChat('{{ like.owner_username }}')" style="background: linear-gradient(135deg, #10b981 0%, #059669 100%);">
                     <i class="bi bi-chat-dots"></i>
-                    {{ t.get('webapp_write', 'Написать') }}
+                    {{ t.get('webapp_write_owner', 'Написать владельцу') }}
                 </button>
-                {% else %}
+                {% elif like.is_matched %}
                 <button class="btn-write" style="background: #444; cursor: not-allowed;" disabled>
                     <i class="bi bi-chat-dots"></i>
                     {{ t.get('webapp_no_username', 'Нет username') }}
                 </button>
+                {% else %}
+                <div style="text-align: center; padding: 10px; color: #888; font-size: 0.8rem;">
+                    <i class="bi bi-clock"></i> {{ t.get('webapp_waiting_match', 'Ожидание ответа от владельца') }}
+                </div>
                 {% endif %}
             </div>
         </div>
@@ -320,8 +327,8 @@
     {% else %}
     <div class="empty-state">
         <i class="bi bi-heart"></i>
-        <h2>{{ t.get('webapp_empty_likes', 'Пока нет лайков') }}</h2>
-        <p>{{ t.get('webapp_when_you_like', 'Когда кто-то лайкнет ваш объект, он появится здесь') }}</p>
+        <h2>{{ t.get('webapp_no_likes_yet', 'У вас пока нет лайков') }}</h2>
+        <p>{{ t.get('webapp_liked_objects_here', 'Здесь будут отображаться понравившиеся вам объекты') }}</p>
     </div>
     {% endif %}
     
