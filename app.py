@@ -1043,7 +1043,7 @@ def webapp_user_search_filters_search():
     )
     
     query = query.outerjoin(User, Property.owner_id == User.id)
-    properties = query.order_by(tariff_priority, Property.created_at.desc()).limit(20).all()
+    properties = query.order_by(tariff_priority, Property.created_at.desc()).limit(500).all()
     
     results = []
     for prop in properties:
