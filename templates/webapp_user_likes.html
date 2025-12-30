@@ -102,6 +102,13 @@
             border-radius: 12px;
             margin-bottom: 12px;
             overflow: hidden;
+            cursor: pointer;
+            transition: transform 0.15s, border-color 0.15s;
+        }
+        
+        .like-card:active {
+            transform: scale(0.98);
+            border-color: #3b82f6;
         }
         
         .like-card-content {
@@ -276,7 +283,7 @@
     {% if likes %}
     <div class="likes-list">
         {% for like in likes %}
-        <div class="like-card">
+        <div class="like-card" onclick="openProperty({{ like.property_id }})">
             <div class="like-card-content">
                 {% if like.photo_id %}
                     {% if like.photo_id.startswith('http://') or like.photo_id.startswith('https://') %}
@@ -306,17 +313,17 @@
             </div>
             <div class="like-actions">
                 {% if like.is_matched and like.owner_username %}
-                <button class="btn-write" onclick="openChat('{{ like.owner_username }}')" style="background: linear-gradient(135deg, #10b981 0%, #059669 100%);">
+                <button class="btn-write" onclick="openChat('{{ like.owner_username }}', event)" style="background: linear-gradient(135deg, #10b981 0%, #059669 100%);">
                     <i class="bi bi-chat-dots"></i>
                     {{ t.get('webapp_write_owner', 'Написать владельцу') }}
                 </button>
                 {% elif like.is_matched %}
-                <button class="btn-write" style="background: #444; cursor: not-allowed;" disabled>
+                <button class="btn-write" onclick="event.stopPropagation()" style="background: #444; cursor: not-allowed;" disabled>
                     <i class="bi bi-chat-dots"></i>
                     {{ t.get('webapp_no_username', 'Нет username') }}
                 </button>
                 {% else %}
-                <div style="text-align: center; padding: 10px; color: #888; font-size: 0.8rem;">
+                <div onclick="event.stopPropagation()" style="text-align: center; padding: 10px; color: #888; font-size: 0.8rem;">
                     <i class="bi bi-clock"></i> {{ t.get('webapp_waiting_match', 'Ожидание ответа от владельца') }}
                 </div>
                 {% endif %}
@@ -337,7 +344,12 @@
         tg.ready();
         tg.expand();
         
-        function openChat(username) {
+        function openProperty(propertyId) {
+            window.location.href = '/property/' + propertyId + '?tg_id={{ tg_id }}';
+        }
+        
+        function openChat(username, event) {
+            event.stopPropagation();
             tg.openTelegramLink('https://t.me/' + username);
         }
     </script>
