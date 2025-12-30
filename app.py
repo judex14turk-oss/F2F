@@ -1030,7 +1030,20 @@ def webapp_user_search_filters_search():
             Property.bathroom_type == ""
         ))
     
-    properties = query.order_by(Property.created_at.desc()).limit(20).all()
+    from sqlalchemy import case
+    from sqlalchemy.orm import joinedload
+    
+    tariff_priority = case(
+        (Property.source.in_(['olx', 'parser', 'parsing']), 5),
+        (User.tariff == TariffType.PREMIUM, 1),
+        (User.tariff.in_([TariffType.PRO, TariffType.DEVELOPER_PRO, TariffType.AGENCY_START]), 2),
+        (User.tariff == TariffType.FREE, 3),
+        (User.tariff == None, 4),
+        else_=4
+    )
+    
+    query = query.outerjoin(User, Property.owner_id == User.id)
+    properties = query.order_by(tariff_priority, Property.created_at.desc()).limit(20).all()
     
     results = []
     for prop in properties:
