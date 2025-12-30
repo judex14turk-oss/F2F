@@ -1012,7 +1012,13 @@ def webapp_user_search_filters_search():
             'has_furniture': prop.has_furniture,
             'bathroom_type': prop.bathroom_type,
             'residential_complex': prop.residential_complex,
-            'address': prop.address
+            'address': prop.address,
+            'description': prop.description,
+            'layout': prop.layout,
+            'room_type': prop.room_type,
+            'phone': prop.phone,
+            'seller_name': prop.seller_name,
+            'olx_url': prop.olx_url
         })
     
     db.close()
