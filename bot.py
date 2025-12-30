@@ -1471,10 +1471,14 @@ async def show_property_card(message, property_id, state=None):
     prop.views_count += 1
     db.commit()
     
+    # Get user language
+    viewer = db.query(User).filter(User.telegram_id == message.from_user.id).first()
+    lang = get_user_lang(viewer)
+    
     contact_phone = prop.phone if prop.phone else None
     if not contact_phone:
         owner = db.query(User).filter(User.id == prop.owner_id).first()
-        contact_phone = owner.phone if owner and owner.phone else "Не указан"
+        contact_phone = owner.phone if owner and owner.phone else ("Не указан" if lang == 'ru' else "Ko'rsatilmagan")
     
     type_emoji = "🏷" if prop.property_type == PropertyType.SALE else "🔑"
     type_name = "ПРОДАЖА" if prop.property_type == PropertyType.SALE else "АРЕНДА"
@@ -1532,8 +1536,8 @@ async def show_property_card(message, property_id, state=None):
     
     search_keyboard = ReplyKeyboardMarkup(
         keyboard=[
-            [KeyboardButton(text="❌ Не нравится"), KeyboardButton(text="❤️ Нравится")],
-            [KeyboardButton(text="🔙 Назад")]
+            [KeyboardButton(text=get_text('dislike', lang)), KeyboardButton(text=get_text('like', lang))],
+            [KeyboardButton(text=get_text('back_button', lang))]
         ],
         resize_keyboard=True
     )
