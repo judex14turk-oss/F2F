@@ -499,13 +499,15 @@
             <span class="user-info-label"><i class="bi bi-person"></i> {{ t.get('webapp_type', 'Тип') }}</span>
             <span class="user-info-value">{{ type_name }}</span>
         </div>
+        {% if not user.seller_type or user.seller_type.name != 'OWNER' %}
         <div class="user-info-row">
             <span class="user-info-label"><i class="bi bi-building"></i> {{ t.get('webapp_company', 'Компания') }}</span>
             <span class="user-info-value">{{ user.company_name or t.get('webapp_not_specified', 'Не указана') }}</span>
         </div>
+        {% endif %}
         <div class="user-info-row">
-            <span class="user-info-label"><i class="bi bi-person-badge"></i> {{ t.get('webapp_manager', 'Менеджер') }}</span>
-            <span class="user-info-value">{{ user.manager_name or t.get('webapp_not_specified', 'Не указан') }}</span>
+            <span class="user-info-label"><i class="bi bi-person-badge"></i> {{ t.get('webapp_name', 'Имя') }}</span>
+            <span class="user-info-value">{{ user.manager_name or user.first_name or t.get('webapp_not_specified', 'Не указано') }}</span>
         </div>
         <div class="user-info-row">
             <span class="user-info-label"><i class="bi bi-telephone"></i> {{ t.get('webapp_phone', 'Телефон') }}</span>
@@ -527,19 +529,19 @@
                 <form id="editProfileForm">
                     <div class="form-group">
                         <label class="form-label">{{ t.get('webapp_type', 'Тип') }}</label>
-                        <select class="form-select" id="sellerType" name="seller_type">
+                        <select class="form-select" id="sellerType" name="seller_type" onchange="toggleCompanyField()">
                             <option value="owner" {% if user.seller_type and user.seller_type.name == 'OWNER' %}selected{% endif %}>{{ t.get('webapp_owner', 'Собственник') }}</option>
                             <option value="agent" {% if user.seller_type and user.seller_type.name == 'REALTOR' %}selected{% endif %}>{{ t.get('webapp_agent', 'Риелтор') }}</option>
                             <option value="developer" {% if user.seller_type and user.seller_type.name == 'DEVELOPER' %}selected{% endif %}>{{ t.get('webapp_developer', 'Застройщик') }}</option>
                         </select>
                     </div>
-                    <div class="form-group">
+                    <div class="form-group" id="companyGroup" style="{% if user.seller_type and user.seller_type.name == 'OWNER' %}display: none;{% endif %}">
                         <label class="form-label">{{ t.get('webapp_company', 'Компания') }}</label>
                         <input type="text" class="form-input" id="companyName" name="company_name" value="{{ user.company_name or '' }}" placeholder="{{ t.get('webapp_enter_company', 'Введите название компании') }}">
                     </div>
                     <div class="form-group">
-                        <label class="form-label">{{ t.get('webapp_manager', 'Менеджер') }}</label>
-                        <input type="text" class="form-input" id="managerName" name="manager_name" value="{{ user.manager_name or '' }}" placeholder="{{ t.get('webapp_enter_manager', 'Введите имя менеджера') }}">
+                        <label class="form-label">{{ t.get('webapp_name', 'Имя') }}</label>
+                        <input type="text" class="form-input" id="managerName" name="manager_name" value="{{ user.manager_name or user.first_name or '' }}" placeholder="{{ t.get('webapp_enter_name', 'Введите ваше имя') }}">
                     </div>
                     <div class="form-group">
                         <label class="form-label">{{ t.get('webapp_phone', 'Телефон') }}</label>
@@ -711,10 +713,21 @@
         
         function openEditModal() {
             document.getElementById('editModal').classList.add('active');
+            toggleCompanyField();
         }
         
         function closeEditModal() {
             document.getElementById('editModal').classList.remove('active');
+        }
+        
+        function toggleCompanyField() {
+            const sellerType = document.getElementById('sellerType').value;
+            const companyGroup = document.getElementById('companyGroup');
+            if (sellerType === 'owner') {
+                companyGroup.style.display = 'none';
+            } else {
+                companyGroup.style.display = 'block';
+            }
         }
         
         document.getElementById('editModal').addEventListener('click', function(e) {
