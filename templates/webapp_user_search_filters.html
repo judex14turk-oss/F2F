@@ -1043,7 +1043,13 @@
             setTimeout(() => toast.classList.remove('show'), 2000);
         }
         
-        function formatPrice(price) {
+        function formatPrice(price, currency) {
+            const isDollar = currency === '$' || currency === 'USD' || currency === 'у.е.';
+            
+            if (isDollar) {
+                return price.toLocaleString('ru-RU');
+            }
+            
             if (price >= 1000000000) {
                 return (price / 1000000000).toFixed(1) + ' млрд';
             } else if (price >= 1000000) {
@@ -1051,7 +1057,7 @@
             } else if (price >= 1000) {
                 return (price / 1000).toFixed(0) + ' тыс';
             }
-            return price.toLocaleString();
+            return price.toLocaleString('ru-RU');
         }
         
         let allProperties = [];
@@ -1234,7 +1240,7 @@
                             <span class="tinder-detail"><i class="bi bi-layers"></i> ${p.floor || '?'}/${p.total_floors || '?'} {{ t.get("webapp_floor", "этаж") }}</span>
                             <span class="tinder-detail">${p.property_type === 'rent' ? '{{ t.get("webapp_rent_filter", "Аренда") }}' : '{{ t.get("webapp_buy", "Покупка") }}'}</span>
                         </div>
-                        <div class="tinder-price">${p.currency === '$' || p.currency === 'USD' ? '$' + formatPrice(p.price) : formatPrice(p.price) + ' ' + (p.currency || 'сум')}</div>
+                        <div class="tinder-price">${p.currency === '$' || p.currency === 'USD' || p.currency === 'у.е.' ? '$' + formatPrice(p.price, p.currency) : formatPrice(p.price, p.currency) + ' ' + (p.currency || 'сум')}</div>
                         <div class="tinder-district"><i class="bi bi-geo-alt"></i> ${p.district || '{{ t.get("webapp_not_specified", "Не указан") }}'}</div>
                         <div class="tinder-more-btn" id="moreBtn">
                             <i class="bi bi-chevron-down"></i>
