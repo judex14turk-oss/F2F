@@ -75,6 +75,7 @@ class RegistrationStates(StatesGroup):
 
 class PropertyStates(StatesGroup):
     property_type = State()
+    category = State()
     district = State()
     rooms = State()
     floor = State()
@@ -1026,6 +1027,27 @@ async def process_new_property_type(callback: types.CallbackQuery, state: FSMCon
     prop_type = PropertyType.SALE if callback.data == "newprop_sale" else PropertyType.RENT
     await state.update_data(property_type=prop_type)
     
+    await callback.message.edit_text(
+        "🏠 Выберите категорию недвижимости:",
+        reply_markup=InlineKeyboardMarkup(inline_keyboard=[
+            [InlineKeyboardButton(text="🏢 Квартира", callback_data="propcat_apartment")],
+            [InlineKeyboardButton(text="🏡 Дом/Участок", callback_data="propcat_house")],
+            [InlineKeyboardButton(text="🏪 Коммерческая", callback_data="propcat_commercial")],
+        ])
+    )
+    await state.set_state(PropertyStates.category)
+
+
+@dp.callback_query(F.data.startswith("propcat_"))
+async def process_property_category(callback: types.CallbackQuery, state: FSMContext):
+    category_map = {
+        "propcat_apartment": "Квартира",
+        "propcat_house": "Дом/Участок",
+        "propcat_commercial": "Коммерческая"
+    }
+    category = category_map.get(callback.data, "Квартира")
+    await state.update_data(category=category)
+    
     db = SessionLocal()
     districts = db.query(District).all()
     db.close()
@@ -1281,6 +1303,7 @@ async def finish_photos(callback: types.CallbackQuery, state: FSMContext):
     prop = Property(
         owner_id=user.id,
         property_type=data.get("property_type", PropertyType.SALE),
+        category=data.get("category", "Квартира"),
         district=data.get("district", ""),
         rooms=data.get("rooms", 1),
         floor=data.get("floor", 1),
@@ -1311,11 +1334,14 @@ async def finish_photos(callback: types.CallbackQuery, state: FSMContext):
     type_name = "Продажа" if data.get("property_type") == PropertyType.SALE else "Аренда"
     furniture = "Да" if data.get("has_furniture") else "Нет"
     
+    category_display = data.get("category", "Квартира")
+    
     summary = (
         f"📝 Объявление отправлено на модерацию!\n\n"
         f"🆔 <b>ID: {prop.unique_id}</b>\n\n"
         f"📋 ХАРАКТЕРИСТИКИ:\n"
         f"🏷 Тип сделки: {type_name}\n"
+        f"🏠 Категория: {category_display}\n"
         f"📍 Район: {data.get('district', '')}\n"
         f"🚪 Комнат: {data.get('rooms', '')}\n"
         f"🏢 Этаж: {data.get('floor', '')}/{data.get('total_floors', '')}\n"
