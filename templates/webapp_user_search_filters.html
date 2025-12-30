@@ -556,25 +556,29 @@
             word-wrap: break-word;
         }
         
-        .tinder-olx-link {
+        .tinder-hide-btn {
             display: flex;
             align-items: center;
             justify-content: center;
             gap: 8px;
             width: 100%;
-            padding: 14px;
-            background: #2563eb;
-            color: #fff;
-            text-decoration: none;
-            border-radius: 10px;
-            font-size: 0.95rem;
-            font-weight: 600;
-            transition: background 0.2s ease;
+            padding: 12px;
             margin-top: 8px;
+            background: #252525;
+            border: 1px solid #333;
+            border-radius: 10px;
+            color: #888;
+            font-size: 0.9rem;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            -webkit-tap-highlight-color: transparent;
+            touch-action: manipulation;
+            user-select: none;
         }
         
-        .tinder-olx-link:hover {
-            background: #1d4ed8;
+        .tinder-hide-btn:hover {
+            background: #2a2a2a;
+            color: #fff;
         }
         
         .tinder-actions {
@@ -1210,10 +1214,7 @@
                 `;
             }
             
-            let olxLinkHtml = '';
-            if (p.olx_url) {
-                olxLinkHtml = `<a href="${p.olx_url}" target="_blank" class="tinder-olx-link"><i class="bi bi-box-arrow-up-right"></i> {{ t.get("webapp_view_on_olx", "Смотреть на OLX") }}</a>`;
-            }
+            let hideButtonHtml = `<div class="tinder-hide-btn" id="hideBtn"><i class="bi bi-chevron-up"></i> {{ t.get("webapp_hide_details", "Скрыть") }}</div>`;
             
             const hasExtra = true;
             
@@ -1240,7 +1241,7 @@
                             ${locationHtml}
                             ${contactHtml}
                             ${descriptionHtml}
-                            ${olxLinkHtml}
+                            ${hideButtonHtml}
                         </div>
                     </div>
                 </div>
@@ -1288,6 +1289,19 @@
             btn.addEventListener('click', function(e) {
                 toggleDetails(e);
             });
+            
+            const hideBtn = document.getElementById('hideBtn');
+            if (hideBtn) {
+                hideBtn.addEventListener('touchend', function(e) {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    toggleDetails(e);
+                }, { passive: false });
+                
+                hideBtn.addEventListener('click', function(e) {
+                    toggleDetails(e);
+                });
+            }
         }
         
         function renderProgress() {
