@@ -3062,6 +3062,8 @@ async def show_seller_profile_info(message, user):
     active_properties_count = db.query(Property).filter(Property.owner_id == user.id).count()
     db.close()
     
+    lang = get_user_lang(user)
+    
     tariff_limits = get_tariff_limits(user.tariff, user.is_admin)
     base_properties = tariff_limits.get("properties", 2)
     bonus = user.bonus_properties or 0
@@ -3069,55 +3071,83 @@ async def show_seller_profile_info(message, user):
     remaining_properties = max(0, max_properties - active_properties_count)
     
     if user.tariff == TariffType.FREE or user.tariff_expires is None:
-        days_left_text = "♾ Безлимит"
+        days_left_text = "♾ Cheksiz" if lang == 'uz' else "♾ Безлимит"
     else:
         now = get_tashkent_now()
         if user.tariff_expires > now:
             days_left = (user.tariff_expires - now).days
-            days_left_text = f"📅 {days_left} дн."
+            days_left_text = f"📅 {days_left} kun" if lang == 'uz' else f"📅 {days_left} дн."
         else:
-            days_left_text = "⏰ Истёк"
+            days_left_text = "⏰ Tugadi" if lang == 'uz' else "⏰ Истёк"
     
-    type_names = {
-        SellerType.OWNER: "Собственник",
-        SellerType.REALTOR: "Риелтор",
-        SellerType.DEVELOPER: "Застройщик"
-    }
-    tariff_names = {
-        TariffType.FREE: "🆓 Бесплатный",
-        TariffType.PRO: "⭐ Про",
-        TariffType.PREMIUM: "👑 Премиум",
-        TariffType.AGENCY_START: "⭐ Про",
-        TariffType.DEVELOPER_PRO: "👑 Премиум"
-    }
+    if lang == 'uz':
+        type_names = {
+            SellerType.OWNER: "Mulkdor",
+            SellerType.REALTOR: "Rieltor",
+            SellerType.DEVELOPER: "Quruvchi"
+        }
+        tariff_names = {
+            TariffType.FREE: "🆓 Bepul",
+            TariffType.PRO: "⭐ Pro",
+            TariffType.PREMIUM: "👑 Premium",
+            TariffType.AGENCY_START: "⭐ Pro",
+            TariffType.DEVELOPER_PRO: "👑 Premium"
+        }
+        not_specified = "Ko'rsatilmagan"
+        text = (
+            f"👤 Sizning profilingiz\n\n"
+            f"🆔 Sizning ID: {user.telegram_id}\n"
+            f"📋 Tur: {type_names.get(user.seller_type, not_specified)}\n"
+            f"🏢 Kompaniya: {user.company_name or not_specified}\n"
+            f"👤 Menejer: {user.manager_name or not_specified}\n"
+            f"📞 Telefon: {user.phone or not_specified}\n"
+            f"💳 Tarif: {tariff_names.get(user.tariff, 'Bepul')}\n"
+            f"🏠 E'lonlar: {active_properties_count}/{max_properties} (qoldi: {remaining_properties})\n"
+            f"⏳ Tarif tugashigacha: {days_left_text}\n"
+        )
+    else:
+        type_names = {
+            SellerType.OWNER: "Собственник",
+            SellerType.REALTOR: "Риелтор",
+            SellerType.DEVELOPER: "Застройщик"
+        }
+        tariff_names = {
+            TariffType.FREE: "🆓 Бесплатный",
+            TariffType.PRO: "⭐ Про",
+            TariffType.PREMIUM: "👑 Премиум",
+            TariffType.AGENCY_START: "⭐ Про",
+            TariffType.DEVELOPER_PRO: "👑 Премиум"
+        }
+        text = (
+            f"👤 Ваш профиль\n\n"
+            f"🆔 Ваш ID: {user.telegram_id}\n"
+            f"📋 Тип: {type_names.get(user.seller_type, 'Не указан')}\n"
+            f"🏢 Компания: {user.company_name or 'Не указана'}\n"
+            f"👤 Менеджер: {user.manager_name or 'Не указан'}\n"
+            f"📞 Телефон: {user.phone or 'Не указан'}\n"
+            f"💳 Тариф: {tariff_names.get(user.tariff, 'Бесплатный')}\n"
+            f"🏠 Объявления: {active_properties_count}/{max_properties} (осталось: {remaining_properties})\n"
+            f"⏳ До конца тарифа: {days_left_text}\n"
+        )
     
-    text = (
-        f"👤 Ваш профиль\n\n"
-        f"🆔 Ваш ID: {user.telegram_id}\n"
-        f"📋 Тип: {type_names.get(user.seller_type, 'Не указан')}\n"
-        f"🏢 Компания: {user.company_name or 'Не указана'}\n"
-        f"👤 Менеджер: {user.manager_name or 'Не указан'}\n"
-        f"📞 Телефон: {user.phone or 'Не указан'}\n"
-        f"💳 Тариф: {tariff_names.get(user.tariff, 'Бесплатный')}\n"
-        f"🏠 Объявления: {active_properties_count}/{max_properties} (осталось: {remaining_properties})\n"
-        f"⏳ До конца тарифа: {days_left_text}\n"
-    )
+    switch_text = "🏠 Xaridor rejimiga o'tish" if lang == 'uz' else "🏠 Перейти в режим покупателя"
+    details_text = "📊 Batafsil" if lang == 'uz' else "📊 Подробно"
+    admin_text = "🔐 Admin panel" if lang == 'uz' else "🔐 Админ-панель"
     
-    lang = get_user_lang(user)
     buttons = [
-        [InlineKeyboardButton(text="🏠 Перейти в режим покупателя", callback_data="switch_to_buyer")],
+        [InlineKeyboardButton(text=switch_text, callback_data="switch_to_buyer")],
         [InlineKeyboardButton(text=get_text('change_language', lang), callback_data="change_language")]
     ]
     
     if webapp_url:
         buttons.append([InlineKeyboardButton(
-            text="📊 Подробно",
+            text=details_text,
             web_app=types.WebAppInfo(url=f"https://{webapp_url}/webapp/user_stats?tg_id={user.telegram_id}")
         )])
     
     if user.is_admin and webapp_url:
         buttons.append([InlineKeyboardButton(
-            text="🔐 Админ-панель",
+            text=admin_text,
             web_app=types.WebAppInfo(url=f"https://{webapp_url}/webapp/admin/home?tg_id={user.telegram_id}")
         )])
     
@@ -3130,35 +3160,63 @@ async def show_buyer_profile(message, user):
     if not webapp_url:
         webapp_url = os.environ.get('REPLIT_DOMAINS', '').split(',')[0] if os.environ.get('REPLIT_DOMAINS') else ''
     
-    payment_names = {"cash": "Наличные", "mortgage": "Ипотека", "installment": "Рассрочка"}
-    budget = f"${user.search_budget_max:,}" if user.search_budget_max else "Не указан"
-    bio_line = f"📝 Описание: {user.buyer_bio}\n" if user.buyer_bio else ""
-    
-    text = (
-        f"👤 Ваш профиль\n\n"
-        f"🆔 Ваш ID: {user.telegram_id}\n"
-        f"🚪 Ищу: {user.search_rooms or 'Любые'} комн.\n"
-        f"📍 Район: {user.search_district or 'Любой'}\n"
-        f"💰 Бюджет: до {budget}\n"
-        f"💳 Оплата: {payment_names.get(user.search_payment_type, 'Не указано')}\n"
-        f"{bio_line}"
-    )
-    
     lang = get_user_lang(user)
+    
+    payment_names_ru = {"cash": "Наличные", "mortgage": "Ипотека", "installment": "Рассрочка"}
+    payment_names_uz = {"cash": "Naqd pul", "mortgage": "Ipoteka", "installment": "Bo'lib to'lash"}
+    payment_names = payment_names_uz if lang == 'uz' else payment_names_ru
+    
+    not_specified = "Ko'rsatilmagan" if lang == 'uz' else "Не указано"
+    any_text = "Istalgan" if lang == 'uz' else "Любой"
+    rooms_text = "xona" if lang == 'uz' else "комн."
+    
+    budget = f"${user.search_budget_max:,}" if user.search_budget_max else not_specified
+    
+    district_display = user.search_district or any_text
+    if lang == 'uz' and user.search_district:
+        district_display = get_district_name(user.search_district, lang)
+    
+    if lang == 'uz':
+        bio_line = f"📝 Tavsif: {user.buyer_bio}\n" if user.buyer_bio else ""
+        text = (
+            f"👤 Sizning profilingiz\n\n"
+            f"🆔 Sizning ID: {user.telegram_id}\n"
+            f"🚪 Qidiraman: {user.search_rooms or 'Istalgan'} {rooms_text}\n"
+            f"📍 Tuman: {district_display}\n"
+            f"💰 Byudjet: {budget} gacha\n"
+            f"💳 To'lov: {payment_names.get(user.search_payment_type, not_specified)}\n"
+            f"{bio_line}"
+        )
+    else:
+        bio_line = f"📝 Описание: {user.buyer_bio}\n" if user.buyer_bio else ""
+        text = (
+            f"👤 Ваш профиль\n\n"
+            f"🆔 Ваш ID: {user.telegram_id}\n"
+            f"🚪 Ищу: {user.search_rooms or 'Любые'} {rooms_text}\n"
+            f"📍 Район: {district_display}\n"
+            f"💰 Бюджет: до {budget}\n"
+            f"💳 Оплата: {payment_names.get(user.search_payment_type, not_specified)}\n"
+            f"{bio_line}"
+        )
+    
+    switch_text = "💼 Sotuvchi rejimiga o'tish" if lang == 'uz' else "💼 Перейти в режим продавца"
+    details_text = "📊 Batafsil" if lang == 'uz' else "📊 Подробно"
+    admin_text = "🔐 Admin panel" if lang == 'uz' else "🔐 Админ-панель"
+    
     buttons = [
-        [InlineKeyboardButton(text="💼 Перейти в режим продавца", callback_data="switch_to_seller")],
+        [InlineKeyboardButton(text=switch_text, callback_data="switch_to_seller")],
         [InlineKeyboardButton(text=get_text('change_language', lang), callback_data="change_language")]
     ]
     
     if webapp_url:
         buttons.append([InlineKeyboardButton(
-            text="📊 Подробно",
+            text=details_text,
             web_app=types.WebAppInfo(url=f"https://{webapp_url}/webapp/user_stats?tg_id={user.telegram_id}")
         )])
     
     if user.is_admin and webapp_url:
         buttons.append([InlineKeyboardButton(
-            text="🔐 Админ-панель",
+            text=admin_text,
             web_app=types.WebAppInfo(url=f"https://{webapp_url}/webapp/admin/home?tg_id={user.telegram_id}")
         )])
     
