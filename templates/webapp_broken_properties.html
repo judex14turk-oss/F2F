@@ -354,9 +354,26 @@
                     return;
                 }
                 const img = new Image();
-                img.onload = () => resolve(true);
-                img.onerror = () => resolve(false);
-                setTimeout(() => resolve(false), 5000);
+                let resolved = false;
+                img.onload = () => {
+                    if (resolved) return;
+                    resolved = true;
+                    if (img.naturalWidth < 200 || img.naturalHeight < 200) {
+                        resolve(false);
+                    } else {
+                        resolve(true);
+                    }
+                };
+                img.onerror = () => {
+                    if (resolved) return;
+                    resolved = true;
+                    resolve(false);
+                };
+                setTimeout(() => {
+                    if (resolved) return;
+                    resolved = true;
+                    resolve(false);
+                }, 10000);
                 img.src = url;
             });
         }
