@@ -446,6 +446,53 @@
             display: block;
         }
         
+        .tinder-details-grid {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+            margin-bottom: 12px;
+        }
+        
+        .tinder-detail.full-width {
+            width: 100%;
+            flex-basis: 100%;
+        }
+        
+        .tinder-description {
+            background: #1a1a1a;
+            border-radius: 8px;
+            padding: 12px;
+            margin-bottom: 12px;
+            font-size: 0.85rem;
+            color: #aaa;
+            line-height: 1.5;
+        }
+        
+        .tinder-description i {
+            color: #666;
+            margin-right: 8px;
+        }
+        
+        .tinder-olx-link {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+            width: 100%;
+            padding: 12px;
+            background: #2563eb;
+            color: #fff;
+            text-decoration: none;
+            border-radius: 8px;
+            font-size: 0.9rem;
+            font-weight: 500;
+            transition: background 0.2s ease;
+        }
+        
+        .tinder-olx-link:hover {
+            background: #1d4ed8;
+        }
+        
         .tinder-actions {
             display: flex;
             justify-content: center;
@@ -1025,10 +1072,24 @@
             if (p.renovation) extraDetails.push(`<span class="tinder-detail"><i class="bi bi-hammer"></i> ${p.renovation}</span>`);
             if (p.has_furniture) extraDetails.push(`<span class="tinder-detail"><i class="bi bi-lamp"></i> {{ t.get("webapp_with_furniture", "С мебелью") }}</span>`);
             if (p.bathroom_type) extraDetails.push(`<span class="tinder-detail"><i class="bi bi-droplet"></i> ${p.bathroom_type}</span>`);
-            if (p.residential_complex) extraDetails.push(`<span class="tinder-detail"><i class="bi bi-buildings"></i> ${p.residential_complex}</span>`);
-            if (p.address) extraDetails.push(`<span class="tinder-detail"><i class="bi bi-signpost"></i> ${p.address}</span>`);
+            if (p.residential_complex) extraDetails.push(`<span class="tinder-detail"><i class="bi bi-buildings"></i> ЖК: ${p.residential_complex}</span>`);
+            if (p.layout) extraDetails.push(`<span class="tinder-detail"><i class="bi bi-grid"></i> ${p.layout}</span>`);
+            if (p.room_type) extraDetails.push(`<span class="tinder-detail"><i class="bi bi-door-open"></i> ${p.room_type}</span>`);
+            if (p.address) extraDetails.push(`<span class="tinder-detail full-width"><i class="bi bi-signpost"></i> ${p.address}</span>`);
+            if (p.seller_name) extraDetails.push(`<span class="tinder-detail"><i class="bi bi-person"></i> ${p.seller_name}</span>`);
+            if (p.phone) extraDetails.push(`<span class="tinder-detail"><i class="bi bi-telephone"></i> ${p.phone}</span>`);
             
-            const hasExtra = extraDetails.length > 0;
+            let descriptionHtml = '';
+            if (p.description) {
+                descriptionHtml = `<div class="tinder-description"><i class="bi bi-card-text"></i> ${p.description}</div>`;
+            }
+            
+            let olxLinkHtml = '';
+            if (p.olx_url) {
+                olxLinkHtml = `<a href="${p.olx_url}" target="_blank" class="tinder-olx-link"><i class="bi bi-box-arrow-up-right"></i> {{ t.get("webapp_view_on_olx", "Смотреть на OLX") }}</a>`;
+            }
+            
+            const hasExtra = true;
             
             return `
                 <div class="tinder-card" id="tinderCard">
@@ -1044,15 +1105,15 @@
                         </div>
                         <div class="tinder-price">${p.currency === '$' || p.currency === 'USD' ? '$' + formatPrice(p.price) : formatPrice(p.price) + ' ' + (p.currency || 'сум')}</div>
                         <div class="tinder-district"><i class="bi bi-geo-alt"></i> ${p.district || '{{ t.get("webapp_not_specified", "Не указан") }}'}</div>
-                        ${hasExtra ? `
-                            <div class="tinder-more-btn" id="moreBtn">
-                                <i class="bi bi-chevron-down"></i>
-                                {{ t.get("webapp_more_details", "Подробнее") }}
-                            </div>
-                            <div class="tinder-extra-details" id="extraDetails">
-                                <div class="tinder-details">${extraDetails.join('')}</div>
-                            </div>
-                        ` : ''}
+                        <div class="tinder-more-btn" id="moreBtn">
+                            <i class="bi bi-chevron-down"></i>
+                            {{ t.get("webapp_more_details", "Подробнее") }}
+                        </div>
+                        <div class="tinder-extra-details" id="extraDetails">
+                            ${extraDetails.length > 0 ? `<div class="tinder-details-grid">${extraDetails.join('')}</div>` : ''}
+                            ${descriptionHtml}
+                            ${olxLinkHtml}
+                        </div>
                     </div>
                 </div>
             `;
