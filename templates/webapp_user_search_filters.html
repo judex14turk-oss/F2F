@@ -1043,10 +1043,10 @@
                         <div class="tinder-price">${p.currency === '$' || p.currency === 'USD' ? '$' + formatPrice(p.price) : formatPrice(p.price) + ' ' + (p.currency || 'сум')}</div>
                         <div class="tinder-district"><i class="bi bi-geo-alt"></i> ${p.district || '{{ t.get("webapp_not_specified", "Не указан") }}'}</div>
                         ${hasExtra ? `
-                            <button class="tinder-more-btn" onclick="toggleExtraDetails(event)">
+                            <div class="tinder-more-btn" id="moreBtn">
                                 <i class="bi bi-chevron-down"></i>
                                 {{ t.get("webapp_more_details", "Подробнее") }}
-                            </button>
+                            </div>
                             <div class="tinder-extra-details" id="extraDetails">
                                 <div class="tinder-details">${extraDetails.join('')}</div>
                             </div>
@@ -1056,15 +1056,22 @@
             `;
         }
         
-        function toggleExtraDetails(event) {
-            event.stopPropagation();
-            const btn = event.currentTarget;
+        function initMoreButton() {
+            const btn = document.getElementById('moreBtn');
             const details = document.getElementById('extraDetails');
-            btn.classList.toggle('expanded');
-            details.classList.toggle('show');
-            btn.innerHTML = btn.classList.contains('expanded') 
-                ? '<i class="bi bi-chevron-up"></i> {{ t.get("webapp_hide_details", "Скрыть") }}'
-                : '<i class="bi bi-chevron-down"></i> {{ t.get("webapp_more_details", "Подробнее") }}';
+            if (!btn || !details) return;
+            
+            btn.addEventListener('click', function(e) {
+                e.stopPropagation();
+                e.preventDefault();
+                btn.classList.toggle('expanded');
+                details.classList.toggle('show');
+                if (btn.classList.contains('expanded')) {
+                    btn.innerHTML = '<i class="bi bi-chevron-up"></i> {{ t.get("webapp_hide_details", "Скрыть") }}';
+                } else {
+                    btn.innerHTML = '<i class="bi bi-chevron-down"></i> {{ t.get("webapp_more_details", "Подробнее") }}';
+                }
+            });
         }
         
         function renderProgress() {
@@ -1117,7 +1124,10 @@
                 <div class="tinder-counter">${currentIndex + 1} из ${allProperties.length}</div>
             `;
             
-            setTimeout(() => initGallerySwipe(), 100);
+            setTimeout(() => {
+                initGallerySwipe();
+                initMoreButton();
+            }, 100);
         }
         
         async function handleSwipe(action) {
