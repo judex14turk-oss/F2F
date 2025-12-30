@@ -383,6 +383,12 @@
             margin-bottom: 4px;
         }
         
+        .tinder-id {
+            font-size: 0.75rem;
+            color: #555;
+            margin-bottom: 4px;
+        }
+        
         .tinder-district {
             font-size: 0.9rem;
             color: #888;
@@ -1043,21 +1049,34 @@
             setTimeout(() => toast.classList.remove('show'), 2000);
         }
         
+        function detectCurrency(price, currency) {
+            if (currency === '$' || currency === 'USD' || currency === 'у.е.') {
+                return 'USD';
+            }
+            if (price > 0 && price < 500000 && (!currency || currency === 'сум')) {
+                return 'USD';
+            }
+            return 'SUM';
+        }
+        
         function formatPrice(price, currency) {
-            const isDollar = currency === '$' || currency === 'USD' || currency === 'у.е.';
+            const detectedCurrency = detectCurrency(price, currency);
             
-            if (isDollar) {
-                return price.toLocaleString('ru-RU');
+            if (detectedCurrency === 'USD') {
+                return { formatted: price.toLocaleString('ru-RU'), symbol: '$', isUsd: true };
             }
             
+            let formatted;
             if (price >= 1000000000) {
-                return (price / 1000000000).toFixed(1) + ' млрд';
+                formatted = (price / 1000000000).toFixed(1) + ' млрд';
             } else if (price >= 1000000) {
-                return (price / 1000000).toFixed(0) + ' млн';
+                formatted = (price / 1000000).toFixed(0) + ' млн';
             } else if (price >= 1000) {
-                return (price / 1000).toFixed(0) + ' тыс';
+                formatted = (price / 1000).toFixed(0) + ' тыс';
+            } else {
+                formatted = price.toLocaleString('ru-RU');
             }
-            return price.toLocaleString('ru-RU');
+            return { formatted: formatted, symbol: 'сум', isUsd: false };
         }
         
         let allProperties = [];
@@ -1240,7 +1259,8 @@
                             <span class="tinder-detail"><i class="bi bi-layers"></i> ${p.floor || '?'}/${p.total_floors || '?'} {{ t.get("webapp_floor", "этаж") }}</span>
                             <span class="tinder-detail">${p.property_type === 'rent' ? '{{ t.get("webapp_rent_filter", "Аренда") }}' : '{{ t.get("webapp_buy", "Покупка") }}'}</span>
                         </div>
-                        <div class="tinder-price">${p.currency === '$' || p.currency === 'USD' || p.currency === 'у.е.' ? '$' + formatPrice(p.price, p.currency) : formatPrice(p.price, p.currency) + ' ' + (p.currency || 'сум')}</div>
+                        <div class="tinder-price">${(() => { const pr = formatPrice(p.price, p.currency); return pr.isUsd ? pr.symbol + pr.formatted : pr.formatted + ' ' + pr.symbol; })()}</div>
+                        <div class="tinder-id">ID: ${p.id}</div>
                         <div class="tinder-district"><i class="bi bi-geo-alt"></i> ${p.district || '{{ t.get("webapp_not_specified", "Не указан") }}'}</div>
                         <div class="tinder-more-btn" id="moreBtn">
                             <i class="bi bi-chevron-down"></i>
