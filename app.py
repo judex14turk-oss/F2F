@@ -2924,6 +2924,18 @@ def webapp_broken_properties():
     )
 
 
+@app.route('/webapp/admin/check-photo')
+def webapp_check_photo():
+    url = request.args.get('url')
+    if not url:
+        return jsonify({'valid': False})
+    try:
+        response = requests.head(url, timeout=5, allow_redirects=True)
+        return jsonify({'valid': response.status_code == 200})
+    except:
+        return jsonify({'valid': False})
+
+
 @app.route('/webapp/admin/broken-properties/delete-all', methods=['POST'])
 def webapp_delete_all_broken_properties():
     tg_id = request.form.get('tg_id')

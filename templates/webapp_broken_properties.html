@@ -347,35 +347,15 @@
         let brokenCount = 0;
         let brokenIds = [];
         
-        function checkImage(url) {
-            return new Promise((resolve) => {
-                if (!url) {
-                    resolve(false);
-                    return;
-                }
-                const img = new Image();
-                let resolved = false;
-                img.onload = () => {
-                    if (resolved) return;
-                    resolved = true;
-                    if (img.naturalWidth < 200 || img.naturalHeight < 200) {
-                        resolve(false);
-                    } else {
-                        resolve(true);
-                    }
-                };
-                img.onerror = () => {
-                    if (resolved) return;
-                    resolved = true;
-                    resolve(false);
-                };
-                setTimeout(() => {
-                    if (resolved) return;
-                    resolved = true;
-                    resolve(false);
-                }, 10000);
-                img.src = url;
-            });
+        async function checkImage(url) {
+            if (!url) return false;
+            try {
+                const response = await fetch('/webapp/admin/check-photo?url=' + encodeURIComponent(url));
+                const data = await response.json();
+                return data.valid;
+            } catch (e) {
+                return false;
+            }
         }
         
         async function startCheck() {
