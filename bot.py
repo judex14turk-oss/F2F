@@ -3295,6 +3295,7 @@ async def buyer_switch_to_seller(message: types.Message, state: FSMContext):
 async def buyer_likes(message: types.Message):
     db = SessionLocal()
     user = db.query(User).filter(User.telegram_id == message.from_user.id).first()
+    lang = get_user_lang(user)
     three_days_ago = datetime.utcnow() - timedelta(days=3)
     likes = db.query(Like).filter(
         Like.user_id == user.id,
@@ -3303,36 +3304,60 @@ async def buyer_likes(message: types.Message):
     
     if not likes:
         db.close()
-        await message.answer("Вы еще не лайкнули ни одной квартиры.", reply_markup=get_buyer_profile_menu())
+        no_likes_text = "Siz hali hech qanday kvartiraga layk qo'ymadingiz." if lang == 'uz' else "Вы еще не лайкнули ни одной квартиры."
+        await message.answer(no_likes_text, reply_markup=get_buyer_profile_menu(lang))
         return
     
-    await message.answer(f"❤️ <b>Ваши лайки ({len(likes)})</b>", reply_markup=get_buyer_profile_menu(), parse_mode="HTML")
+    header_text = f"❤️ <b>Sizning layklaringiz ({len(likes)})</b>" if lang == 'uz' else f"❤️ <b>Ваши лайки ({len(likes)})</b>"
+    await message.answer(header_text, reply_markup=get_buyer_profile_menu(lang), parse_mode="HTML")
+    
+    if lang == 'uz':
+        match_text = "Mos keldi!"
+        waiting_text = "Kutilmoqda"
+        sale_text = "Sotish"
+        rent_text = "Ijara"
+        rooms_text = "xona"
+        floor_text = "qavat"
+        not_specified = "Ko'rsatilmagan"
+        with_furniture = "mebellar bilan"
+        contact_label = "Kontakt"
+    else:
+        match_text = "Мэтч!"
+        waiting_text = "Ожидание"
+        sale_text = "Продажа"
+        rent_text = "Аренда"
+        rooms_text = "комн."
+        floor_text = "этаж"
+        not_specified = "Не указан"
+        with_furniture = "с мебелью"
+        contact_label = "Контакт"
     
     for like in likes[:10]:
         prop = db.query(Property).filter(Property.id == like.property_id).first()
         
         if prop:
             status_emoji = "🟢" if like.is_matched else "⏳"
-            status_text = "Мэтч!" if like.is_matched else "Ожидание"
-            type_name = "Продажа" if prop.property_type == PropertyType.SALE else "Аренда"
+            status_text = match_text if like.is_matched else waiting_text
+            type_name = sale_text if prop.property_type == PropertyType.SALE else rent_text
             
             contact_phone = prop.phone
             if not contact_phone:
                 owner = db.query(User).filter(User.id == prop.owner_id).first()
-                contact_phone = owner.phone if owner else "Не указан"
+                contact_phone = owner.phone if owner else not_specified
             
             text = f"{status_emoji} <b>{status_text}</b>  •  {type_name}\n"
             text += "━━━━━━━━━━━━━━━━━━━━\n\n"
             text += f"💰 <b>${prop.price:,}</b>\n\n"
             
             if prop.district:
-                text += f"📍 {prop.district}\n"
+                district_display = get_district_name(prop.district, lang)
+                text += f"📍 {district_display}\n"
             if prop.rooms:
-                text += f"🚪 {prop.rooms} комн.\n"
+                text += f"🚪 {prop.rooms} {rooms_text}\n"
             if prop.area:
                 text += f"📐 {prop.area} м²\n"
             if prop.floor and prop.total_floors:
-                text += f"🏢 {prop.floor}/{prop.total_floors} этаж\n"
+                text += f"🏢 {prop.floor}/{prop.total_floors} {floor_text}\n"
             
             extras = []
             if prop.building_type:
@@ -3340,12 +3365,12 @@ async def buyer_likes(message: types.Message):
             if prop.renovation:
                 extras.append(prop.renovation)
             if prop.has_furniture:
-                extras.append("с мебелью")
+                extras.append(with_furniture)
             if extras:
                 text += f"\n🏠 {' • '.join(extras)}\n"
             
             text += f"\n━━━━━━━━━━━━━━━━━━━━\n"
-            text += f"📞 <b><u>Контакт: {contact_phone}</u></b>\n"
+            text += f"📞 <b><u>{contact_label}: {contact_phone}</u></b>\n"
             
             photos = [p for p in (prop.photos.split(",") if prop.photos else []) if p]
             
