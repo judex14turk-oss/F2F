@@ -1005,7 +1005,14 @@ def webapp_user_search_filters_search():
             'district': prop.district,
             'photo': photos[0] if photos else None,
             'photos': photos,
-            'property_type': 'sale' if prop.property_type == PropertyType.SALE else 'rent'
+            'property_type': 'sale' if prop.property_type == PropertyType.SALE else 'rent',
+            'housing_type': prop.housing_type,
+            'building_type': prop.building_type,
+            'renovation': prop.renovation,
+            'has_furniture': prop.has_furniture,
+            'bathroom_type': prop.bathroom_type,
+            'residential_complex': prop.residential_complex,
+            'address': prop.address
         })
     
     db.close()

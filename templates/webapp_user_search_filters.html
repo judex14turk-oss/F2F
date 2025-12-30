@@ -389,6 +389,15 @@
             gap: 4px;
         }
         
+        .tinder-address {
+            font-size: 0.8rem;
+            color: #666;
+            margin-top: 4px;
+            display: flex;
+            align-items: center;
+            gap: 4px;
+        }
+        
         .tinder-actions {
             display: flex;
             justify-content: center;
@@ -962,6 +971,13 @@
             if (!property) return '';
             const p = property;
             currentPhotoIndex = 0;
+            
+            let extraDetails = [];
+            if (p.building_type) extraDetails.push(`<span class="tinder-detail"><i class="bi bi-building"></i> ${p.building_type}</span>`);
+            if (p.renovation) extraDetails.push(`<span class="tinder-detail"><i class="bi bi-hammer"></i> ${p.renovation}</span>`);
+            if (p.has_furniture) extraDetails.push(`<span class="tinder-detail"><i class="bi bi-lamp"></i> {{ t.get("webapp_with_furniture", "С мебелью") }}</span>`);
+            if (p.bathroom_type) extraDetails.push(`<span class="tinder-detail"><i class="bi bi-droplet"></i> ${p.bathroom_type}</span>`);
+            
             return `
                 <div class="tinder-card" id="tinderCard">
                     ${renderGallery(p.photos || (p.photo ? [p.photo] : []))}
@@ -969,13 +985,15 @@
                         <div class="tinder-stamp" id="tinderStamp"></div>
                     </div>
                     <div class="tinder-info">
-                        <div class="tinder-title">${p.rooms || '?'}-комн. квартира, ${p.area || '?'} м²</div>
+                        <div class="tinder-title">${p.rooms || '?'}-комн. ${p.housing_type || 'квартира'}, ${p.area || '?'} м²</div>
                         <div class="tinder-details">
-                            <span class="tinder-detail"><i class="bi bi-layers"></i> ${p.floor || '?'}/${p.total_floors || '?'} этаж</span>
+                            <span class="tinder-detail"><i class="bi bi-layers"></i> ${p.floor || '?'}/${p.total_floors || '?'} {{ t.get("webapp_floor", "этаж") }}</span>
                             <span class="tinder-detail">${p.property_type === 'rent' ? '{{ t.get("webapp_rent_filter", "Аренда") }}' : '{{ t.get("webapp_buy", "Покупка") }}'}</span>
                         </div>
+                        ${extraDetails.length > 0 ? `<div class="tinder-details">${extraDetails.join('')}</div>` : ''}
                         <div class="tinder-price">${p.currency === '$' || p.currency === 'USD' ? '$' + formatPrice(p.price) : formatPrice(p.price) + ' ' + (p.currency || 'сум')}</div>
-                        <div class="tinder-district"><i class="bi bi-geo-alt"></i> ${p.district || '{{ t.get("webapp_not_specified", "Не указан") }}'}</div>
+                        <div class="tinder-district"><i class="bi bi-geo-alt"></i> ${p.district || '{{ t.get("webapp_not_specified", "Не указан") }}'}${p.residential_complex ? ' • ' + p.residential_complex : ''}</div>
+                        ${p.address ? `<div class="tinder-address"><i class="bi bi-signpost"></i> ${p.address}</div>` : ''}
                     </div>
                 </div>
             `;
