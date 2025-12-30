@@ -2893,10 +2893,25 @@ def webapp_broken_properties():
     
     permissions = get_admin_permissions(admin_user.admin_role)
     
-    broken_properties = db.query(Property).filter(
-        Property.source == 'olx',
-        (Property.photos == None) | (Property.photos == '') | (Property.photos == ' ')
+    all_olx_properties = db.query(Property).filter(
+        Property.source == 'olx'
     ).order_by(Property.created_at.desc()).all()
+    
+    properties_data = []
+    for prop in all_olx_properties:
+        photo_url = None
+        if prop.photos:
+            photo_list = prop.photos.split(',')
+            if photo_list and photo_list[0].strip():
+                first_photo = photo_list[0].strip()
+                if first_photo.startswith('http://') or first_photo.startswith('https://'):
+                    photo_url = first_photo
+        properties_data.append({
+            'id': prop.id,
+            'unique_id': prop.unique_id or prop.id,
+            'photo_url': photo_url,
+            'has_photos': bool(prop.photos and prop.photos.strip())
+        })
     
     db.close()
     
@@ -2904,14 +2919,15 @@ def webapp_broken_properties():
         tg_id=tg_id,
         permissions=permissions,
         admin_user=admin_user,
-        properties=broken_properties,
-        total_count=len(broken_properties)
+        properties=properties_data,
+        total_count=len(properties_data)
     )
 
 
 @app.route('/webapp/admin/broken-properties/delete-all', methods=['POST'])
 def webapp_delete_all_broken_properties():
     tg_id = request.form.get('tg_id')
+    property_ids = request.form.get('property_ids', '')
     
     db = get_db()
     admin = db.query(User).filter(User.telegram_id == int(tg_id)).first() if tg_id else None
@@ -2920,12 +2936,12 @@ def webapp_delete_all_broken_properties():
         db.close()
         return "Доступ запрещён", 403
     
-    db.query(Property).filter(
-        Property.source == 'olx',
-        (Property.photos == None) | (Property.photos == '') | (Property.photos == ' ')
-    ).delete(synchronize_session=False)
+    if property_ids:
+        ids_list = [int(id.strip()) for id in property_ids.split(',') if id.strip().isdigit()]
+        if ids_list:
+            db.query(Property).filter(Property.id.in_(ids_list)).delete(synchronize_session=False)
+            db.commit()
     
-    db.commit()
     db.close()
     
     return redirect(url_for('webapp_broken_properties', tg_id=tg_id))

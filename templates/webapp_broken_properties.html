@@ -45,6 +45,10 @@
             font-size: 0.7rem;
             color: #ef4444;
         }
+        .stat-badge.checking {
+            background: rgba(245, 158, 11, 0.2);
+            color: #f59e0b;
+        }
         .bottom-nav {
             position: fixed;
             bottom: 0;
@@ -78,6 +82,25 @@
             background: #111;
             border-bottom: 1px solid #2a2a2a;
         }
+        .btn-check {
+            width: 100%;
+            background: #f59e0b;
+            color: white;
+            border: none;
+            border-radius: 8px;
+            padding: 12px;
+            font-size: 0.9rem;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+            margin-bottom: 8px;
+        }
+        .btn-check:disabled {
+            background: #666;
+            cursor: not-allowed;
+        }
         .btn-delete-all {
             width: 100%;
             background: #dc2626;
@@ -91,6 +114,7 @@
             align-items: center;
             justify-content: center;
             gap: 8px;
+            display: none;
         }
         .btn-delete-all:hover {
             background: #b91c1c;
@@ -106,6 +130,10 @@
             border: 1px solid #3a2525;
             border-radius: 12px;
             overflow: hidden;
+            display: none;
+        }
+        .property-card.broken {
+            display: block;
         }
         .property-photo-placeholder {
             width: 100%;
@@ -169,16 +197,44 @@
             background: #111;
         }
         .warning-banner {
-            background: rgba(239, 68, 68, 0.1);
-            border: 1px solid rgba(239, 68, 68, 0.3);
+            background: rgba(245, 158, 11, 0.1);
+            border: 1px solid rgba(245, 158, 11, 0.3);
             padding: 12px;
             margin: 12px;
             border-radius: 8px;
             font-size: 0.8rem;
-            color: #fca5a5;
+            color: #fcd34d;
         }
         .warning-banner i {
             margin-right: 6px;
+        }
+        .progress-bar {
+            width: 100%;
+            height: 4px;
+            background: #333;
+            border-radius: 2px;
+            margin-top: 8px;
+            overflow: hidden;
+            display: none;
+        }
+        .progress-bar-fill {
+            height: 100%;
+            background: #f59e0b;
+            width: 0%;
+            transition: width 0.3s;
+        }
+        .checking-status {
+            text-align: center;
+            padding: 8px;
+            color: #f59e0b;
+            font-size: 0.8rem;
+            display: none;
+        }
+        #results-section {
+            display: none;
+        }
+        #initial-section {
+            display: block;
         }
     </style>
 </head>
@@ -187,34 +243,56 @@
         <h1><i class="bi bi-exclamation-triangle"></i> Удалённые с OLX</h1>
         <div class="header-role">{{ permissions.role_name }}</div>
         <div class="stats-row">
-            <span class="stat-badge">Найдено: {{ total_count }} объектов</span>
+            <span class="stat-badge" id="total-badge">Всего OLX: {{ total_count }}</span>
+            <span class="stat-badge checking" id="broken-badge" style="display:none;">Битых: 0</span>
         </div>
     </div>
     
-    {% if properties %}
-    <div class="warning-banner">
-        <i class="bi bi-info-circle"></i>
-        Эти объекты были спарсены с OLX, но сейчас их фотографии недоступны (объявления удалены с OLX).
-    </div>
-    
-    <div class="action-section">
-        <form method="POST" action="{{ url_for('webapp_delete_all_broken_properties') }}" onsubmit="return confirm('Удалить все {{ total_count }} объектов? Это действие нельзя отменить!')">
-            <input type="hidden" name="tg_id" value="{{ tg_id }}">
-            <button type="submit" class="btn-delete-all">
-                <i class="bi bi-trash"></i> Удалить все {{ total_count }} объектов
+    <div id="initial-section">
+        <div class="warning-banner">
+            <i class="bi bi-info-circle"></i>
+            Нажмите кнопку для проверки доступности фотографий объектов OLX. Объекты с недоступными фото будут показаны ниже.
+        </div>
+        
+        <div class="action-section">
+            <button type="button" class="btn-check" id="check-btn" onclick="startCheck()">
+                <i class="bi bi-search"></i> Проверить фотографии ({{ total_count }} объектов)
             </button>
-        </form>
+            <div class="progress-bar" id="progress-bar">
+                <div class="progress-bar-fill" id="progress-fill"></div>
+            </div>
+        </div>
+        
+        <div class="checking-status" id="checking-status">
+            Проверяем: <span id="check-progress">0</span> / {{ total_count }}
+        </div>
     </div>
-    {% endif %}
     
-    <div class="count-info">Показано: {{ properties|length }} объектов</div>
+    <div id="results-section">
+        <div class="warning-banner" style="background: rgba(239, 68, 68, 0.1); border-color: rgba(239, 68, 68, 0.3); color: #fca5a5;">
+            <i class="bi bi-exclamation-triangle"></i>
+            Эти объекты были спарсены с OLX, но сейчас их фотографии недоступны (объявления удалены с OLX).
+        </div>
+        
+        <div class="action-section">
+            <form method="POST" action="{{ url_for('webapp_delete_all_broken_properties') }}" id="delete-all-form" onsubmit="return confirm('Удалить все объекты с битыми фото? Это действие нельзя отменить!')">
+                <input type="hidden" name="tg_id" value="{{ tg_id }}">
+                <input type="hidden" name="property_ids" id="broken-ids-input" value="">
+                <button type="submit" class="btn-delete-all" id="delete-all-btn">
+                    <i class="bi bi-trash"></i> Удалить все объекты с битыми фото
+                </button>
+            </form>
+        </div>
+    </div>
     
-    <div class="properties-grid">
+    <div class="count-info" id="count-info">Ожидание проверки...</div>
+    
+    <div class="properties-grid" id="properties-grid">
         {% for prop in properties %}
-        <div class="property-card">
+        <div class="property-card" id="card-{{ prop.id }}" data-id="{{ prop.id }}" data-photo="{{ prop.photo_url or '' }}" data-has-photos="{{ 'true' if prop.has_photos else 'false' }}">
             <div class="property-photo-placeholder"><i class="bi bi-image-alt"></i></div>
             <div class="property-id">
-                ID: <strong>{{ prop.unique_id or prop.id }}</strong>
+                ID: <strong>{{ prop.unique_id }}</strong>
                 <br>
                 <span style="color: #ef4444; font-size: 0.6rem;">Фото недоступны</span>
             </div>
@@ -230,12 +308,12 @@
                 </form>
             </div>
         </div>
-        {% else %}
-        <div class="empty-state">
+        {% endfor %}
+        
+        <div class="empty-state" id="empty-state" style="display:none;">
             <i class="bi bi-check-circle"></i>
             <p>Все объекты OLX в порядке!</p>
         </div>
-        {% endfor %}
     </div>
     
     <div class="bottom-nav">
@@ -261,6 +339,75 @@
         if (window.Telegram && window.Telegram.WebApp) {
             Telegram.WebApp.ready();
             Telegram.WebApp.expand();
+        }
+        
+        const cards = document.querySelectorAll('.property-card');
+        const totalCount = cards.length;
+        let checkedCount = 0;
+        let brokenCount = 0;
+        let brokenIds = [];
+        
+        function checkImage(url) {
+            return new Promise((resolve) => {
+                if (!url) {
+                    resolve(false);
+                    return;
+                }
+                const img = new Image();
+                img.onload = () => resolve(true);
+                img.onerror = () => resolve(false);
+                setTimeout(() => resolve(false), 5000);
+                img.src = url;
+            });
+        }
+        
+        async function startCheck() {
+            const btn = document.getElementById('check-btn');
+            btn.disabled = true;
+            btn.innerHTML = '<i class="bi bi-hourglass-split"></i> Проверяем...';
+            
+            document.getElementById('progress-bar').style.display = 'block';
+            document.getElementById('checking-status').style.display = 'block';
+            
+            for (const card of cards) {
+                const photoUrl = card.dataset.photo;
+                const hasPhotos = card.dataset.hasPhotos === 'true';
+                const propId = card.dataset.id;
+                
+                let isBroken = false;
+                
+                if (!hasPhotos || !photoUrl) {
+                    isBroken = true;
+                } else {
+                    const isValid = await checkImage(photoUrl);
+                    isBroken = !isValid;
+                }
+                
+                if (isBroken) {
+                    card.classList.add('broken');
+                    brokenCount++;
+                    brokenIds.push(propId);
+                }
+                
+                checkedCount++;
+                const progress = (checkedCount / totalCount) * 100;
+                document.getElementById('progress-fill').style.width = progress + '%';
+                document.getElementById('check-progress').textContent = checkedCount;
+            }
+            
+            document.getElementById('initial-section').style.display = 'none';
+            document.getElementById('results-section').style.display = 'block';
+            document.getElementById('broken-badge').style.display = 'inline-block';
+            document.getElementById('broken-badge').textContent = 'Битых: ' + brokenCount;
+            document.getElementById('count-info').textContent = 'Найдено битых: ' + brokenCount + ' из ' + totalCount;
+            document.getElementById('broken-ids-input').value = brokenIds.join(',');
+            
+            if (brokenCount > 0) {
+                document.getElementById('delete-all-btn').style.display = 'flex';
+                document.getElementById('delete-all-btn').innerHTML = '<i class="bi bi-trash"></i> Удалить все ' + brokenCount + ' объектов с битыми фото';
+            } else {
+                document.getElementById('empty-state').style.display = 'block';
+            }
         }
     </script>
 </body>
