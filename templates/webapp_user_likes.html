@@ -322,6 +322,11 @@
                     <i class="bi bi-chat-dots"></i>
                     {{ t.get('webapp_no_username', 'Нет username') }}
                 </button>
+                {% elif like.is_parsed and like.phone %}
+                <a href="tel:{{ like.phone }}" onclick="event.stopPropagation()" class="btn-write" style="background: linear-gradient(135deg, #10b981 0%, #059669 100%); text-decoration: none;">
+                    <i class="bi bi-telephone-fill"></i>
+                    {{ like.phone }}
+                </a>
                 {% else %}
                 <div onclick="event.stopPropagation()" style="text-align: center; padding: 10px; color: #888; font-size: 0.8rem;">
                     <i class="bi bi-clock"></i> {{ t.get('webapp_waiting_match', 'Ожидание ответа от владельца') }}

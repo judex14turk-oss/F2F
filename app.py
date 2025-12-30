@@ -1488,6 +1488,8 @@ def webapp_user_likes():
                 'owner_name': owner_name,
                 'owner_username': owner_username,
                 'is_matched': like.is_matched,
+                'is_parsed': prop.source and prop.source != 'manual',
+                'phone': prop.phone,
                 'created_at': like.created_at
             })
     
