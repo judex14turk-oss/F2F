@@ -1220,13 +1220,20 @@ async def process_prop_price(message: types.Message, state: FSMContext):
         return
     
     await state.update_data(price=int(price))
-    await message.answer("📝 Введите описание объекта (или отправьте 'Пропустить'):")
+    
+    skip_keyboard = ReplyKeyboardMarkup(
+        keyboard=[[KeyboardButton(text="⏭ Пропустить")]],
+        resize_keyboard=True,
+        one_time_keyboard=True
+    )
+    await message.answer("📝 Введите описание объекта или нажмите 'Пропустить':", reply_markup=skip_keyboard)
     await state.set_state(PropertyStates.description)
 
 
 @dp.message(PropertyStates.description)
 async def process_prop_description(message: types.Message, state: FSMContext):
-    description = message.text if message.text.lower() != "пропустить" else ""
+    text = message.text.lower().strip() if message.text else ""
+    description = "" if text in ["пропустить", "⏭ пропустить"] else message.text
     await state.update_data(description=description)
     
     keyboard = InlineKeyboardMarkup(inline_keyboard=[
