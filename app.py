@@ -1453,6 +1453,14 @@ def webapp_user_likes():
         Like.created_at >= one_month_ago
     ).order_by(Like.created_at.desc()).all()
     
+    tariff_priority = {
+        TariffType.PREMIUM: 1,
+        TariffType.DEVELOPER_PRO: 1,
+        TariffType.PRO: 2,
+        TariffType.AGENCY_START: 2,
+        TariffType.FREE: 3,
+    }
+    
     likes_data = []
     for like in likes:
         prop = like.property
@@ -1471,9 +1479,21 @@ def webapp_user_likes():
             
             owner_name = 'Владелец'
             owner_username = None
+            owner_phone = prop.phone
+            is_parsed = prop.source and prop.source != 'manual'
+            
             if owner:
                 owner_name = owner.first_name or owner.username or 'Владелец'
                 owner_username = owner.username
+                if owner.phone:
+                    owner_phone = owner.phone
+            
+            if is_parsed:
+                priority = 4
+            elif owner and owner.tariff:
+                priority = tariff_priority.get(owner.tariff, 3)
+            else:
+                priority = 3
             
             likes_data.append({
                 'id': like.id,
@@ -1488,10 +1508,14 @@ def webapp_user_likes():
                 'owner_name': owner_name,
                 'owner_username': owner_username,
                 'is_matched': like.is_matched,
-                'is_parsed': prop.source and prop.source != 'manual',
-                'phone': prop.phone,
+                'is_parsed': is_parsed,
+                'phone': owner_phone,
+                'priority': priority,
                 'created_at': like.created_at
             })
+    
+    likes_data.sort(key=lambda x: (x['priority'], x['created_at']), reverse=False)
+    likes_data.sort(key=lambda x: x['priority'])
     
     db.close()
     

@@ -312,24 +312,19 @@
                 </div>
             </div>
             <div class="like-actions">
-                {% if like.is_matched and like.owner_username %}
-                <button class="btn-write" onclick="openChat('{{ like.owner_username }}', event)" style="background: linear-gradient(135deg, #10b981 0%, #059669 100%);">
-                    <i class="bi bi-chat-dots"></i>
-                    {{ t.get('webapp_write_owner', 'Написать владельцу') }}
-                </button>
-                {% elif like.is_matched %}
-                <button class="btn-write" onclick="event.stopPropagation()" style="background: #444; cursor: not-allowed;" disabled>
-                    <i class="bi bi-chat-dots"></i>
-                    {{ t.get('webapp_no_username', 'Нет username') }}
-                </button>
-                {% elif like.is_parsed and like.phone %}
+                {% if like.phone %}
                 <a href="tel:{{ like.phone }}" onclick="event.stopPropagation()" class="btn-write" style="background: linear-gradient(135deg, #10b981 0%, #059669 100%); text-decoration: none;">
                     <i class="bi bi-telephone-fill"></i>
                     {{ like.phone }}
                 </a>
+                {% elif like.owner_username %}
+                <button class="btn-write" onclick="openChat('{{ like.owner_username }}', event)" style="background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%);">
+                    <i class="bi bi-chat-dots"></i>
+                    {{ t.get('webapp_write_owner', 'Написать владельцу') }}
+                </button>
                 {% else %}
                 <div onclick="event.stopPropagation()" style="text-align: center; padding: 10px; color: #888; font-size: 0.8rem;">
-                    <i class="bi bi-clock"></i> {{ t.get('webapp_waiting_match', 'Ожидание ответа от владельца') }}
+                    <i class="bi bi-info-circle"></i> {{ t.get('webapp_no_contact', 'Контакт недоступен') }}
                 </div>
                 {% endif %}
             </div>
