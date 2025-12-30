@@ -47,6 +47,23 @@ def admin_required(f):
     return decorated_function
 
 
+def send_telegram_notification(chat_id, text, parse_mode='HTML'):
+    if not TELEGRAM_BOT_TOKEN:
+        return False
+    try:
+        url = f"https://api.telegram.org/bot{TELEGRAM_BOT_TOKEN}/sendMessage"
+        data = {
+            'chat_id': chat_id,
+            'text': text,
+            'parse_mode': parse_mode
+        }
+        response = requests.post(url, data=data, timeout=10)
+        return response.status_code == 200
+    except Exception as e:
+        print(f"Error sending notification: {e}")
+        return False
+
+
 @app.route('/')
 def index():
     return render_template('index.html')
@@ -1138,7 +1155,30 @@ def webapp_user_search_filters_like():
     
     prop.likes_count = (prop.likes_count or 0) + 1
     
+    owner = db.query(User).filter(User.id == prop.owner_id).first()
+    
     db.commit()
+    
+    if owner and owner.telegram_id:
+        liker_name = user.first_name or user.username or 'Пользователь'
+        liker_contact = ""
+        if user.phone:
+            liker_contact = f"\n📱 Телефон: {user.phone}"
+        if user.username:
+            liker_contact += f"\n👤 Telegram: @{user.username}"
+        
+        property_type_name = "Продажа" if prop.property_type and prop.property_type.name == "SALE" else "Аренда"
+        
+        notification_text = (
+            f"❤️ <b>Новый лайк на ваш объект!</b>\n\n"
+            f"🏠 Объект: {prop.unique_id or f'ID {prop.id}'} ({property_type_name})\n"
+            f"📍 {prop.district or 'Район не указан'}\n"
+            f"💰 {prop.price:,} {prop.currency or 'сум'}\n\n"
+            f"👤 Кто лайкнул: {liker_name}{liker_contact}"
+        )
+        
+        send_telegram_notification(owner.telegram_id, notification_text)
+    
     db.close()
     
     return jsonify({'success': True})
