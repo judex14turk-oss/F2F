@@ -3377,41 +3377,43 @@ async def edit_description_start(callback: types.CallbackQuery, state: FSMContex
 
 @dp.callback_query(F.data == "edit_field_location", EditPropertyStates.choosing_field)
 async def edit_location_start(callback: types.CallbackQuery, state: FSMContext):
-    db = SessionLocal()
-    districts = db.query(District).all()
-    db.close()
-    
-    keyboard_buttons = []
-    for district in districts:
-        keyboard_buttons.append([InlineKeyboardButton(text=district.name, callback_data=f"edit_loc_{district.name}")])
-    keyboard_buttons.append([InlineKeyboardButton(text="❌ Отмена", callback_data="edit_cancel")])
-    
-    keyboard = InlineKeyboardMarkup(inline_keyboard=keyboard_buttons)
-    
-    await callback.message.edit_text(
-        "📍 <b>Выберите новый район:</b>",
-        reply_markup=keyboard,
-        parse_mode="HTML"
+    await callback.message.delete()
+    await callback.message.answer(
+        "📍 <b>Отправьте новую локацию объекта:</b>\n\n"
+        "Нажмите на скрепку 📎 и выберите 'Геопозиция'",
+        parse_mode="HTML",
+        reply_markup=ReplyKeyboardMarkup(
+            keyboard=[[KeyboardButton(text="❌ Отмена")]],
+            resize_keyboard=True
+        )
     )
     await state.set_state(EditPropertyStates.editing_location)
 
 
-@dp.callback_query(F.data.startswith("edit_loc_"), EditPropertyStates.editing_location)
-async def save_location(callback: types.CallbackQuery, state: FSMContext):
-    new_district = callback.data.replace("edit_loc_", "")
-    
+@dp.message(EditPropertyStates.editing_location, F.location)
+async def save_location(message: types.Message, state: FSMContext):
     data = await state.get_data()
     prop_id = data.get("editing_prop_id")
     
     db = SessionLocal()
     prop = db.query(Property).filter(Property.id == prop_id).first()
     if prop:
-        prop.district = new_district
+        prop.latitude = message.location.latitude
+        prop.longitude = message.location.longitude
         db.commit()
     db.close()
     
     await state.clear()
-    await callback.message.edit_text(f"✅ Локация изменена на {new_district}")
+    await message.answer(
+        f"✅ Локация обновлена!",
+        reply_markup=ReplyKeyboardRemove()
+    )
+
+
+@dp.message(EditPropertyStates.editing_location, F.text == "❌ Отмена")
+async def cancel_location_edit(message: types.Message, state: FSMContext):
+    await state.clear()
+    await message.answer("Редактирование отменено.", reply_markup=ReplyKeyboardRemove())
 
 
 @dp.message(EditPropertyStates.editing_price)
