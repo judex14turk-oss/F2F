@@ -1455,6 +1455,7 @@ def webapp_user_objects():
     t = WEBAPP_TRANSLATIONS.get(lang, WEBAPP_TRANSLATIONS['ru'])
     
     return render_template('webapp_user_objects.html',
+        user=user,
         tg_id=tg_id,
         lang=lang,
         t=t,
