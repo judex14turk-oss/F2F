@@ -2692,14 +2692,24 @@ async def view_properties(message: types.Message, state: FSMContext):
             query = query.filter(or_(*district_filters))
     
     if user.search_budget_max:
-        # Budget is in USD, convert to UZS for filtering (properties stored in UZS)
-        usd_rate = get_usd_rate()
-        budget_max_uzs = int(user.search_budget_max * usd_rate)
+        # Check user's currency preference - convert only if budget is in USD
+        user_currency = user.search_currency or 'USD'
+        if user_currency == 'USD':
+            # Budget is in USD, convert to UZS for filtering (properties stored in UZS)
+            usd_rate = get_usd_rate()
+            budget_max_uzs = int(user.search_budget_max * usd_rate)
+        else:
+            # Budget is already in UZS
+            budget_max_uzs = int(user.search_budget_max)
         query = query.filter(Property.price <= budget_max_uzs)
     
     if user.search_budget_min:
-        usd_rate = get_usd_rate()
-        budget_min_uzs = int(user.search_budget_min * usd_rate)
+        user_currency = user.search_currency or 'USD'
+        if user_currency == 'USD':
+            usd_rate = get_usd_rate()
+            budget_min_uzs = int(user.search_budget_min * usd_rate)
+        else:
+            budget_min_uzs = int(user.search_budget_min)
         query = query.filter(Property.price >= budget_min_uzs)
     
     if user.search_floor and user.search_floor not in ["any", "Любой", ""]:
@@ -4592,7 +4602,14 @@ async def show_buyer_profile(message, user):
     any_text = "Istalgan" if lang == 'uz' else "Любой"
     rooms_text = "xona" if lang == 'uz' else "комн."
     
-    budget = f"${user.search_budget_max:,}" if user.search_budget_max else not_specified
+    user_currency = user.search_currency or 'USD'
+    if user.search_budget_max:
+        if user_currency == 'USD':
+            budget = f"${user.search_budget_max:,}"
+        else:
+            budget = f"{user.search_budget_max:,} сум"
+    else:
+        budget = not_specified
     
     district_display = user.search_district or any_text
     if lang == 'uz' and user.search_district:
@@ -5157,6 +5174,7 @@ async def quick_budget_type_selected(message: types.Message, state: FSMContext):
         if budget_mode == 'single':
             db = SessionLocal()
             user = db.query(User).filter(User.telegram_id == message.from_user.id).first()
+            user_currency = user.search_currency or 'USD'
             user.search_budget_min = int(budget * 0.8)
             user.search_budget_max = int(budget * 1.2)
             db.commit()
@@ -5164,8 +5182,12 @@ async def quick_budget_type_selected(message: types.Message, state: FSMContext):
             
             await state.clear()
             keyboard = get_buyer_menu(lang)
+            if user_currency == 'USD':
+                budget_str = f"${budget:,.0f}"
+            else:
+                budget_str = f"{budget:,.0f} сум"
             await message.answer(
-                f"✅ Бюджет изменён: ${budget:,.0f} (±20%)" if lang == 'ru' else f"✅ Byudjet o'zgartirildi: ${budget:,.0f} (±20%)",
+                f"✅ Бюджет изменён: {budget_str} (±20%)" if lang == 'ru' else f"✅ Byudjet o'zgartirildi: {budget_str} (±20%)",
                 reply_markup=keyboard
             )
         elif budget_mode == 'range':
@@ -5181,6 +5203,7 @@ async def quick_budget_type_selected(message: types.Message, state: FSMContext):
                 
                 db = SessionLocal()
                 user = db.query(User).filter(User.telegram_id == message.from_user.id).first()
+                user_currency = user.search_currency or 'USD'
                 user.search_budget_min = budget_min
                 user.search_budget_max = budget_max
                 db.commit()
@@ -5188,8 +5211,12 @@ async def quick_budget_type_selected(message: types.Message, state: FSMContext):
                 
                 await state.clear()
                 keyboard = get_buyer_menu(lang)
+                if user_currency == 'USD':
+                    budget_str = f"${budget_min:,} - ${budget_max:,}"
+                else:
+                    budget_str = f"{budget_min:,} - {budget_max:,} сум"
                 await message.answer(
-                    f"✅ Бюджет изменён: ${budget_min:,} - ${budget_max:,}" if lang == 'ru' else f"✅ Byudjet o'zgartirildi: ${budget_min:,} - ${budget_max:,}",
+                    f"✅ Бюджет изменён: {budget_str}" if lang == 'ru' else f"✅ Byudjet o'zgartirildi: {budget_str}",
                     reply_markup=keyboard
                 )
 
