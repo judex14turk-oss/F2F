@@ -3706,9 +3706,12 @@ def webapp_parser_run_stream():
                     
                     elif event_type == 'listing':
                         data = event['data']
+                        if data is None:
+                            continue
                         phone = data.get('phone')
                         current_num = event.get('current', 0)
-                        print(f"Processing listing {current_num}/{grand_total}: {data.get('title', 'N/A')[:50]}")
+                        title = data.get('title') or 'N/A'
+                        print(f"Processing listing {current_num}/{grand_total}: {title[:50]}")
                         
                         if not phone:
                             skipped_no_phone += 1
