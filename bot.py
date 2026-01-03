@@ -5290,6 +5290,7 @@ async def quick_budget_type_selected(message: types.Message, state: FSMContext):
 class SearchSettingsStates(StatesGroup):
     deal_type = State()
     prop_type = State()
+    housing_type = State()
     rooms = State()
     floor = State()
     floor_custom = State()
@@ -5392,6 +5393,72 @@ async def settings_proptype_selected(message: types.Message, state: FSMContext):
     
     await state.update_data(search_prop_type=prop_type)
     
+    if prop_type == "apartment":
+        keyboard = ReplyKeyboardMarkup(
+            keyboard=[
+                [KeyboardButton(text="🏗 Новостройка" if lang == 'ru' else "🏗 Yangi bino")],
+                [KeyboardButton(text="🏠 Вторичка" if lang == 'ru' else "🏠 Ikkilamchi")],
+                [KeyboardButton(text="Любой тип" if lang == 'ru' else "Istalgan tur")],
+                [KeyboardButton(text=get_text('back', lang))]
+            ],
+            resize_keyboard=True
+        )
+        await message.answer(
+            "🏢 Выберите тип квартиры:" if lang == 'ru' else "🏢 Kvartira turini tanlang:",
+            reply_markup=keyboard
+        )
+        await state.set_state(SearchSettingsStates.housing_type)
+    else:
+        keyboard = ReplyKeyboardMarkup(
+            keyboard=[
+                [KeyboardButton(text="1"), KeyboardButton(text="2"), KeyboardButton(text="3")],
+                [KeyboardButton(text="4+"), KeyboardButton(text=get_text('studio', lang))],
+                [KeyboardButton(text=get_text('any_rooms', lang))],
+                [KeyboardButton(text=get_text('back', lang))]
+            ],
+            resize_keyboard=True
+        )
+        await message.answer(get_text('choose_rooms_count', lang), reply_markup=keyboard)
+        await state.set_state(SearchSettingsStates.rooms)
+
+
+@dp.message(F.text.in_(["⬅️ Назад", "⬅️ Orqaga"]), SearchSettingsStates.housing_type)
+async def settings_back_to_proptype_from_housing(message: types.Message, state: FSMContext):
+    data = await state.get_data()
+    lang = data.get('user_lang', 'ru')
+    
+    keyboard = ReplyKeyboardMarkup(
+        keyboard=[
+            [KeyboardButton(text=get_text('apartment', lang))],
+            [KeyboardButton(text=get_text('house', lang))],
+            [KeyboardButton(text=get_text('commercial', lang))],
+            [KeyboardButton(text=get_text('back', lang))]
+        ],
+        resize_keyboard=True
+    )
+    await message.answer(get_text('choose_property_type', lang), reply_markup=keyboard)
+    await state.set_state(SearchSettingsStates.prop_type)
+
+
+@dp.message(SearchSettingsStates.housing_type)
+async def settings_housing_type_selected(message: types.Message, state: FSMContext):
+    data = await state.get_data()
+    lang = data.get('user_lang', 'ru')
+    
+    housing_map = {
+        "🏗 новостройка": "new_building",
+        "🏗 yangi bino": "new_building",
+        "🏠 вторичка": "secondary",
+        "🏠 ikkilamchi": "secondary",
+        "любой тип": "any",
+        "istalgan tur": "any"
+    }
+    housing_type = housing_map.get(message.text.lower())
+    if not housing_type:
+        return
+    
+    await state.update_data(search_housing_type=housing_type)
+    
     keyboard = ReplyKeyboardMarkup(
         keyboard=[
             [KeyboardButton(text="1"), KeyboardButton(text="2"), KeyboardButton(text="3")],
@@ -5409,18 +5476,35 @@ async def settings_proptype_selected(message: types.Message, state: FSMContext):
 async def settings_back_to_proptype(message: types.Message, state: FSMContext):
     data = await state.get_data()
     lang = data.get('user_lang', 'ru')
+    prop_type = data.get('search_prop_type', '')
     
-    keyboard = ReplyKeyboardMarkup(
-        keyboard=[
-            [KeyboardButton(text=get_text('apartment', lang))],
-            [KeyboardButton(text=get_text('house', lang))],
-            [KeyboardButton(text=get_text('commercial', lang))],
-            [KeyboardButton(text=get_text('back', lang))]
-        ],
-        resize_keyboard=True
-    )
-    await message.answer(get_text('choose_property_type', lang), reply_markup=keyboard)
-    await state.set_state(SearchSettingsStates.prop_type)
+    if prop_type == "apartment":
+        keyboard = ReplyKeyboardMarkup(
+            keyboard=[
+                [KeyboardButton(text="🏗 Новостройка" if lang == 'ru' else "🏗 Yangi bino")],
+                [KeyboardButton(text="🏠 Вторичка" if lang == 'ru' else "🏠 Ikkilamchi")],
+                [KeyboardButton(text="Любой тип" if lang == 'ru' else "Istalgan tur")],
+                [KeyboardButton(text=get_text('back', lang))]
+            ],
+            resize_keyboard=True
+        )
+        await message.answer(
+            "🏢 Выберите тип квартиры:" if lang == 'ru' else "🏢 Kvartira turini tanlang:",
+            reply_markup=keyboard
+        )
+        await state.set_state(SearchSettingsStates.housing_type)
+    else:
+        keyboard = ReplyKeyboardMarkup(
+            keyboard=[
+                [KeyboardButton(text=get_text('apartment', lang))],
+                [KeyboardButton(text=get_text('house', lang))],
+                [KeyboardButton(text=get_text('commercial', lang))],
+                [KeyboardButton(text=get_text('back', lang))]
+            ],
+            resize_keyboard=True
+        )
+        await message.answer(get_text('choose_property_type', lang), reply_markup=keyboard)
+        await state.set_state(SearchSettingsStates.prop_type)
 
 
 @dp.message(SearchSettingsStates.rooms)
