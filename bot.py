@@ -3115,7 +3115,7 @@ async def my_properties(message: types.Message):
         
         if prop.status == PropertyStatus.ACTIVE:
             buttons.append([InlineKeyboardButton(text="📦 В архив", callback_data=f"prop_toggle_{prop.id}")])
-        elif prop.status == PropertyStatus.ARCHIVED:
+        elif prop.status == PropertyStatus.ARCHIVE:
             buttons.append([InlineKeyboardButton(text="✅ Активировать", callback_data=f"prop_toggle_{prop.id}")])
         # For MODERATION status - no toggle button, only admin can approve
         if prop.likes_count > 0:
