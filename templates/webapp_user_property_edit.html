@@ -263,6 +263,15 @@
     
     <div class="success-message" id="successMsg">Изменения сохранены!</div>
     
+    {% if seller_type == 'realtor' %}
+    <div class="maintenance-container" style="display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 60px 20px; text-align: center;">
+        <div style="font-size: 4rem; margin-bottom: 20px;">
+            <i class="bi bi-gear" style="color: #f59e0b;"></i>
+        </div>
+        <h2 style="color: #fff; font-size: 1.3rem; margin-bottom: 12px;">Ведутся технические работы</h2>
+        <p style="color: #888; font-size: 0.95rem; max-width: 300px;">Раздел редактирования для риелторов временно недоступен. Приносим извинения за неудобства.</p>
+    </div>
+    {% else %}
     <form class="form-container" id="editForm">
         <input type="hidden" name="property_id" value="{{ prop.id }}">
         
@@ -323,10 +332,12 @@
                 <input type="text" name="address" value="{{ prop.address or '' }}" placeholder="Улица, дом">
             </div>
             
+            {% if seller_type == 'developer' %}
             <div class="form-group">
                 <label>ЖК (жилой комплекс)</label>
                 <input type="text" name="residential_complex" value="{{ prop.residential_complex or '' }}" placeholder="Название ЖК">
             </div>
+            {% endif %}
         </div>
         
         <div class="form-section">
@@ -388,6 +399,7 @@
                 </select>
             </div>
             
+            {% if seller_type == 'developer' %}
             <div class="form-group">
                 <label>Класс жилья</label>
                 <select name="housing_class">
@@ -398,6 +410,7 @@
                     <option value="Премиум" {% if prop.housing_class == 'Премиум' %}selected{% endif %}>Премиум</option>
                 </select>
             </div>
+            {% endif %}
             
             <div class="form-row">
                 <div class="form-group">
@@ -414,12 +427,15 @@
                 </div>
             </div>
             
+            {% if seller_type == 'developer' %}
             <div class="form-group">
                 <label>В стоимость входит</label>
                 <input type="text" name="included_in_price" value="{{ prop.included_in_price or '' }}" placeholder="Окна, Котёл, ...">
             </div>
+            {% endif %}
         </div>
         
+        {% if seller_type == 'developer' %}
         <div class="form-section">
             <div class="form-section-title">
                 <i class="bi bi-cash-stack"></i> Условия оплаты
@@ -453,7 +469,6 @@
             <div class="form-group">
                 <label>Скидки</label>
                 <div id="discounts-container">
-                    <!-- Discount entries will be added here -->
                 </div>
                 <button type="button" class="add-discount-btn" onclick="addDiscountRow()">
                     <i class="bi bi-plus-circle"></i> Добавить скидку
@@ -505,6 +520,7 @@
                 <input type="number" name="installment_grace_period" value="{{ prop.installment_grace_period or '' }}" placeholder="0">
             </div>
         </div>
+        {% endif %}
         
         <div class="form-section">
             <div class="form-section-title">
@@ -528,13 +544,16 @@
             </div>
         </div>
     </form>
+    {% endif %}
     
+    {% if seller_type != 'realtor' %}
     <div class="submit-container">
         <button type="submit" form="editForm" class="submit-btn" id="submitBtn">
             <i class="bi bi-check-lg"></i>
             Сохранить изменения
         </button>
     </div>
+    {% endif %}
     
     <script>
         const tg = window.Telegram.WebApp;
@@ -550,6 +569,7 @@
         let discountRowId = 0;
         
         function addDiscountRow(paymentPercent = '', discountPercent = '') {
+            if (!discountsContainer) return;
             const row = document.createElement('div');
             row.className = 'discount-row';
             row.id = 'discount-row-' + discountRowId;
@@ -580,6 +600,7 @@
         }
         
         function updateDiscountsHidden() {
+            if (!discountsContainer || !discountsHidden) return;
             const rows = discountsContainer.querySelectorAll('.discount-row');
             const discounts = [];
             rows.forEach(row => {
@@ -596,6 +617,7 @@
         }
         
         function loadExistingDiscounts() {
+            if (!discountsContainer || !discountsHidden) return;
             const existingData = discountsHidden.value;
             if (existingData && existingData.trim() !== '') {
                 try {
@@ -617,13 +639,14 @@
                     }
                 }
             }
-            if (discountsContainer.children.length === 0) {
+            if (discountsContainer && discountsContainer.children.length === 0) {
                 addDiscountRow();
             }
         }
         
         loadExistingDiscounts();
         
+        if (form) {
         form.addEventListener('submit', async (e) => {
             e.preventDefault();
             
@@ -668,6 +691,7 @@
             submitBtn.disabled = false;
             submitBtn.innerHTML = '<i class="bi bi-check-lg"></i> Сохранить изменения';
         });
+        }
     </script>
 </body>
 </html>

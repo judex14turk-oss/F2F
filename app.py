@@ -1394,13 +1394,16 @@ def webapp_user_property_edit(property_id):
             else:
                 photo_url = url_for('telegram_photo', file_id=first_photo)
     
+    seller_type = user.seller_type.value if user.seller_type else 'owner'
+    
     db.close()
     
     return render_template('webapp_user_property_edit.html', 
         tg_id=tg_id, 
         prop=prop,
         districts=districts,
-        photo_url=photo_url
+        photo_url=photo_url,
+        seller_type=seller_type
     )
 
 
