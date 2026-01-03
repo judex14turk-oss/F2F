@@ -254,12 +254,11 @@
             <i class="bi bi-people"></i>
             {{ t.get('webapp_buyers', 'Покупатели') }}
         </a>
-        {% else %}
+        {% endif %}
         <a href="{{ url_for('webapp_user_likes', tg_id=tg_id) }}" class="nav-tab">
             <i class="bi bi-heart"></i>
             {{ t.get('webapp_likes', 'Лайки') }}
         </a>
-        {% endif %}
         <a href="{{ url_for('webapp_user_stats', tg_id=tg_id) }}" class="nav-tab">
             <i class="bi bi-graph-up"></i>
             {{ t.get('webapp_stats', 'Статистика') }}
