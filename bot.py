@@ -4182,6 +4182,13 @@ async def find_buyer_show_results(message: types.Message, state: FSMContext):
     
     await state.clear()
     
+    await show_buyers_page(message, deal_type, prop_type, max_budget, 0)
+
+
+async def show_buyers_page(message_or_callback, deal_type: str, prop_type: str, max_budget: int, page: int):
+    BUYERS_PER_PAGE = 5
+    offset = page * BUYERS_PER_PAGE
+    
     db = SessionLocal()
     
     query = db.query(User).filter(
@@ -4197,21 +4204,31 @@ async def find_buyer_show_results(message: types.Message, state: FSMContext):
     if max_budget < 999999999:
         query = query.filter(User.search_budget_max <= max_budget)
     
-    buyers = query.order_by(User.created_at.desc()).limit(10).all()
+    total_count = query.count()
+    buyers = query.order_by(User.created_at.desc()).offset(offset).limit(BUYERS_PER_PAGE).all()
+    
+    if isinstance(message_or_callback, types.CallbackQuery):
+        from_user_id = message_or_callback.from_user.id
+        seller = db.query(User).filter(User.telegram_id == from_user_id).first()
+    else:
+        from_user_id = message_or_callback.from_user.id
+        seller = db.query(User).filter(User.telegram_id == from_user_id).first()
+    
+    is_dev = seller.seller_type == SellerType.DEVELOPER if seller else False
+    lang = get_user_lang(seller)
     db.close()
     
     if not buyers:
-        db2 = SessionLocal()
-        seller = db2.query(User).filter(User.telegram_id == message.from_user.id).first()
-        is_dev = seller.seller_type == SellerType.DEVELOPER if seller else False
-        l = get_user_lang(seller)
-        db2.close()
-        await message.answer("Пока нет покупателей с такими критериями.", reply_markup=get_seller_menu(l, is_developer=is_dev))
+        if isinstance(message_or_callback, types.CallbackQuery):
+            await message_or_callback.answer("Больше нет покупателей")
+        else:
+            await message_or_callback.answer("Пока нет покупателей с такими критериями.", reply_markup=get_seller_menu(lang, is_developer=is_dev))
         return
     
     deal_names = {"sale": "Покупка", "rent": "Аренда"}
     prop_names = {"apartment": "Квартиры", "house": "Дом/Участок", "commercial": "Коммерческая"}
-    text = f"🎯 Клиенты ({deal_names.get(deal_type)} — {prop_names.get(prop_type, prop_type)}, {message.text}):\n\n"
+    budget_text = "Любой бюджет" if max_budget >= 999999999 else f"до ${max_budget:,}"
+    text = f"🎯 Клиенты ({deal_names.get(deal_type)} — {prop_names.get(prop_type, prop_type)}, {budget_text}):\n\n"
     
     keyboard_buttons = []
     for buyer in buyers:
@@ -4230,14 +4247,35 @@ async def find_buyer_show_results(message: types.Message, state: FSMContext):
             InlineKeyboardButton(text=f"📤 Предложить {buyer.first_name or 'клиенту'}", callback_data=f"offer_{buyer.id}")
         ])
     
-    await message.answer(text, reply_markup=InlineKeyboardMarkup(inline_keyboard=keyboard_buttons))
+    total_pages = (total_count + BUYERS_PER_PAGE - 1) // BUYERS_PER_PAGE
+    text += f"\n📄 Страница {page + 1} из {total_pages} (всего: {total_count})"
     
-    db3 = SessionLocal()
-    seller = db3.query(User).filter(User.telegram_id == message.from_user.id).first()
-    is_dev = seller.seller_type == SellerType.DEVELOPER if seller else False
-    l = get_user_lang(seller)
-    db3.close()
-    await message.answer("Выберите клиента или вернитесь в меню", reply_markup=get_seller_menu(l, is_developer=is_dev))
+    nav_buttons = []
+    if page > 0:
+        nav_buttons.append(InlineKeyboardButton(text="⬅️ Назад", callback_data=f"buyerspage_{page-1}_{deal_type}_{prop_type}_{max_budget}"))
+    if offset + BUYERS_PER_PAGE < total_count:
+        nav_buttons.append(InlineKeyboardButton(text="Далее ➡️", callback_data=f"buyerspage_{page+1}_{deal_type}_{prop_type}_{max_budget}"))
+    
+    if nav_buttons:
+        keyboard_buttons.append(nav_buttons)
+    
+    if isinstance(message_or_callback, types.CallbackQuery):
+        await message_or_callback.message.edit_text(text, reply_markup=InlineKeyboardMarkup(inline_keyboard=keyboard_buttons))
+    else:
+        await message_or_callback.answer(text, reply_markup=InlineKeyboardMarkup(inline_keyboard=keyboard_buttons))
+        await message_or_callback.answer("Выберите клиента или вернитесь в меню", reply_markup=get_seller_menu(lang, is_developer=is_dev))
+
+
+@dp.callback_query(F.data.startswith("buyerspage_"))
+async def buyers_page_callback(callback: types.CallbackQuery):
+    parts = callback.data.replace("buyerspage_", "").split("_")
+    page = int(parts[0])
+    deal_type = parts[1]
+    prop_type = parts[2]
+    max_budget = int(parts[3])
+    
+    await show_buyers_page(callback, deal_type, prop_type, max_budget, page)
+    await callback.answer()
 
 
 @dp.callback_query(F.data.startswith("offer_"))
