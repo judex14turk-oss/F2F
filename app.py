@@ -1367,7 +1367,81 @@ def webapp_user_property_edit(property_id):
     tg_id = request.args.get('tg_id', '')
     if not tg_id:
         return "Access denied", 403
-    return render_template('webapp_user_menu_stub.html', tg_id=tg_id, page='objects', title='Редактирование')
+    
+    db = get_db()
+    user = db.query(User).filter(User.telegram_id == int(tg_id)).first()
+    prop = db.query(Property).filter(Property.id == property_id).first()
+    
+    if not user or not prop or prop.owner_id != user.id:
+        db.close()
+        return "Access denied", 403
+    
+    districts = db.query(District).all()
+    
+    photo_url = None
+    if prop.photos:
+        first_photo = prop.photos.split(',')[0].strip()
+        if first_photo:
+            if first_photo.startswith('http://') or first_photo.startswith('https://'):
+                photo_url = first_photo
+            else:
+                photo_url = url_for('telegram_photo', file_id=first_photo)
+    
+    db.close()
+    
+    return render_template('webapp_user_property_edit.html', 
+        tg_id=tg_id, 
+        prop=prop,
+        districts=districts,
+        photo_url=photo_url
+    )
+
+
+@app.route('/webapp/user_property/<int:property_id>/save', methods=['POST'])
+def webapp_user_property_save(property_id):
+    tg_id = request.args.get('tg_id', '')
+    if not tg_id:
+        return "Access denied", 403
+    
+    db = get_db()
+    user = db.query(User).filter(User.telegram_id == int(tg_id)).first()
+    prop = db.query(Property).filter(Property.id == property_id).first()
+    
+    if not user or not prop or prop.owner_id != user.id:
+        db.close()
+        return "Access denied", 403
+    
+    data = request.get_json()
+    
+    if 'price' in data and data['price']:
+        prop.price = int(data['price'])
+    if 'rooms' in data and data['rooms']:
+        prop.rooms = int(data['rooms'])
+    if 'area' in data and data['area']:
+        prop.area = float(data['area'])
+    if 'floor' in data and data['floor']:
+        prop.floor = int(data['floor'])
+    if 'total_floors' in data and data['total_floors']:
+        prop.total_floors = int(data['total_floors'])
+    if 'district' in data:
+        prop.district = data['district']
+    if 'address' in data:
+        prop.address = data['address']
+    if 'residential_complex' in data:
+        prop.residential_complex = data['residential_complex']
+    if 'renovation' in data:
+        prop.renovation = data['renovation']
+    if 'building_type' in data:
+        prop.building_type = data['building_type']
+    if 'description' in data:
+        prop.description = data['description']
+    if 'phone' in data:
+        prop.phone = data['phone']
+    
+    db.commit()
+    db.close()
+    
+    return "OK", 200
 
 
 @app.route('/property/<int:property_id>')
