@@ -4230,17 +4230,25 @@ async def show_buyers_page(message_or_callback, deal_type: str, prop_type: str, 
     budget_text = "Любой бюджет" if max_budget >= 999999999 else f"до ${max_budget:,}"
     text = f"🎯 Клиенты ({deal_names.get(deal_type)} — {prop_names.get(prop_type, prop_type)}, {budget_text}):\n\n"
     
+    usd_rate = get_usd_rate()
     keyboard_buttons = []
     for buyer in buyers:
         rooms = buyer.search_rooms or "Любые"
         district = buyer.search_district or "Любой район"
-        budget = buyer.search_budget_max or 0
+        budget_raw = buyer.search_budget_max or 0
+        buyer_currency = buyer.search_currency or 'USD'
+        
+        if buyer_currency == 'UZS' and usd_rate > 0:
+            budget_usd = int(budget_raw / usd_rate)
+        else:
+            budget_usd = budget_raw
+        
         bio_line = f"   📝 {buyer.buyer_bio}\n" if buyer.buyer_bio else ""
         
         text += (
             f"👤 {buyer.first_name or 'Клиент'}\n"
             f"   🚪 {rooms} комн. | 📍 {district}\n"
-            f"   💰 до ${budget:,}\n"
+            f"   💰 до ${budget_usd:,}\n"
             f"{bio_line}\n"
         )
         keyboard_buttons.append([
