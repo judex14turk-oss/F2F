@@ -5907,6 +5907,7 @@ async def settings_bio_entered(message: types.Message, state: FSMContext):
     
     deal_type = data.get("search_deal_type", "buy")
     prop_type = data.get("search_prop_type", "apartment")
+    housing_type = data.get("search_housing_type", "")
     rooms = data.get("search_rooms", "any")
     floor = data.get("search_floor", "any")
     district = data.get("search_district", "Любой")
@@ -5918,6 +5919,7 @@ async def settings_bio_entered(message: types.Message, state: FSMContext):
     user.search_rooms = rooms
     user.search_floor = floor
     user.search_district = district
+    user.search_housing_type = housing_type if housing_type else None
     user.search_payment_type = f"{deal_type}_{prop_type}"
     user.search_deal_type = "sale" if deal_type == "buy" else "rent"
     db.commit()
