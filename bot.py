@@ -1394,7 +1394,7 @@ async def finish_photos(callback: types.CallbackQuery, state: FSMContext):
         f"🛋 Мебель: {furniture}\n"
         f"🚪 Комнаты: {data.get('room_type', '')}\n"
         f"🚿 Санузел: {data.get('bathroom_type', '')}\n"
-        f"💰 Цена: ${data.get('price', 0):,}\n"
+        f"💰 Цена: {data.get('price', 0):,} сум\n"
     )
     
     if data.get("description"):
@@ -1845,7 +1845,7 @@ async def dev_process_renovation(message: types.Message, state: FSMContext):
         return
     
     await state.update_data(renovation=reno_map[message.text])
-    await message.answer(get_text('dev_enter_included', lang), reply_markup=get_dev_back_keyboard(lang))
+    await message.answer(get_text('dev_enter_included', lang), reply_markup=get_dev_skip_back_keyboard(lang))
     await state.set_state(DeveloperPropertyStates.included_in_price)
 
 
@@ -1872,7 +1872,8 @@ async def dev_process_included(message: types.Message, state: FSMContext):
     data = await state.get_data()
     lang = data.get('user_lang', 'ru')
     
-    await state.update_data(included_in_price=message.text)
+    if message.text not in [get_text('dev_skip', 'ru'), get_text('dev_skip', 'uz')]:
+        await state.update_data(included_in_price=message.text)
     
     db = SessionLocal()
     districts = db.query(District).all()
@@ -1898,7 +1899,7 @@ async def dev_process_included(message: types.Message, state: FSMContext):
 async def dev_back_to_included(message: types.Message, state: FSMContext):
     data = await state.get_data()
     lang = data.get('user_lang', 'ru')
-    await message.answer(get_text('dev_enter_included', lang), reply_markup=get_dev_back_keyboard(lang))
+    await message.answer(get_text('dev_enter_included', lang), reply_markup=get_dev_skip_back_keyboard(lang))
     await state.set_state(DeveloperPropertyStates.included_in_price)
 
 
@@ -2463,7 +2464,7 @@ async def dev_save_property(message, state, lang):
     
     dp_text = ""
     if data.get("down_payment_type") == "amount":
-        dp_text = f"${int(data.get('down_payment_value', 0)):,}"
+        dp_text = f"{int(data.get('down_payment_value', 0)):,} сум"
     elif data.get("down_payment_type") == "percent":
         dp_text = f"{data.get('down_payment_value', 0)}%"
     
@@ -2483,8 +2484,8 @@ async def dev_save_property(message, state, lang):
         f"📐 Площадь: {area} м²\n"
         f"🪟 Балкон: {balcony_text}\n"
         f"🔨 Ремонт: {data.get('renovation', '')}\n"
-        f"💵 Цена за м²: ${price_per_sqm:,}\n"
-        f"💰 Общая стоимость: ${total_price:,}\n"
+        f"💵 Цена за м²: {price_per_sqm:,} сум\n"
+        f"💰 Общая стоимость: {total_price:,} сум\n"
         f"💳 Первоначальный взнос: {dp_text}\n\n"
         f"🏷 Скидки:\n{discounts_text}\n\n"
         f"💳 Методы оплаты: {payment_text}\n"
@@ -2714,7 +2715,7 @@ async def show_property_card(message, property_id, state=None):
     text = f"{type_emoji} <b>{type_name}</b>  •  ID: {prop.id}\n"
     text += "━━━━━━━━━━━━━━━━━━━━\n\n"
     
-    text += f"💰 <b>${prop.price:,}</b>\n"
+    text += f"💰 <b>{prop.price:,} сум</b>\n"
     
     if prop.olx_title:
         text += f"📝 {prop.olx_title}\n"
@@ -2830,7 +2831,7 @@ async def process_like_reply(message: types.Message, state: FSMContext):
                         f"❤️ Новый лайк!\n\n"
                         f"Пользователь заинтересовался вашим объектом:\n"
                         f"📍 {prop.district}\n"
-                        f"💰 ${prop.price:,}\n\n"
+                        f"💰 {prop.price:,} сум\n\n"
                         f"Перейдите в раздел 'Меня лайкнули', чтобы открыть контакт!"
                     )
                 except:
@@ -3095,7 +3096,7 @@ async def my_properties(message: types.Message):
             f"🆔 <code>{prop_unique_id}</code>\n"
             f"{timer_info}"
             f"━━━━━━━━━━━━━━━━━━━━\n"
-            f"📋 {type_str} | {prop.rooms} комн. | <b>${prop.price:,}</b>\n"
+            f"📋 {type_str} | {prop.rooms} комн. | <b>{prop.price:,} сум</b>\n"
             f"{area_info}"
             f"{floor_info}"
             f"{building_info}"
@@ -3388,7 +3389,7 @@ async def save_price(message: types.Message, state: FSMContext):
     db.close()
     
     await state.clear()
-    await message.answer(f"✅ Цена изменена на ${int(price):,}")
+    await message.answer(f"✅ Цена изменена на {int(price):,} сум")
 
 
 @dp.message(EditPropertyStates.editing_rooms)
@@ -3640,7 +3641,7 @@ async def create_match(callback: types.CallbackQuery):
             f"🎉 Отличные новости!\n\n"
             f"Владелец квартиры подтвердил интерес!\n\n"
             f"📍 {prop.district}\n"
-            f"💰 ${prop.price:,}\n\n"
+            f"💰 {prop.price:,} сум\n\n"
             f"📞 Контакт: {seller_phone}\n"
             f"👤 Менеджер: {seller.manager_name or seller.first_name}\n\n"
             f"Свяжитесь для просмотра!"
@@ -3789,7 +3790,7 @@ async def view_deal_property(callback: types.CallbackQuery):
         f"🏠 {prop.building_type or ''}\n"
         f"🔨 {prop.renovation or ''}\n"
         f"🛋 Мебель: {furniture}\n\n"
-        f"💰 ${prop.price:,}\n"
+        f"💰 {prop.price:,} сум\n"
     )
     
     if prop.description:
@@ -4070,7 +4071,7 @@ async def send_offer(callback: types.CallbackQuery):
     for prop in properties[:5]:
         keyboard_buttons.append([
             InlineKeyboardButton(
-                text=f"{prop.district} - ${prop.price:,}",
+                text=f"{prop.district} - {prop.price:,} сум",
                 callback_data=f"sendprop_{buyer_id}_{prop.id}"
             )
         ])
@@ -4107,7 +4108,7 @@ async def send_property_offer(callback: types.CallbackQuery):
             f"📬 Новое предложение!\n\n"
             f"📍 {prop.district}\n"
             f"🚪 {prop.rooms} комн. | 📐 {prop.area} м²\n"
-            f"💰 ${prop.price:,}\n\n"
+            f"💰 {prop.price:,} сум\n\n"
             f"Интересно?",
             reply_markup=InlineKeyboardMarkup(inline_keyboard=[
                 [
@@ -4543,7 +4544,7 @@ async def buyer_likes(message: types.Message):
             
             text = f"{status_emoji} <b>{status_text}</b>  •  {type_name}\n"
             text += "━━━━━━━━━━━━━━━━━━━━\n\n"
-            text += f"💰 <b>${prop.price:,}</b>\n\n"
+            text += f"💰 <b>{prop.price:,} сум</b>\n\n"
             
             if prop.district:
                 district_display = get_district_name(prop.district, lang)
@@ -4620,7 +4621,7 @@ async def buyer_messages(message: types.Message):
             district_display = get_district_name(prop.district, lang) if prop.district else obj_text
             text += (
                 f"📍 {district_display}\n"
-                f"   {prop.rooms} {rooms_text} | ${prop.price:,}\n"
+                f"   {prop.rooms} {rooms_text} | {prop.price:,} сум\n"
                 f"   📞 {seller.phone if seller else not_specified}\n\n"
             )
         db.close()
@@ -4775,7 +4776,7 @@ async def my_likes(message: types.Message):
             status = "🟢 Мэтч!" if like.is_matched else "⏳ Ожидание"
             text += (
                 f"{status} {prop.district or 'Объект'}\n"
-                f"   {prop.rooms} комн. | ${prop.price:,}\n\n"
+                f"   {prop.rooms} комн. | {prop.price:,} сум\n\n"
             )
     
     await message.answer(text)
@@ -5590,7 +5591,7 @@ async def property_lifecycle_task():
                                 owner.telegram_id,
                                 f"📦 Объявление перемещено в архив\n\n"
                                 f"📍 {prop.district or 'Объект'}\n"
-                                f"💰 ${prop.price:,}\n\n"
+                                f"💰 {prop.price:,} сум\n\n"
                                 f"Причина: прошло 30 дней с момента публикации.\n"
                                 f"У вас есть 30 дней, чтобы активировать его снова, иначе оно будет удалено.\n\n"
                                 f"Перейдите в '🏢 Мои объекты', чтобы активировать."
@@ -5623,7 +5624,7 @@ async def property_lifecycle_task():
                                 owner.telegram_id,
                                 f"🗑 Объявление удалено\n\n"
                                 f"📍 {prop.district or 'Объект'}\n"
-                                f"💰 ${prop.price:,}\n\n"
+                                f"💰 {prop.price:,} сум\n\n"
                                 f"Причина: объявление находилось в архиве более 30 дней.\n"
                                 f"Вы можете добавить новое объявление."
                             )
