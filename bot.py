@@ -2940,12 +2940,14 @@ async def process_like_reply(message: types.Message, state: FSMContext):
             owner = db.query(User).filter(User.id == prop.owner_id).first()
             if owner:
                 try:
+                    owner_currency = owner.search_currency or 'USD'
+                    price_display = format_price_for_user(prop.price, 'UZS', owner_currency)
                     await bot.send_message(
                         owner.telegram_id,
                         f"❤️ Новый лайк!\n\n"
                         f"Пользователь заинтересовался вашим объектом:\n"
                         f"📍 {prop.district}\n"
-                        f"💰 {prop.price:,} сум\n\n"
+                        f"💰 {price_display}\n\n"
                         f"Перейдите в раздел 'Меня лайкнули', чтобы открыть контакт!"
                     )
                 except:
@@ -3795,12 +3797,14 @@ async def create_match(callback: types.CallbackQuery):
     seller_phone = seller.phone or "Не указан"
     
     try:
+        buyer_currency = buyer.search_currency or 'USD'
+        price_display = format_price_for_user(prop.price, 'UZS', buyer_currency)
         await bot.send_message(
             buyer.telegram_id,
             f"🎉 Отличные новости!\n\n"
             f"Владелец квартиры подтвердил интерес!\n\n"
             f"📍 {prop.district}\n"
-            f"💰 {prop.price:,} сум\n\n"
+            f"💰 {price_display}\n\n"
             f"📞 Контакт: {seller_phone}\n"
             f"👤 Менеджер: {seller.manager_name or seller.first_name}\n\n"
             f"Свяжитесь для просмотра!"
@@ -3940,6 +3944,10 @@ async def view_deal_property(callback: types.CallbackQuery):
     type_name = "Продажа" if prop.property_type == PropertyType.SALE else "Аренда"
     furniture = "Да" if prop.has_furniture else "Нет"
     
+    viewer = db.query(User).filter(User.telegram_id == callback.from_user.id).first()
+    user_currency = viewer.search_currency if viewer and viewer.search_currency else 'USD'
+    price_display = format_price_for_user(prop.price, 'UZS', user_currency)
+    
     text = (
         f"🆔 {unique_id}\n\n"
         f"{type_emoji} {type_name}\n\n"
@@ -3949,7 +3957,7 @@ async def view_deal_property(callback: types.CallbackQuery):
         f"🏠 {prop.building_type or ''}\n"
         f"🔨 {prop.renovation or ''}\n"
         f"🛋 Мебель: {furniture}\n\n"
-        f"💰 {prop.price:,} сум\n"
+        f"💰 {price_display}\n"
     )
     
     if prop.description:
@@ -4378,6 +4386,63 @@ async def change_language_callback(callback: types.CallbackQuery, state: FSMCont
     await state.set_state(RegistrationStates.choosing_language)
 
 
+@dp.callback_query(F.data == "change_currency")
+async def change_currency_callback(callback: types.CallbackQuery):
+    db = SessionLocal()
+    user = db.query(User).filter(User.telegram_id == callback.from_user.id).first()
+    lang = get_user_lang(user)
+    db.close()
+    
+    current_currency = user.search_currency or 'USD'
+    usd_check = "✅ " if current_currency == 'USD' else ""
+    uzs_check = "✅ " if current_currency == 'UZS' else ""
+    
+    if lang == 'uz':
+        title = "💱 Valyutani tanlang:"
+        usd_text = f"{usd_check}🇺🇸 Dollar (USD)"
+        uzs_text = f"{uzs_check}🇺🇿 So'm (UZS)"
+    else:
+        title = "💱 Выберите валюту для отображения цен:"
+        usd_text = f"{usd_check}🇺🇸 Доллары (USD)"
+        uzs_text = f"{uzs_check}🇺🇿 Сумы (UZS)"
+    
+    keyboard = InlineKeyboardMarkup(inline_keyboard=[
+        [InlineKeyboardButton(text=usd_text, callback_data="set_currency_USD")],
+        [InlineKeyboardButton(text=uzs_text, callback_data="set_currency_UZS")]
+    ])
+    
+    await callback.answer()
+    await callback.message.answer(title, reply_markup=keyboard)
+
+
+@dp.callback_query(F.data.startswith("set_currency_"))
+async def set_currency_callback(callback: types.CallbackQuery):
+    currency = callback.data.replace("set_currency_", "")
+    
+    db = SessionLocal()
+    user = db.query(User).filter(User.telegram_id == callback.from_user.id).first()
+    lang = get_user_lang(user)
+    
+    if user:
+        user.search_currency = currency
+        db.commit()
+    db.close()
+    
+    if lang == 'uz':
+        if currency == 'USD':
+            msg = "✅ Valyuta o'zgartirildi: 🇺🇸 Dollar (USD)\n\nEndi barcha narxlar dollarda ko'rsatiladi."
+        else:
+            msg = "✅ Valyuta o'zgartirildi: 🇺🇿 So'm (UZS)\n\nEndi barcha narxlar so'mda ko'rsatiladi."
+    else:
+        if currency == 'USD':
+            msg = "✅ Валюта изменена: 🇺🇸 Доллары (USD)\n\nТеперь все цены будут отображаться в долларах."
+        else:
+            msg = "✅ Валюта изменена: 🇺🇿 Сумы (UZS)\n\nТеперь все цены будут отображаться в сумах."
+    
+    await callback.answer()
+    await callback.message.edit_text(msg)
+
+
 @dp.message(lambda m: m.text in [get_text('my_profile', 'ru'), get_text('my_profile', 'uz')])
 async def my_profile(message: types.Message):
     db = SessionLocal()
@@ -4488,9 +4553,12 @@ async def show_seller_profile_info(message, user):
     details_text = "📊 Batafsil" if lang == 'uz' else "📊 Подробно"
     admin_text = "🔐 Admin panel" if lang == 'uz' else "🔐 Админ-панель"
     
+    currency_text = "💱 Valyutani o'zgartirish" if lang == 'uz' else "💱 Сменить валюту"
+    
     buttons = [
         [InlineKeyboardButton(text=switch_text, callback_data="switch_to_buyer")],
-        [InlineKeyboardButton(text=get_text('change_language', lang), callback_data="change_language")]
+        [InlineKeyboardButton(text=get_text('change_language', lang), callback_data="change_language")],
+        [InlineKeyboardButton(text=currency_text, callback_data="change_currency")]
     ]
     
     if webapp_url:
@@ -4556,10 +4624,12 @@ async def show_buyer_profile(message, user):
     switch_text = "💼 Sotuvchi rejimiga o'tish" if lang == 'uz' else "💼 Перейти в режим продавца"
     details_text = "📊 Batafsil" if lang == 'uz' else "📊 Подробно"
     admin_text = "🔐 Admin panel" if lang == 'uz' else "🔐 Админ-панель"
+    currency_text = "💱 Valyutani o'zgartirish" if lang == 'uz' else "💱 Сменить валюту"
     
     buttons = [
         [InlineKeyboardButton(text=switch_text, callback_data="switch_to_seller")],
-        [InlineKeyboardButton(text=get_text('change_language', lang), callback_data="change_language")]
+        [InlineKeyboardButton(text=get_text('change_language', lang), callback_data="change_language")],
+        [InlineKeyboardButton(text=currency_text, callback_data="change_currency")]
     ]
     
     if webapp_url:
@@ -4701,9 +4771,12 @@ async def buyer_likes(message: types.Message):
                 owner = db.query(User).filter(User.id == prop.owner_id).first()
                 contact_phone = owner.phone if owner else not_specified
             
+            user_currency = user.search_currency if user and user.search_currency else 'USD'
+            price_display = format_price_for_user(prop.price, 'UZS', user_currency)
+            
             text = f"{status_emoji} <b>{status_text}</b>  •  {type_name}\n"
             text += "━━━━━━━━━━━━━━━━━━━━\n\n"
-            text += f"💰 <b>{prop.price:,} сум</b>\n\n"
+            text += f"💰 <b>{price_display}</b>\n\n"
             
             if prop.district:
                 district_display = get_district_name(prop.district, lang)
@@ -5746,11 +5819,13 @@ async def property_lifecycle_task():
                     owner = db.query(User).filter(User.id == prop.owner_id).first()
                     if owner and owner.telegram_id:
                         try:
+                            owner_currency = owner.search_currency or 'USD'
+                            price_display = format_price_for_user(prop.price, 'UZS', owner_currency)
                             await bot.send_message(
                                 owner.telegram_id,
                                 f"📦 Объявление перемещено в архив\n\n"
                                 f"📍 {prop.district or 'Объект'}\n"
-                                f"💰 {prop.price:,} сум\n\n"
+                                f"💰 {price_display}\n\n"
                                 f"Причина: прошло 30 дней с момента публикации.\n"
                                 f"У вас есть 30 дней, чтобы активировать его снова, иначе оно будет удалено.\n\n"
                                 f"Перейдите в '🏢 Мои объекты', чтобы активировать."
@@ -5779,11 +5854,13 @@ async def property_lifecycle_task():
                     
                     if owner and owner.telegram_id:
                         try:
+                            owner_currency = owner.search_currency or 'USD'
+                            price_display = format_price_for_user(prop.price, 'UZS', owner_currency)
                             await bot.send_message(
                                 owner.telegram_id,
                                 f"🗑 Объявление удалено\n\n"
                                 f"📍 {prop.district or 'Объект'}\n"
-                                f"💰 {prop.price:,} сум\n\n"
+                                f"💰 {price_display}\n\n"
                                 f"Причина: объявление находилось в архиве более 30 дней.\n"
                                 f"Вы можете добавить новое объявление."
                             )
