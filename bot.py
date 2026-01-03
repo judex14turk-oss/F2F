@@ -129,6 +129,7 @@ class PropertyStates(StatesGroup):
     category = State()
     housing_type = State()
     district = State()
+    location = State()  # геолокация/адрес
     rooms = State()
     floor = State()
     total_floors = State()
@@ -1261,6 +1262,33 @@ async def process_prop_district(callback: types.CallbackQuery, state: FSMContext
     
     await state.update_data(district=district.name if district else "")
     
+    await callback.message.edit_text(
+        "📍 Введите геолокацию объекта:\n\n"
+        "Укажите адрес, ориентир или название ЖК.\n"
+        "Например: «ул. Навои 50» или «ЖК Мирабад»\n\n"
+        "Или нажмите кнопку, чтобы пропустить:",
+        reply_markup=InlineKeyboardMarkup(inline_keyboard=[
+            [InlineKeyboardButton(text="⏭ Пропустить", callback_data="proplocation_skip")]
+        ])
+    )
+    await state.set_state(PropertyStates.location)
+
+
+@dp.message(PropertyStates.location)
+async def process_prop_location(message: types.Message, state: FSMContext):
+    location_text = message.text.strip()
+    if len(location_text) > 500:
+        await message.answer("❌ Слишком длинный адрес. Введите покороче (до 500 символов).")
+        return
+    
+    await state.update_data(location=location_text)
+    await message.answer("🚪 Введите количество комнат (цифрами):")
+    await state.set_state(PropertyStates.rooms)
+
+
+@dp.callback_query(F.data == "proplocation_skip")
+async def process_prop_location_skip(callback: types.CallbackQuery, state: FSMContext):
+    await state.update_data(location="")
     await callback.message.edit_text("🚪 Введите количество комнат (цифрами):")
     await state.set_state(PropertyStates.rooms)
 
@@ -1495,6 +1523,7 @@ async def finish_photos(callback: types.CallbackQuery, state: FSMContext):
         category=data.get("category", "Квартира"),
         housing_type=data.get("housing_type", ""),
         district=data.get("district", ""),
+        address=data.get("location", ""),
         rooms=data.get("rooms", 1),
         floor=data.get("floor", 1),
         total_floors=data.get("total_floors", 9),
@@ -1538,8 +1567,11 @@ async def finish_photos(callback: types.CallbackQuery, state: FSMContext):
     if housing_type_display:
         summary += f"🏗 Тип жилья: {housing_type_display}\n"
     
+    location_display = data.get('location', '')
+    summary += f"📍 Район: {data.get('district', '')}\n"
+    if location_display:
+        summary += f"📍 Адрес: {location_display}\n"
     summary += (
-        f"📍 Район: {data.get('district', '')}\n"
         f"🚪 Комнат: {data.get('rooms', '')}\n"
         f"🏢 Этаж: {data.get('floor', '')}/{data.get('total_floors', '')}\n"
         f"📐 Площадь: {data.get('area', '')} м²\n"
