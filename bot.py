@@ -2710,14 +2710,12 @@ async def view_properties(message: types.Message, state: FSMContext):
             query = query.filter(Property.floor >= 2, Property.floor <= 4)
         elif floor_filter == "5-7":
             query = query.filter(Property.floor >= 5, Property.floor <= 7)
-        elif floor_filter == "8+":
+        elif floor_filter == "8+" or floor_filter == "8":
             query = query.filter(Property.floor >= 8)
         elif "-" in floor_filter:
             parts = floor_filter.split("-")
             if len(parts) == 2 and parts[0].isdigit() and parts[1].isdigit():
                 query = query.filter(Property.floor >= int(parts[0]), Property.floor <= int(parts[1]))
-        elif floor_filter.isdigit():
-            query = query.filter(Property.floor == int(floor_filter))
     
     if user.search_area_min:
         query = query.filter(Property.area >= user.search_area_min)
