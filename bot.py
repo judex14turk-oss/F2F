@@ -317,7 +317,8 @@ async def process_language_choice(message: types.Message, state: FSMContext):
         await state.clear()
         await message.answer(get_text('language_changed', lang))
         if user_role == UserRole.SELLER:
-            keyboard = get_seller_menu(lang)
+            is_developer = user.seller_type == SellerType.DEVELOPER if user else False
+            keyboard = get_seller_menu(lang, is_developer=is_developer)
         else:
             keyboard = get_buyer_menu(lang)
         await message.answer(get_text('returned_to_menu', lang), reply_markup=keyboard)
@@ -2867,7 +2868,8 @@ async def process_back_reply(message: types.Message, state: FSMContext):
     if user and user.role == UserRole.BUYER:
         keyboard = get_buyer_menu(lang)
     else:
-        keyboard = get_seller_menu(lang)
+        is_developer = user.seller_type == SellerType.DEVELOPER if user else False
+        keyboard = get_seller_menu(lang, is_developer=is_developer)
     
     await message.answer(get_text('returned_to_menu', lang), reply_markup=keyboard)
 
@@ -3015,7 +3017,8 @@ async def back_from_ad(message: types.Message, state: FSMContext):
     if user and user.role == UserRole.BUYER:
         keyboard = get_buyer_menu(lang)
     else:
-        keyboard = get_seller_menu(lang)
+        is_developer = user.seller_type == SellerType.DEVELOPER if user else False
+        keyboard = get_seller_menu(lang, is_developer=is_developer)
     
     await message.answer(get_text('returned_to_menu', lang), reply_markup=keyboard)
 
@@ -3901,8 +3904,9 @@ async def find_buyer_back_from_deal(message: types.Message, state: FSMContext):
     db = SessionLocal()
     user = db.query(User).filter(User.telegram_id == message.from_user.id).first()
     lang = get_user_lang(user)
+    is_developer = user.seller_type == SellerType.DEVELOPER if user else False
     db.close()
-    await message.answer(get_text('returned_to_menu', lang), reply_markup=get_seller_menu(lang))
+    await message.answer(get_text('returned_to_menu', lang), reply_markup=get_seller_menu(lang, is_developer=is_developer))
 
 
 @dp.message(FindBuyerStates.deal_type)
@@ -4018,7 +4022,12 @@ async def find_buyer_show_results(message: types.Message, state: FSMContext):
     db.close()
     
     if not buyers:
-        await message.answer("Пока нет покупателей с такими критериями.", reply_markup=get_seller_menu())
+        db2 = SessionLocal()
+        seller = db2.query(User).filter(User.telegram_id == message.from_user.id).first()
+        is_dev = seller.seller_type == SellerType.DEVELOPER if seller else False
+        l = get_user_lang(seller)
+        db2.close()
+        await message.answer("Пока нет покупателей с такими критериями.", reply_markup=get_seller_menu(l, is_developer=is_dev))
         return
     
     deal_names = {"sale": "Покупка", "rent": "Аренда"}
@@ -4043,7 +4052,13 @@ async def find_buyer_show_results(message: types.Message, state: FSMContext):
         ])
     
     await message.answer(text, reply_markup=InlineKeyboardMarkup(inline_keyboard=keyboard_buttons))
-    await message.answer("Выберите клиента или вернитесь в меню", reply_markup=get_seller_menu())
+    
+    db3 = SessionLocal()
+    seller = db3.query(User).filter(User.telegram_id == message.from_user.id).first()
+    is_dev = seller.seller_type == SellerType.DEVELOPER if seller else False
+    l = get_user_lang(seller)
+    db3.close()
+    await message.answer("Выберите клиента или вернитесь в меню", reply_markup=get_seller_menu(l, is_developer=is_dev))
 
 
 @dp.callback_query(F.data.startswith("offer_"))
@@ -4239,10 +4254,11 @@ async def back_to_main_menu(message: types.Message):
     db = SessionLocal()
     user = db.query(User).filter(User.telegram_id == message.from_user.id).first()
     lang = get_user_lang(user)
+    is_developer = user.seller_type == SellerType.DEVELOPER if user else False
     db.close()
     
     if user.role == UserRole.SELLER:
-        keyboard = get_seller_menu(lang)
+        keyboard = get_seller_menu(lang, is_developer=is_developer)
     else:
         keyboard = get_buyer_menu(lang)
     
@@ -4453,13 +4469,14 @@ async def switch_to_seller(callback: types.CallbackQuery, state: FSMContext):
         user.role = UserRole.SELLER
         db.commit()
     
+    is_developer = user.seller_type == SellerType.DEVELOPER if user else False
     buyers_count = db.query(User).filter(User.role == UserRole.BUYER).count()
     db.close()
     
     await callback.answer(get_text('switched_to_seller_callback', lang))
     await callback.message.delete()
     
-    keyboard = get_seller_menu(lang)
+    keyboard = get_seller_menu(lang, is_developer=is_developer)
     
     await callback.message.answer(
         get_text('switched_to_seller', lang, count=buyers_count),
@@ -4477,10 +4494,11 @@ async def buyer_switch_to_seller(message: types.Message, state: FSMContext):
         user.role = UserRole.SELLER
         db.commit()
     
+    is_developer = user.seller_type == SellerType.DEVELOPER if user else False
     buyers_count = db.query(User).filter(User.role == UserRole.BUYER).count()
     db.close()
     
-    keyboard = get_seller_menu(lang)
+    keyboard = get_seller_menu(lang, is_developer=is_developer)
     
     await message.answer(
         get_text('switched_to_seller', lang, count=buyers_count),
@@ -5667,15 +5685,17 @@ async def catch_all_handler(message: types.Message, state: FSMContext):
         )
         return
     
+    lang = get_user_lang(user)
     if user.role == UserRole.BUYER:
-        keyboard = get_buyer_menu()
+        keyboard = get_buyer_menu(lang)
         await message.answer(
             "🏠 Главное меню покупателя\n\n"
             "Выберите действие:",
             reply_markup=keyboard
         )
     elif user.role == UserRole.SELLER:
-        keyboard = get_seller_menu()
+        is_developer = user.seller_type == SellerType.DEVELOPER if user else False
+        keyboard = get_seller_menu(lang, is_developer=is_developer)
         await message.answer(
             "💼 Главное меню продавца\n\n"
             "Выберите действие:",
