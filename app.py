@@ -1238,6 +1238,17 @@ def webapp_find_buyers_search():
         else:
             budget_usd = budget_raw
         
+        housing_type_display = {
+            'new_building': '🏗 Новостройка',
+            'secondary': '🏠 Вторичка',
+            'any': 'Любой тип',
+            'Новостройка': '🏗 Новостройка',
+            'Вторичный рынок': '🏠 Вторичка',
+            'Любой': 'Любой тип'
+        }
+        housing = buyer.search_housing_type or ''
+        housing_display = housing_type_display.get(housing, housing) if housing else ''
+        
         results.append({
             'id': buyer.id,
             'first_name': buyer.first_name or 'Клиент',
@@ -1245,7 +1256,8 @@ def webapp_find_buyers_search():
             'district': buyer.search_district or 'Любой район',
             'budget_usd': budget_usd,
             'bio': buyer.buyer_bio or '',
-            'has_bio': bool(buyer.buyer_bio)
+            'has_bio': bool(buyer.buyer_bio),
+            'housing_type': housing_display
         })
     
     db.close()
