@@ -77,6 +77,12 @@ class OLXParser:
         'secondary': 'Вторичный рынок'
     }
     
+    HOUSING_TYPE_URL_VALUES = {
+        'all': '',
+        'new': 'novostroyka',
+        'secondary': 'vtorichnyy-rynok'
+    }
+    
     RUSSIAN_MONTHS = {
         'января': 1, 'февраля': 2, 'марта': 3, 'апреля': 4,
         'мая': 5, 'июня': 6, 'июля': 7, 'августа': 8,
@@ -168,9 +174,9 @@ class OLXParser:
             params.append(f"search[filter_float_number_of_rooms:to]={rooms}")
         
         if housing_type and housing_type != 'all' and property_type == 'apartment':
-            housing = self.HOUSING_TYPES.get(housing_type, '')
-            if housing:
-                params.append(f"search[filter_enum_flat_type][0]={housing_type}")
+            housing_url_value = self.HOUSING_TYPE_URL_VALUES.get(housing_type, '')
+            if housing_url_value:
+                params.append(f"search[filter_enum_flat_type][0]={housing_url_value}")
         
         if page > 1:
             params.append(f"page={page}")
