@@ -1119,6 +1119,141 @@ def webapp_user_search_filters_search():
     return jsonify({'properties': results, 'count': len(results)})
 
 
+@app.route('/webapp/find_buyers')
+def webapp_find_buyers():
+    tg_id = request.args.get('tg_id', '')
+    if not tg_id:
+        return "Access denied", 403
+    
+    db = get_db()
+    user = db.query(User).filter(User.telegram_id == int(tg_id)).first()
+    
+    if not user:
+        db.close()
+        return "User not found", 404
+    
+    if user.role != UserRole.SELLER or user.seller_type != SellerType.DEVELOPER:
+        db.close()
+        return "Access denied", 403
+    
+    districts = db.query(District).order_by(District.name).all()
+    
+    lang = user.language or 'ru'
+    t = WEBAPP_TRANSLATIONS.get(lang, WEBAPP_TRANSLATIONS['ru'])
+    
+    db.close()
+    
+    return render_template('webapp_find_buyers.html',
+        user=user,
+        tg_id=tg_id,
+        lang=lang,
+        t=t,
+        districts=districts
+    )
+
+
+@app.route('/webapp/find_buyers/search')
+def webapp_find_buyers_search():
+    tg_id = request.args.get('tg_id', '')
+    deal_type = request.args.get('deal_type', '')
+    prop_type = request.args.get('prop_type', '')
+    district = request.args.get('district', '')
+    budget_max = request.args.get('budget_max', '')
+    page = int(request.args.get('page', 0))
+    
+    if not tg_id:
+        return jsonify({'error': 'Access denied'}), 403
+    
+    BUYERS_PER_PAGE = 10
+    
+    db = get_db()
+    user = db.query(User).filter(User.telegram_id == int(tg_id)).first()
+    
+    if not user:
+        db.close()
+        return jsonify({'error': 'User not found'}), 404
+    
+    query = db.query(User).filter(
+        User.role == UserRole.BUYER,
+        User.search_budget_max > 0
+    )
+    
+    if deal_type:
+        query = query.filter(User.search_deal_type == deal_type)
+    
+    if prop_type:
+        pass
+    
+    if district and district not in ["Любой", ""]:
+        district_base = district.replace("ский", "").replace("ий", "")
+        query = query.filter(User.search_district.ilike(f"%{district_base}%"))
+    
+    if budget_max:
+        try:
+            budget_max_val = int(budget_max)
+            query = query.filter(User.search_budget_max <= budget_max_val)
+        except:
+            pass
+    
+    from sqlalchemy import case, desc
+    has_bio = case(
+        (User.buyer_bio != None, 0),
+        (User.buyer_bio != '', 0),
+        else_=1
+    )
+    
+    total_count = query.count()
+    buyers = query.order_by(has_bio, desc(User.created_at)).offset(page * BUYERS_PER_PAGE).limit(BUYERS_PER_PAGE).all()
+    
+    usd_rate = get_usd_rate_for_webapp()
+    
+    results = []
+    for buyer in buyers:
+        budget_raw = buyer.search_budget_max or 0
+        buyer_currency = buyer.search_currency or 'USD'
+        
+        if buyer_currency == 'UZS' and usd_rate > 0:
+            budget_usd = int(budget_raw / usd_rate)
+        else:
+            budget_usd = budget_raw
+        
+        results.append({
+            'id': buyer.id,
+            'first_name': buyer.first_name or 'Клиент',
+            'rooms': buyer.search_rooms or 'Любые',
+            'district': buyer.search_district or 'Любой район',
+            'budget_usd': budget_usd,
+            'bio': buyer.buyer_bio or '',
+            'has_bio': bool(buyer.buyer_bio)
+        })
+    
+    db.close()
+    
+    total_pages = (total_count + BUYERS_PER_PAGE - 1) // BUYERS_PER_PAGE if total_count > 0 else 1
+    
+    return jsonify({
+        'buyers': results,
+        'total_count': total_count,
+        'page': page,
+        'total_pages': total_pages,
+        'has_next': (page + 1) * BUYERS_PER_PAGE < total_count,
+        'has_prev': page > 0
+    })
+
+
+def get_usd_rate_for_webapp():
+    try:
+        response = requests.get("https://cbu.uz/ru/arkhiv-kursov-valyut/json/", timeout=5)
+        if response.status_code == 200:
+            data = response.json()
+            for currency in data:
+                if currency.get('Ccy') == 'USD':
+                    return float(currency.get('Rate', 12700))
+        return 12700
+    except:
+        return 12700
+
+
 @app.route('/webapp/user_search_filters/random_ad')
 def webapp_random_ad():
     """Получить случайную активную рекламу"""

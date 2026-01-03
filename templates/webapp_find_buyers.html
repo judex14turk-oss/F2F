@@ -1,0 +1,563 @@
+<!DOCTYPE html>
+<html lang="{{ lang }}">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>{{ t.get('webapp_find_buyers', 'Поиск покупателей') }}</title>
+    <script src="https://telegram.org/js/telegram-web-app.js"></script>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.0/font/bootstrap-icons.css" rel="stylesheet">
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        
+        body {
+            background: #0a0a0a;
+            color: #e5e5e5;
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            padding-bottom: 80px;
+        }
+        
+        .header {
+            background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
+            padding: 20px 16px;
+            border-bottom: 1px solid #2a2a2a;
+        }
+        
+        .header h1 {
+            font-size: 1.2rem;
+            font-weight: 600;
+            color: #fff;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        
+        .header-subtitle {
+            font-size: 0.8rem;
+            color: #888;
+            margin-top: 4px;
+        }
+        
+        .nav-tabs {
+            display: flex;
+            gap: 4px;
+            padding: 12px;
+            background: #111;
+            overflow-x: auto;
+        }
+        
+        .nav-tab {
+            flex: 1;
+            text-align: center;
+            padding: 10px 6px;
+            background: #1a1a1a;
+            border-radius: 8px;
+            text-decoration: none;
+            color: #888;
+            font-size: 0.7rem;
+            white-space: nowrap;
+            border: 1px solid #2a2a2a;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 4px;
+        }
+        
+        .nav-tab i {
+            font-size: 1.1rem;
+        }
+        
+        .nav-tab.active {
+            background: #3b82f6;
+            color: white;
+            border-color: #3b82f6;
+        }
+        
+        .filters-section {
+            background: #151515;
+            border: 1px solid #252525;
+            margin: 12px;
+            padding: 16px;
+            border-radius: 12px;
+        }
+        
+        .filters-title {
+            font-size: 0.9rem;
+            font-weight: 600;
+            color: #fff;
+            margin-bottom: 12px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        
+        .filter-row {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 10px;
+            margin-bottom: 10px;
+        }
+        
+        .filter-group {
+            display: flex;
+            flex-direction: column;
+        }
+        
+        .filter-group.full-width {
+            grid-column: span 2;
+        }
+        
+        .filter-label {
+            font-size: 0.75rem;
+            color: #888;
+            margin-bottom: 4px;
+        }
+        
+        .filter-select, .filter-input {
+            width: 100%;
+            padding: 10px 12px;
+            background: #252525;
+            border: 1px solid #333;
+            border-radius: 8px;
+            color: #fff;
+            font-size: 0.85rem;
+        }
+        
+        .filter-select:focus, .filter-input:focus {
+            outline: none;
+            border-color: #3b82f6;
+        }
+        
+        .search-btn {
+            width: 100%;
+            padding: 12px;
+            background: linear-gradient(135deg, #3b82f6 0%, #8b5cf6 100%);
+            border: none;
+            border-radius: 8px;
+            color: #fff;
+            font-size: 0.9rem;
+            font-weight: 600;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+            margin-top: 12px;
+        }
+        
+        .results-section {
+            padding: 0 12px;
+        }
+        
+        .results-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 16px 0 8px;
+        }
+        
+        .results-title {
+            font-size: 0.9rem;
+            color: #888;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        
+        .results-count {
+            font-size: 0.8rem;
+            color: #3b82f6;
+        }
+        
+        .buyer-card {
+            background: #151515;
+            border: 1px solid #252525;
+            border-radius: 12px;
+            padding: 16px;
+            margin-bottom: 10px;
+        }
+        
+        .buyer-card.has-bio {
+            border-color: #3b82f6;
+            background: linear-gradient(135deg, #151520 0%, #151515 100%);
+        }
+        
+        .buyer-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            margin-bottom: 8px;
+        }
+        
+        .buyer-name {
+            font-size: 1rem;
+            font-weight: 600;
+            color: #fff;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        
+        .buyer-badge {
+            background: #3b82f6;
+            color: #fff;
+            font-size: 0.65rem;
+            padding: 2px 6px;
+            border-radius: 4px;
+        }
+        
+        .buyer-budget {
+            font-size: 0.9rem;
+            font-weight: 600;
+            color: #10b981;
+        }
+        
+        .buyer-details {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 12px;
+            font-size: 0.8rem;
+            color: #888;
+            margin-bottom: 8px;
+        }
+        
+        .buyer-detail {
+            display: flex;
+            align-items: center;
+            gap: 4px;
+        }
+        
+        .buyer-bio {
+            background: #1a1a1a;
+            border-radius: 8px;
+            padding: 10px;
+            font-size: 0.8rem;
+            color: #ccc;
+            margin-top: 8px;
+            line-height: 1.4;
+        }
+        
+        .offer-btn {
+            width: 100%;
+            padding: 10px;
+            background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+            border: none;
+            border-radius: 8px;
+            color: #fff;
+            font-size: 0.85rem;
+            font-weight: 600;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 6px;
+            margin-top: 12px;
+        }
+        
+        .pagination {
+            display: flex;
+            justify-content: center;
+            gap: 10px;
+            padding: 16px 0;
+        }
+        
+        .pagination-btn {
+            padding: 10px 20px;
+            background: #252525;
+            border: 1px solid #333;
+            border-radius: 8px;
+            color: #fff;
+            font-size: 0.85rem;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+        
+        .pagination-btn:disabled {
+            opacity: 0.4;
+            cursor: not-allowed;
+        }
+        
+        .pagination-btn.active {
+            background: #3b82f6;
+            border-color: #3b82f6;
+        }
+        
+        .pagination-info {
+            display: flex;
+            align-items: center;
+            color: #888;
+            font-size: 0.85rem;
+        }
+        
+        .loading {
+            text-align: center;
+            padding: 40px;
+            color: #888;
+        }
+        
+        .loading i {
+            font-size: 2rem;
+            animation: spin 1s linear infinite;
+        }
+        
+        @keyframes spin {
+            from { transform: rotate(0deg); }
+            to { transform: rotate(360deg); }
+        }
+        
+        .empty-state {
+            text-align: center;
+            padding: 40px 20px;
+            color: #666;
+        }
+        
+        .empty-state i {
+            font-size: 3rem;
+            margin-bottom: 16px;
+            color: #444;
+        }
+        
+        .empty-state p {
+            font-size: 0.9rem;
+        }
+        
+        .back-btn {
+            position: fixed;
+            bottom: 16px;
+            left: 12px;
+            right: 12px;
+            padding: 14px;
+            background: #252525;
+            border: 1px solid #333;
+            border-radius: 12px;
+            color: #fff;
+            font-size: 0.9rem;
+            font-weight: 600;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+            text-decoration: none;
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <h1><i class="bi bi-people-fill"></i> {{ t.get('webapp_find_buyers', 'Поиск покупателей') }}</h1>
+        <div class="header-subtitle">{{ t.get('webapp_find_buyers_subtitle', 'Найдите клиентов для ваших объектов') }}</div>
+    </div>
+    
+    <div class="nav-tabs">
+        <a href="{{ url_for('webapp_user_objects', tg_id=tg_id) }}" class="nav-tab">
+            <i class="bi bi-house"></i>
+            {{ t.get('webapp_objects', 'Объекты') }}
+        </a>
+        <a href="{{ url_for('webapp_user_subscription', tg_id=tg_id) }}" class="nav-tab">
+            <i class="bi bi-credit-card"></i>
+            {{ t.get('webapp_subscription', 'Подписка') }}
+        </a>
+        <a href="{{ url_for('webapp_find_buyers', tg_id=tg_id) }}" class="nav-tab active">
+            <i class="bi bi-people"></i>
+            {{ t.get('webapp_buyers', 'Покупатели') }}
+        </a>
+        <a href="{{ url_for('webapp_user_stats', tg_id=tg_id) }}" class="nav-tab">
+            <i class="bi bi-graph-up"></i>
+            {{ t.get('webapp_stats', 'Статистика') }}
+        </a>
+    </div>
+    
+    <div class="filters-section">
+        <div class="filters-title">
+            <i class="bi bi-funnel"></i>
+            {{ t.get('webapp_filters', 'Фильтры') }}
+        </div>
+        
+        <div class="filter-row">
+            <div class="filter-group">
+                <label class="filter-label">{{ t.get('webapp_deal_type', 'Тип сделки') }}</label>
+                <select class="filter-select" id="dealType">
+                    <option value="">{{ t.get('webapp_all', 'Все') }}</option>
+                    <option value="sale">{{ t.get('webapp_buy', 'Покупка') }}</option>
+                    <option value="rent">{{ t.get('webapp_rent', 'Аренда') }}</option>
+                </select>
+            </div>
+            <div class="filter-group">
+                <label class="filter-label">{{ t.get('webapp_district', 'Район') }}</label>
+                <select class="filter-select" id="district">
+                    <option value="">{{ t.get('webapp_any', 'Любой') }}</option>
+                    {% for d in districts %}
+                    <option value="{{ d.name }}">{{ d.name }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+        </div>
+        
+        <div class="filter-row">
+            <div class="filter-group full-width">
+                <label class="filter-label">{{ t.get('webapp_max_budget', 'Макс. бюджет ($)') }}</label>
+                <input type="number" class="filter-input" id="budgetMax" placeholder="{{ t.get('webapp_any_budget', 'Любой бюджет') }}">
+            </div>
+        </div>
+        
+        <button class="search-btn" onclick="searchBuyers()">
+            <i class="bi bi-search"></i>
+            {{ t.get('webapp_search', 'Поиск') }}
+        </button>
+    </div>
+    
+    <div class="results-section">
+        <div class="results-header">
+            <div class="results-title">
+                <i class="bi bi-people"></i>
+                {{ t.get('webapp_buyers', 'Покупатели') }}
+            </div>
+            <div class="results-count" id="resultsCount"></div>
+        </div>
+        
+        <div id="buyersList">
+            <div class="loading">
+                <i class="bi bi-arrow-repeat"></i>
+                <p>{{ t.get('webapp_loading', 'Загрузка...') }}</p>
+            </div>
+        </div>
+        
+        <div class="pagination" id="pagination" style="display: none;">
+            <button class="pagination-btn" id="prevBtn" onclick="prevPage()">
+                <i class="bi bi-chevron-left"></i>
+                {{ t.get('webapp_prev', 'Назад') }}
+            </button>
+            <div class="pagination-info" id="pageInfo"></div>
+            <button class="pagination-btn" id="nextBtn" onclick="nextPage()">
+                {{ t.get('webapp_next', 'Далее') }}
+                <i class="bi bi-chevron-right"></i>
+            </button>
+        </div>
+    </div>
+    
+    <a href="{{ url_for('webapp_user_stats', tg_id=tg_id) }}" class="back-btn">
+        <i class="bi bi-arrow-left"></i>
+        {{ t.get('webapp_back_to_stats', 'Назад к статистике') }}
+    </a>
+    
+    <script>
+        const tgId = '{{ tg_id }}';
+        let currentPage = 0;
+        let totalPages = 1;
+        
+        function searchBuyers(page = 0) {
+            currentPage = page;
+            const dealType = document.getElementById('dealType').value;
+            const district = document.getElementById('district').value;
+            const budgetMax = document.getElementById('budgetMax').value;
+            
+            const params = new URLSearchParams({
+                tg_id: tgId,
+                deal_type: dealType,
+                district: district,
+                budget_max: budgetMax,
+                page: page
+            });
+            
+            document.getElementById('buyersList').innerHTML = `
+                <div class="loading">
+                    <i class="bi bi-arrow-repeat"></i>
+                    <p>Загрузка...</p>
+                </div>
+            `;
+            
+            fetch(`/webapp/find_buyers/search?${params}`)
+                .then(response => response.json())
+                .then(data => {
+                    if (data.error) {
+                        document.getElementById('buyersList').innerHTML = `
+                            <div class="empty-state">
+                                <i class="bi bi-exclamation-circle"></i>
+                                <p>${data.error}</p>
+                            </div>
+                        `;
+                        return;
+                    }
+                    
+                    totalPages = data.total_pages;
+                    document.getElementById('resultsCount').textContent = `${data.total_count} найдено`;
+                    
+                    if (data.buyers.length === 0) {
+                        document.getElementById('buyersList').innerHTML = `
+                            <div class="empty-state">
+                                <i class="bi bi-people"></i>
+                                <p>Покупатели не найдены</p>
+                            </div>
+                        `;
+                        document.getElementById('pagination').style.display = 'none';
+                        return;
+                    }
+                    
+                    let html = '';
+                    data.buyers.forEach(buyer => {
+                        html += `
+                            <div class="buyer-card ${buyer.has_bio ? 'has-bio' : ''}">
+                                <div class="buyer-header">
+                                    <div class="buyer-name">
+                                        <i class="bi bi-person-circle"></i>
+                                        ${buyer.first_name}
+                                        ${buyer.has_bio ? '<span class="buyer-badge">С описанием</span>' : ''}
+                                    </div>
+                                    <div class="buyer-budget">до $${buyer.budget_usd.toLocaleString()}</div>
+                                </div>
+                                <div class="buyer-details">
+                                    <div class="buyer-detail">
+                                        <i class="bi bi-door-open"></i>
+                                        ${buyer.rooms} комн.
+                                    </div>
+                                    <div class="buyer-detail">
+                                        <i class="bi bi-geo-alt"></i>
+                                        ${buyer.district}
+                                    </div>
+                                </div>
+                                ${buyer.bio ? `<div class="buyer-bio">${buyer.bio}</div>` : ''}
+                            </div>
+                        `;
+                    });
+                    
+                    document.getElementById('buyersList').innerHTML = html;
+                    
+                    if (data.total_pages > 1) {
+                        document.getElementById('pagination').style.display = 'flex';
+                        document.getElementById('pageInfo').textContent = `${data.page + 1} / ${data.total_pages}`;
+                        document.getElementById('prevBtn').disabled = !data.has_prev;
+                        document.getElementById('nextBtn').disabled = !data.has_next;
+                    } else {
+                        document.getElementById('pagination').style.display = 'none';
+                    }
+                })
+                .catch(error => {
+                    console.error('Error:', error);
+                    document.getElementById('buyersList').innerHTML = `
+                        <div class="empty-state">
+                            <i class="bi bi-exclamation-circle"></i>
+                            <p>Ошибка загрузки</p>
+                        </div>
+                    `;
+                });
+        }
+        
+        function prevPage() {
+            if (currentPage > 0) {
+                searchBuyers(currentPage - 1);
+            }
+        }
+        
+        function nextPage() {
+            if (currentPage < totalPages - 1) {
+                searchBuyers(currentPage + 1);
+            }
+        }
+        
+        document.addEventListener('DOMContentLoaded', function() {
+            searchBuyers();
+        });
+    </script>
+</body>
+</html>
