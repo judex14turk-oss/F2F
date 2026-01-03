@@ -2454,6 +2454,8 @@ async def dev_save_property(message, state, lang):
     
     prop.unique_id = f"F2F-{prop.id:05d}"
     db.commit()
+    
+    unique_id = prop.unique_id
     db.close()
     
     type_name = "Продажа" if data.get("property_type") == PropertyType.SALE else "Аренда"
@@ -2470,7 +2472,7 @@ async def dev_save_property(message, state, lang):
     
     summary = (
         f"📝 Объявление отправлено на модерацию!\n\n"
-        f"🆔 <b>ID: {prop.unique_id}</b>\n\n"
+        f"🆔 <b>ID: {unique_id}</b>\n\n"
         f"📋 ХАРАКТЕРИСТИКИ:\n"
         f"🏷 Тип сделки: {type_name}\n"
         f"🏠 Класс жилья: {data.get('housing_class', '')}\n"
