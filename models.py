@@ -85,6 +85,7 @@ class User(Base):
     search_renovation = Column(String(100))
     search_furniture = Column(String(20))
     search_bathroom = Column(String(50))
+    search_currency = Column(String(10), default='USD')
     
     web_search_deal_type = Column(String(20))
     web_search_housing_type = Column(String(50))

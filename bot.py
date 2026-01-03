@@ -11,8 +11,58 @@ from aiogram.fsm.state import State, StatesGroup
 from aiogram.fsm.storage.memory import MemoryStorage
 from typing import Callable, Dict, Any, Awaitable
 
-from models import SessionLocal, User, Property, Like, Match, Offer, District, ResidentialComplex, Advertisement
+from models import SessionLocal, User, Property, Like, Match, Offer, District, ResidentialComplex, Advertisement, Setting
 from models import UserRole, SellerType, TariffType, PropertyType, PropertyStatus, init_db, get_tashkent_now
+
+
+def get_usd_rate():
+    """Получает курс USD из настроек"""
+    db = SessionLocal()
+    try:
+        setting = db.query(Setting).filter(Setting.key == 'usd_rate').first()
+        if setting and setting.value:
+            return float(setting.value)
+        return 12850  # Курс по умолчанию
+    finally:
+        db.close()
+
+
+def convert_price(price, from_currency, to_currency, usd_rate=None):
+    """Конвертирует цену между валютами"""
+    if from_currency == to_currency or not price:
+        return price
+    
+    if usd_rate is None:
+        usd_rate = get_usd_rate()
+    
+    if from_currency == 'USD' and to_currency == 'UZS':
+        return int(price * usd_rate)
+    elif from_currency == 'UZS' and to_currency == 'USD':
+        return int(price / usd_rate)
+    
+    return price
+
+
+def format_price_for_user(price, price_currency, user_currency, usd_rate=None):
+    """Форматирует цену для отображения пользователю"""
+    if not price:
+        return "Не указана"
+    
+    if usd_rate is None:
+        usd_rate = get_usd_rate()
+    
+    if price_currency == user_currency:
+        if user_currency == 'USD':
+            return f"${price:,}".replace(",", " ")
+        else:
+            return f"{price:,} сум".replace(",", " ")
+    
+    converted = convert_price(price, price_currency, user_currency, usd_rate)
+    
+    if user_currency == 'USD':
+        return f"${converted:,}".replace(",", " ")
+    else:
+        return f"{converted:,} сум".replace(",", " ")
 from translations import get_text, get_user_lang
 import random
 
@@ -63,6 +113,7 @@ class RegistrationStates(StatesGroup):
     buyer_rooms = State()
     buyer_housing_type = State()
     buyer_district = State()
+    buyer_currency = State()
     buyer_budget = State()
     buyer_payment = State()
     buyer_phone = State()
@@ -508,16 +559,17 @@ async def process_district(message: types.Message, state: FSMContext):
         await state.update_data(district="Любой", selected_districts=[])
         keyboard = ReplyKeyboardMarkup(
             keyboard=[
-                [KeyboardButton(text=get_text('share_phone', lang), request_contact=True)],
-                [KeyboardButton(text=get_text('back', lang))]
+                [KeyboardButton(text="🇺🇸 USD (доллары)")],
+                [KeyboardButton(text="🇺🇿 UZS (сумы)")],
+                [KeyboardButton(text="⬅️ Назад")]
             ],
             resize_keyboard=True
         )
         await message.answer(
-            get_text('share_phone_text', lang),
+            "💱 В какой валюте показывать цены?",
             reply_markup=keyboard
         )
-        await state.set_state(RegistrationStates.buyer_phone)
+        await state.set_state(RegistrationStates.buyer_currency)
         return
     
     if message.text in ["✅ Готово", "✅ Tayyor"]:
@@ -526,16 +578,17 @@ async def process_district(message: types.Message, state: FSMContext):
             await state.update_data(district=district_str)
             keyboard = ReplyKeyboardMarkup(
                 keyboard=[
-                    [KeyboardButton(text=get_text('share_phone', lang), request_contact=True)],
-                    [KeyboardButton(text=get_text('back', lang))]
+                    [KeyboardButton(text="🇺🇸 USD (доллары)")],
+                    [KeyboardButton(text="🇺🇿 UZS (сумы)")],
+                    [KeyboardButton(text="⬅️ Назад")]
                 ],
                 resize_keyboard=True
             )
             await message.answer(
-                get_text('share_phone_text', lang),
+                "💱 В какой валюте показывать цены?",
                 reply_markup=keyboard
             )
-            await state.set_state(RegistrationStates.buyer_phone)
+            await state.set_state(RegistrationStates.buyer_currency)
         return
     
     district_name = message.text.replace("✅ ", "")
@@ -566,8 +619,8 @@ async def process_district(message: types.Message, state: FSMContext):
     )
 
 
-@dp.message(F.text.in_(["⬅️ Назад", "⬅️ Orqaga"]), RegistrationStates.buyer_budget)
-async def back_to_district(message: types.Message, state: FSMContext):
+@dp.message(F.text == "⬅️ Назад", RegistrationStates.buyer_currency)
+async def back_to_district_from_currency(message: types.Message, state: FSMContext):
     data = await state.get_data()
     selected_districts = data.get('selected_districts', [])
     lang = data.get('user_lang', 'ru')
@@ -577,6 +630,54 @@ async def back_to_district(message: types.Message, state: FSMContext):
         reply_markup=get_district_keyboard(selected_districts, lang)
     )
     await state.set_state(RegistrationStates.buyer_district)
+
+
+@dp.message(RegistrationStates.buyer_currency)
+async def process_currency(message: types.Message, state: FSMContext):
+    data = await state.get_data()
+    lang = data.get('user_lang', 'ru')
+    
+    if "USD" in message.text:
+        currency = "USD"
+        currency_symbol = "$"
+    elif "UZS" in message.text:
+        currency = "UZS"
+        currency_symbol = "сум"
+    else:
+        await message.answer("❌ Пожалуйста, выберите валюту из списка")
+        return
+    
+    await state.update_data(currency=currency)
+    
+    keyboard = ReplyKeyboardMarkup(
+        keyboard=[
+            [KeyboardButton(text=get_text('share_phone', lang), request_contact=True)],
+            [KeyboardButton(text=get_text('back', lang))]
+        ],
+        resize_keyboard=True
+    )
+    await message.answer(
+        get_text('share_phone_text', lang),
+        reply_markup=keyboard
+    )
+    await state.set_state(RegistrationStates.buyer_phone)
+
+
+@dp.message(F.text.in_(["⬅️ Назад", "⬅️ Orqaga"]), RegistrationStates.buyer_budget)
+async def back_to_currency(message: types.Message, state: FSMContext):
+    keyboard = ReplyKeyboardMarkup(
+        keyboard=[
+            [KeyboardButton(text="🇺🇸 USD (доллары)")],
+            [KeyboardButton(text="🇺🇿 UZS (сумы)")],
+            [KeyboardButton(text="⬅️ Назад")]
+        ],
+        resize_keyboard=True
+    )
+    await message.answer(
+        "💱 В какой валюте показывать цены?",
+        reply_markup=keyboard
+    )
+    await state.set_state(RegistrationStates.buyer_currency)
 
 
 @dp.message(RegistrationStates.buyer_budget)
@@ -642,18 +743,20 @@ async def process_payment(message: types.Message, state: FSMContext):
 
 
 @dp.message(F.text.in_(["⬅️ Назад", "⬅️ Orqaga"]), RegistrationStates.buyer_phone)
-async def back_to_district_from_phone(message: types.Message, state: FSMContext):
-    data = await state.get_data()
-    selected_districts = data.get('selected_districts', [])
-    lang = data.get('user_lang', 'ru')
-    
-    selected_display = [get_district_name(d, lang) for d in selected_districts]
-    selected_text = ", ".join(selected_display) if selected_display else ("tanlanmagan" if lang == 'uz' else "не выбрано")
-    await message.answer(
-        f"{get_text('choose_district', lang)}\n\n{'Tanlangan' if lang == 'uz' else 'Выбрано'}: {selected_text}",
-        reply_markup=get_district_keyboard(selected_districts, lang)
+async def back_to_currency_from_phone(message: types.Message, state: FSMContext):
+    keyboard = ReplyKeyboardMarkup(
+        keyboard=[
+            [KeyboardButton(text="🇺🇸 USD (доллары)")],
+            [KeyboardButton(text="🇺🇿 UZS (сумы)")],
+            [KeyboardButton(text="⬅️ Назад")]
+        ],
+        resize_keyboard=True
     )
-    await state.set_state(RegistrationStates.buyer_district)
+    await message.answer(
+        "💱 В какой валюте показывать цены?",
+        reply_markup=keyboard
+    )
+    await state.set_state(RegistrationStates.buyer_currency)
 
 
 @dp.message(F.contact, RegistrationStates.buyer_phone)
@@ -667,6 +770,7 @@ async def process_buyer_phone_contact(message: types.Message, state: FSMContext)
         user.phone = phone
         user.search_district = data.get("district", "")
         user.search_deal_type = data.get("deal_type", "sale")
+        user.search_currency = data.get("currency", "USD")
         user.search_rooms = None
         user.search_housing_type = None
         user.search_budget_max = None
@@ -694,6 +798,7 @@ async def process_buyer_phone_text(message: types.Message, state: FSMContext):
         user.phone = phone
         user.search_district = data.get("district", "")
         user.search_deal_type = data.get("deal_type", "sale")
+        user.search_currency = data.get("currency", "USD")
         user.search_rooms = None
         user.search_housing_type = None
         user.search_budget_max = None
@@ -2700,9 +2805,10 @@ async def show_property_card(message, property_id, state=None):
     prop.views_count += 1
     db.commit()
     
-    # Get user language
+    # Get user language and currency preference
     viewer = db.query(User).filter(User.telegram_id == message.from_user.id).first()
     lang = get_user_lang(viewer)
+    user_currency = viewer.search_currency if viewer and viewer.search_currency else 'USD'
     
     contact_phone = prop.phone if prop.phone else None
     if not contact_phone:
@@ -2715,7 +2821,10 @@ async def show_property_card(message, property_id, state=None):
     text = f"{type_emoji} <b>{type_name}</b>  •  ID: {prop.id}\n"
     text += "━━━━━━━━━━━━━━━━━━━━\n\n"
     
-    text += f"💰 <b>{prop.price:,} сум</b>\n"
+    # Format price based on user's currency preference
+    # Properties are stored in UZS (sums)
+    price_display = format_price_for_user(prop.price, 'UZS', user_currency)
+    text += f"💰 <b>{price_display}</b>\n"
     
     if prop.olx_title:
         text += f"📝 {prop.olx_title}\n"
