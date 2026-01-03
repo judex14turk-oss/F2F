@@ -1231,12 +1231,13 @@ def webapp_find_buyers_search():
     results = []
     for buyer in buyers:
         budget_raw = buyer.search_budget_max or 0
+        original_budget = int(budget_raw / 1.2) if budget_raw else 0
         buyer_currency = buyer.search_currency or 'USD'
         
         if buyer_currency == 'UZS' and usd_rate > 0:
-            budget_usd = int(budget_raw / usd_rate)
+            budget_usd = int(original_budget / usd_rate)
         else:
-            budget_usd = budget_raw
+            budget_usd = original_budget
         
         housing_type_display = {
             'new_building': '🏗 Новостройка',
