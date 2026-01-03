@@ -106,6 +106,96 @@
         .menu-card.parser .menu-card-icon { color: #f97316; }
         .menu-card.ads .menu-card-icon { color: #ef4444; }
         .menu-card.broken .menu-card-icon { color: #f87171; }
+        .menu-card.currency .menu-card-icon { color: #14b8a6; }
+        
+        .currency-section {
+            background: #151515;
+            border: 1px solid #252525;
+            border-radius: 16px;
+            padding: 20px;
+            margin: 16px;
+        }
+        
+        .currency-title {
+            font-size: 1rem;
+            font-weight: 600;
+            color: #fff;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            margin-bottom: 16px;
+        }
+        
+        .currency-title i {
+            color: #14b8a6;
+        }
+        
+        .currency-row {
+            display: flex;
+            gap: 12px;
+            align-items: end;
+        }
+        
+        .currency-input-group {
+            flex: 1;
+        }
+        
+        .currency-input-group label {
+            font-size: 0.75rem;
+            color: #888;
+            margin-bottom: 6px;
+            display: block;
+        }
+        
+        .currency-input-group input {
+            width: 100%;
+            padding: 12px;
+            background: #1a1a1a;
+            border: 1px solid #333;
+            border-radius: 8px;
+            color: #fff;
+            font-size: 1rem;
+        }
+        
+        .currency-input-group input:focus {
+            outline: none;
+            border-color: #14b8a6;
+        }
+        
+        .currency-save-btn {
+            padding: 12px 20px;
+            background: #14b8a6;
+            border: none;
+            border-radius: 8px;
+            color: #fff;
+            font-size: 0.9rem;
+            font-weight: 600;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+        
+        .currency-save-btn:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+        }
+        
+        .currency-info {
+            margin-top: 12px;
+            font-size: 0.8rem;
+            color: #666;
+        }
+        
+        .currency-success {
+            background: #22c55e;
+            color: #fff;
+            padding: 8px 12px;
+            border-radius: 6px;
+            font-size: 0.8rem;
+            margin-top: 12px;
+            display: none;
+        }
         
         .menu-card.has-badge {
             position: relative;
@@ -245,6 +335,35 @@
         </a>
     </div>
     
+    {% if permissions.can_edit_tariff %}
+    <div class="currency-section">
+        <div class="currency-title">
+            <i class="bi bi-currency-exchange"></i>
+            Конвертер валют
+        </div>
+        <div class="currency-row">
+            <div class="currency-input-group">
+                <label>Курс 1 USD в сумах</label>
+                <input type="number" id="usdRate" value="{{ usd_rate or '' }}" placeholder="12850">
+            </div>
+            <button type="button" class="currency-save-btn" id="saveRateBtn" onclick="saveExchangeRate()">
+                <i class="bi bi-check-lg"></i>
+                Сохранить
+            </button>
+        </div>
+        <div class="currency-info">
+            {% if usd_rate %}
+            Текущий курс: 1 USD = {{ usd_rate|int|format_number }} сум
+            {% else %}
+            Курс не установлен
+            {% endif %}
+        </div>
+        <div class="currency-success" id="currencySuccess">
+            Курс успешно сохранён!
+        </div>
+    </div>
+    {% endif %}
+    
     <div class="bottom-nav">
         <a href="{{ url_for('webapp_admin_home', tg_id=tg_id) }}" class="bottom-nav-item active">
             <i class="bi bi-house"></i>
@@ -268,6 +387,46 @@
         const tg = window.Telegram.WebApp;
         tg.ready();
         tg.expand();
+        
+        async function saveExchangeRate() {
+            const rate = document.getElementById('usdRate').value;
+            const btn = document.getElementById('saveRateBtn');
+            const successMsg = document.getElementById('currencySuccess');
+            
+            if (!rate || rate <= 0) {
+                alert('Введите корректный курс');
+                return;
+            }
+            
+            btn.disabled = true;
+            btn.innerHTML = '<i class="bi bi-hourglass-split"></i> Сохранение...';
+            
+            try {
+                const response = await fetch('{{ url_for("save_exchange_rate") }}?tg_id={{ tg_id }}', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({ rate: rate })
+                });
+                
+                if (response.ok) {
+                    successMsg.style.display = 'block';
+                    document.querySelector('.currency-info').innerHTML = 'Текущий курс: 1 USD = ' + Number(rate).toLocaleString('ru-RU') + ' сум';
+                    
+                    setTimeout(() => {
+                        successMsg.style.display = 'none';
+                    }, 2000);
+                } else {
+                    alert('Ошибка сохранения');
+                }
+            } catch (error) {
+                alert('Ошибка сети');
+            }
+            
+            btn.disabled = false;
+            btn.innerHTML = '<i class="bi bi-check-lg"></i> Сохранить';
+        }
     </script>
 </body>
 </html>

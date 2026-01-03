@@ -315,6 +315,15 @@ class Advertisement(Base):
     updated_at = Column(DateTime, default=get_tashkent_now, onupdate=get_tashkent_now)
 
 
+class Setting(Base):
+    __tablename__ = 'settings'
+    
+    id = Column(Integer, primary_key=True)
+    key = Column(String(100), unique=True, nullable=False)
+    value = Column(Text)
+    updated_at = Column(DateTime, default=get_tashkent_now, onupdate=get_tashkent_now)
+
+
 def init_db():
     Base.metadata.create_all(engine)
     

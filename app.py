@@ -8,7 +8,7 @@ from flask import Flask, render_template, request, jsonify, redirect, url_for, s
 
 TELEGRAM_BOT_TOKEN = os.environ.get('TELEGRAM_BOT_TOKEN', '')
 from sqlalchemy.orm import joinedload
-from models import SessionLocal, User, Property, Like, Match, Offer, District, ResidentialComplex, PromoCode, TariffSettings, Advertisement, PromoRequest
+from models import SessionLocal, User, Property, Like, Match, Offer, District, ResidentialComplex, PromoCode, TariffSettings, Advertisement, PromoRequest, Setting
 from models import UserRole, SellerType, TariffType, PropertyType, PropertyStatus, AdminRole, init_db, get_tashkent_now
 from translations import WEBAPP_TRANSLATIONS
 
@@ -16,6 +16,13 @@ app = Flask(__name__)
 app.secret_key = os.environ.get('SESSION_SECRET', 'real-estate-bot-secret-key')
 app.config['SESSION_COOKIE_SAMESITE'] = 'None'
 app.config['SESSION_COOKIE_SECURE'] = True
+
+@app.template_filter('format_number')
+def format_number(value):
+    try:
+        return '{:,.0f}'.format(float(value)).replace(',', ' ')
+    except:
+        return value
 
 ADMIN_USERNAME = os.environ.get('ADMIN_USERNAME', 'InvictumMurad')
 
@@ -2002,6 +2009,9 @@ def webapp_admin_home():
     properties_count = db.query(Property).count()
     pending_count = db.query(Property).filter(Property.status == PropertyStatus.MODERATION).count()
     
+    usd_rate_setting = db.query(Setting).filter(Setting.key == 'usd_rate').first()
+    usd_rate = float(usd_rate_setting.value) if usd_rate_setting and usd_rate_setting.value else None
+    
     db.close()
     
     return render_template('webapp_admin_home.html',
@@ -2012,8 +2022,43 @@ def webapp_admin_home():
         sellers_count=sellers_count,
         admins_count=admins_count,
         properties_count=properties_count,
-        pending_count=pending_count
+        pending_count=pending_count,
+        usd_rate=usd_rate
     )
+
+
+@app.route('/api/save_exchange_rate', methods=['POST'])
+def save_exchange_rate():
+    tg_id = request.args.get('tg_id')
+    if not tg_id:
+        return jsonify({'error': 'Unauthorized'}), 401
+    
+    db = get_db()
+    try:
+        admin_user = db.query(User).filter(User.telegram_id == int(tg_id)).first()
+        if not admin_user or not admin_user.is_admin:
+            return jsonify({'error': 'Forbidden'}), 403
+        
+        data = request.get_json()
+        rate = data.get('rate')
+        
+        if not rate:
+            return jsonify({'error': 'Rate is required'}), 400
+        
+        setting = db.query(Setting).filter(Setting.key == 'usd_rate').first()
+        if setting:
+            setting.value = str(rate)
+        else:
+            setting = Setting(key='usd_rate', value=str(rate))
+            db.add(setting)
+        
+        db.commit()
+        return jsonify({'success': True, 'rate': rate})
+    except Exception as e:
+        db.rollback()
+        return jsonify({'error': str(e)}), 500
+    finally:
+        db.close()
 
 
 @app.route('/webapp/admin')
