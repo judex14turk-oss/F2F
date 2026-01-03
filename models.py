@@ -162,6 +162,28 @@ class Property(Base):
     source = Column(String(100), default='manual')
     seller_name = Column(String(200))
     
+    # Developer/extended fields for apartments
+    housing_class = Column(String(50))  # Комфорт, Премиум, Бизнес
+    has_balcony = Column(Boolean, default=False)
+    balcony_area = Column(Float)  # площадь балкона
+    included_in_price = Column(Text)  # что включено в стоимость
+    metro_station = Column(String(200))  # ближайшее метро
+    latitude = Column(Float)  # координаты
+    longitude = Column(Float)
+    price_per_sqm = Column(Integer)  # цена за м²
+    down_payment_type = Column(String(20))  # amount или percent
+    down_payment_value = Column(Float)  # значение первоначального взноса
+    discounts = Column(Text)  # JSON со скидками и условиями
+    payment_methods = Column(Text)  # JSON с методами оплаты
+    mortgage_down_payment = Column(Float)  # % первоначального взноса для ипотеки
+    mortgage_months = Column(Integer)  # срок ипотеки в месяцах
+    mortgage_grace_period = Column(Integer)  # льготный период ипотеки
+    installment_down_payment = Column(Float)  # % первоначального взноса для рассрочки
+    installment_months = Column(Integer)  # срок рассрочки в месяцах
+    installment_grace_period = Column(Integer)  # льготный период рассрочки
+    has_mixed_payment = Column(Boolean, default=False)  # рассрочка + ипотека
+    layout_photos = Column(Text)  # фото планировки отдельно
+    
     owner = relationship("User", back_populates="properties")
     likes = relationship("Like", back_populates="property", cascade="all, delete-orphan")
     matches = relationship("Match", back_populates="property", cascade="all, delete-orphan")

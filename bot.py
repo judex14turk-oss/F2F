@@ -92,6 +92,35 @@ class PropertyStates(StatesGroup):
     confirm = State()
 
 
+class DeveloperPropertyStates(StatesGroup):
+    property_type = State()  # продажа/аренда
+    housing_class = State()  # класс жилья
+    rooms = State()  # количество комнат
+    area = State()  # площадь квартиры
+    floor = State()  # этаж
+    total_floors = State()  # этажность дома
+    has_balcony = State()  # есть ли балкон
+    balcony_area = State()  # площадь балкона
+    renovation = State()  # тип ремонта
+    included_in_price = State()  # что включено в стоимость
+    district = State()  # район
+    metro_station = State()  # станция метро
+    location = State()  # локация
+    price_per_sqm = State()  # цена за м²
+    down_payment_type = State()  # тип первоначального взноса
+    down_payment_value = State()  # значение первоначального взноса
+    has_discount = State()  # есть ли скидка
+    discount_conditions = State()  # условия скидок
+    add_more_discount = State()  # добавить еще скидку
+    payment_methods = State()  # методы оплаты
+    mortgage_details = State()  # детали ипотеки
+    installment_details = State()  # детали рассрочки
+    has_mixed_payment = State()  # смешанный тип оплаты
+    photos = State()  # фото проекта
+    layout_photos = State()  # фото планировки
+    confirm = State()  # подтверждение
+
+
 class SearchStates(StatesGroup):
     viewing_properties = State()
     current_index = State()
@@ -967,7 +996,8 @@ async def show_seller_menu(message, user_id, buyers_count=None):
         TariffType.DEVELOPER_PRO: get_text('tariff_developer', lang)
     }
     
-    keyboard = get_seller_menu(lang)
+    is_developer = user.seller_type == SellerType.DEVELOPER
+    keyboard = get_seller_menu(lang, is_developer=is_developer)
     
     await message.answer(
         get_text('seller_registration_complete', lang, count=buyers_count, views=total_views, likes=total_likes, matches=matches_count, tariff=tariff_names.get(user.tariff, get_text('tariff_free', lang))),
@@ -1389,15 +1419,1139 @@ async def finish_photos(callback: types.CallbackQuery, state: FSMContext):
     db = SessionLocal()
     user = db.query(User).filter(User.telegram_id == callback.from_user.id).first()
     lang = get_user_lang(user)
+    is_developer = user.seller_type == SellerType.DEVELOPER if user else False
     db.close()
     
-    keyboard = get_seller_menu(lang)
+    keyboard = get_seller_menu(lang, is_developer=is_developer)
     
     await callback.message.answer(
         f"🎯 {buyers_count} покупателей ищут похожие квартиры.\n"
         f"Ваш объект уже виден им в ленте!",
         reply_markup=keyboard
     )
+
+
+import json
+
+# =====================================================
+# DEVELOPER PROPERTY FORM HANDLERS (Extended form for developers)
+# =====================================================
+
+def get_dev_back_keyboard(lang='ru'):
+    return ReplyKeyboardMarkup(
+        keyboard=[[KeyboardButton(text=get_text('dev_back', lang))]],
+        resize_keyboard=True
+    )
+
+def get_dev_skip_back_keyboard(lang='ru'):
+    return ReplyKeyboardMarkup(
+        keyboard=[
+            [KeyboardButton(text=get_text('dev_skip', lang))],
+            [KeyboardButton(text=get_text('dev_back', lang))]
+        ],
+        resize_keyboard=True
+    )
+
+@dp.message(F.text.in_(["➕ Добавить объект (расширенная форма)", "➕ Obyekt qo'shish (kengaytirilgan)"]))
+async def dev_add_property_start(message: types.Message, state: FSMContext):
+    db = SessionLocal()
+    user = db.query(User).filter(User.telegram_id == message.from_user.id).first()
+    
+    if not user or user.role != UserRole.SELLER:
+        db.close()
+        return
+    
+    if user.seller_type != SellerType.DEVELOPER:
+        lang = get_user_lang(user)
+        db.close()
+        await message.answer("Эта форма только для застройщиков. Используйте обычную форму добавления объекта.")
+        return
+    
+    lang = get_user_lang(user)
+    limits = get_tariff_limits(user.tariff, user.is_admin)
+    current_properties = db.query(Property).filter(
+        Property.owner_id == user.id,
+        Property.status != PropertyStatus.ARCHIVE
+    ).count()
+    bonus = user.bonus_properties or 0
+    max_properties = limits["properties"] + bonus
+    db.close()
+    
+    if current_properties >= max_properties:
+        await message.answer(
+            f"⚠️ Вы достигли лимита объектов ({max_properties}) для вашего тарифа."
+        )
+        return
+    
+    await state.update_data(photos=[], layout_photos=[], discounts=[], payment_methods=[], user_lang=lang)
+    
+    keyboard = ReplyKeyboardMarkup(
+        keyboard=[
+            [KeyboardButton(text=get_text('dev_sale', lang))],
+            [KeyboardButton(text=get_text('dev_rent', lang))],
+            [KeyboardButton(text=get_text('dev_back', lang))]
+        ],
+        resize_keyboard=True
+    )
+    
+    await message.answer(get_text('dev_add_property', lang) + "\n\n" + get_text('dev_choose_deal_type', lang), reply_markup=keyboard)
+    await state.set_state(DeveloperPropertyStates.property_type)
+
+
+@dp.message(F.text.in_(["⬅️ Назад", "⬅️ Orqaga"]), DeveloperPropertyStates.property_type)
+async def dev_back_from_property_type(message: types.Message, state: FSMContext):
+    await state.clear()
+    db = SessionLocal()
+    user = db.query(User).filter(User.telegram_id == message.from_user.id).first()
+    lang = get_user_lang(user)
+    is_developer = user.seller_type == SellerType.DEVELOPER if user else False
+    db.close()
+    await message.answer(get_text('returned_to_menu', lang), reply_markup=get_seller_menu(lang, is_developer=is_developer))
+
+
+@dp.message(DeveloperPropertyStates.property_type)
+async def dev_process_property_type(message: types.Message, state: FSMContext):
+    data = await state.get_data()
+    lang = data.get('user_lang', 'ru')
+    
+    if message.text in [get_text('dev_sale', 'ru'), get_text('dev_sale', 'uz')]:
+        prop_type = PropertyType.SALE
+    elif message.text in [get_text('dev_rent', 'ru'), get_text('dev_rent', 'uz')]:
+        prop_type = PropertyType.RENT
+    else:
+        return
+    
+    await state.update_data(property_type=prop_type)
+    
+    keyboard = ReplyKeyboardMarkup(
+        keyboard=[
+            [KeyboardButton(text=get_text('dev_class_comfort', lang))],
+            [KeyboardButton(text=get_text('dev_class_business', lang))],
+            [KeyboardButton(text=get_text('dev_class_premium', lang))],
+            [KeyboardButton(text=get_text('dev_back', lang))]
+        ],
+        resize_keyboard=True
+    )
+    
+    await message.answer(get_text('dev_choose_housing_class', lang), reply_markup=keyboard)
+    await state.set_state(DeveloperPropertyStates.housing_class)
+
+
+@dp.message(F.text.in_(["⬅️ Назад", "⬅️ Orqaga"]), DeveloperPropertyStates.housing_class)
+async def dev_back_to_property_type(message: types.Message, state: FSMContext):
+    data = await state.get_data()
+    lang = data.get('user_lang', 'ru')
+    keyboard = ReplyKeyboardMarkup(
+        keyboard=[
+            [KeyboardButton(text=get_text('dev_sale', lang))],
+            [KeyboardButton(text=get_text('dev_rent', lang))],
+            [KeyboardButton(text=get_text('dev_back', lang))]
+        ],
+        resize_keyboard=True
+    )
+    await message.answer(get_text('dev_choose_deal_type', lang), reply_markup=keyboard)
+    await state.set_state(DeveloperPropertyStates.property_type)
+
+
+@dp.message(DeveloperPropertyStates.housing_class)
+async def dev_process_housing_class(message: types.Message, state: FSMContext):
+    data = await state.get_data()
+    lang = data.get('user_lang', 'ru')
+    
+    class_map = {
+        get_text('dev_class_comfort', 'ru'): "Комфорт",
+        get_text('dev_class_comfort', 'uz'): "Комфорт",
+        get_text('dev_class_business', 'ru'): "Бизнес",
+        get_text('dev_class_business', 'uz'): "Бизнес",
+        get_text('dev_class_premium', 'ru'): "Премиум",
+        get_text('dev_class_premium', 'uz'): "Премиум",
+    }
+    
+    if message.text not in class_map:
+        return
+    
+    await state.update_data(housing_class=class_map[message.text])
+    await message.answer(get_text('dev_enter_rooms', lang), reply_markup=get_dev_back_keyboard(lang))
+    await state.set_state(DeveloperPropertyStates.rooms)
+
+
+@dp.message(F.text.in_(["⬅️ Назад", "⬅️ Orqaga"]), DeveloperPropertyStates.rooms)
+async def dev_back_to_housing_class(message: types.Message, state: FSMContext):
+    data = await state.get_data()
+    lang = data.get('user_lang', 'ru')
+    keyboard = ReplyKeyboardMarkup(
+        keyboard=[
+            [KeyboardButton(text=get_text('dev_class_comfort', lang))],
+            [KeyboardButton(text=get_text('dev_class_business', lang))],
+            [KeyboardButton(text=get_text('dev_class_premium', lang))],
+            [KeyboardButton(text=get_text('dev_back', lang))]
+        ],
+        resize_keyboard=True
+    )
+    await message.answer(get_text('dev_choose_housing_class', lang), reply_markup=keyboard)
+    await state.set_state(DeveloperPropertyStates.housing_class)
+
+
+@dp.message(DeveloperPropertyStates.rooms)
+async def dev_process_rooms(message: types.Message, state: FSMContext):
+    data = await state.get_data()
+    lang = data.get('user_lang', 'ru')
+    
+    rooms = validate_number(message.text)
+    if rooms is None or rooms < 1 or rooms > 20:
+        await message.answer(get_text('dev_invalid_number', lang))
+        return
+    
+    await state.update_data(rooms=int(rooms))
+    await message.answer(get_text('dev_enter_area', lang), reply_markup=get_dev_back_keyboard(lang))
+    await state.set_state(DeveloperPropertyStates.area)
+
+
+@dp.message(F.text.in_(["⬅️ Назад", "⬅️ Orqaga"]), DeveloperPropertyStates.area)
+async def dev_back_to_rooms(message: types.Message, state: FSMContext):
+    data = await state.get_data()
+    lang = data.get('user_lang', 'ru')
+    await message.answer(get_text('dev_enter_rooms', lang), reply_markup=get_dev_back_keyboard(lang))
+    await state.set_state(DeveloperPropertyStates.rooms)
+
+
+@dp.message(DeveloperPropertyStates.area)
+async def dev_process_area(message: types.Message, state: FSMContext):
+    data = await state.get_data()
+    lang = data.get('user_lang', 'ru')
+    
+    area = validate_number(message.text)
+    if area is None or area < 5 or area > 2000:
+        await message.answer(get_text('dev_invalid_number', lang))
+        return
+    
+    await state.update_data(area=float(area))
+    await message.answer(get_text('dev_enter_floor', lang), reply_markup=get_dev_back_keyboard(lang))
+    await state.set_state(DeveloperPropertyStates.floor)
+
+
+@dp.message(F.text.in_(["⬅️ Назад", "⬅️ Orqaga"]), DeveloperPropertyStates.floor)
+async def dev_back_to_area(message: types.Message, state: FSMContext):
+    data = await state.get_data()
+    lang = data.get('user_lang', 'ru')
+    await message.answer(get_text('dev_enter_area', lang), reply_markup=get_dev_back_keyboard(lang))
+    await state.set_state(DeveloperPropertyStates.area)
+
+
+@dp.message(DeveloperPropertyStates.floor)
+async def dev_process_floor(message: types.Message, state: FSMContext):
+    data = await state.get_data()
+    lang = data.get('user_lang', 'ru')
+    
+    floor = validate_number(message.text)
+    if floor is None or floor < 1 or floor > 100:
+        await message.answer(get_text('dev_invalid_number', lang))
+        return
+    
+    await state.update_data(floor=int(floor))
+    await message.answer(get_text('dev_enter_total_floors', lang), reply_markup=get_dev_back_keyboard(lang))
+    await state.set_state(DeveloperPropertyStates.total_floors)
+
+
+@dp.message(F.text.in_(["⬅️ Назад", "⬅️ Orqaga"]), DeveloperPropertyStates.total_floors)
+async def dev_back_to_floor(message: types.Message, state: FSMContext):
+    data = await state.get_data()
+    lang = data.get('user_lang', 'ru')
+    await message.answer(get_text('dev_enter_floor', lang), reply_markup=get_dev_back_keyboard(lang))
+    await state.set_state(DeveloperPropertyStates.floor)
+
+
+@dp.message(DeveloperPropertyStates.total_floors)
+async def dev_process_total_floors(message: types.Message, state: FSMContext):
+    data = await state.get_data()
+    lang = data.get('user_lang', 'ru')
+    
+    total_floors = validate_number(message.text)
+    if total_floors is None or total_floors < 1 or total_floors > 100:
+        await message.answer(get_text('dev_invalid_number', lang))
+        return
+    
+    if int(total_floors) < data.get("floor", 1):
+        await message.answer("❌ Этажность дома не может быть меньше этажа квартиры!")
+        return
+    
+    await state.update_data(total_floors=int(total_floors))
+    
+    keyboard = ReplyKeyboardMarkup(
+        keyboard=[
+            [KeyboardButton(text=get_text('dev_yes', lang)), KeyboardButton(text=get_text('dev_no', lang))],
+            [KeyboardButton(text=get_text('dev_back', lang))]
+        ],
+        resize_keyboard=True
+    )
+    await message.answer(get_text('dev_has_balcony', lang), reply_markup=keyboard)
+    await state.set_state(DeveloperPropertyStates.has_balcony)
+
+
+@dp.message(F.text.in_(["⬅️ Назад", "⬅️ Orqaga"]), DeveloperPropertyStates.has_balcony)
+async def dev_back_to_total_floors(message: types.Message, state: FSMContext):
+    data = await state.get_data()
+    lang = data.get('user_lang', 'ru')
+    await message.answer(get_text('dev_enter_total_floors', lang), reply_markup=get_dev_back_keyboard(lang))
+    await state.set_state(DeveloperPropertyStates.total_floors)
+
+
+@dp.message(DeveloperPropertyStates.has_balcony)
+async def dev_process_has_balcony(message: types.Message, state: FSMContext):
+    data = await state.get_data()
+    lang = data.get('user_lang', 'ru')
+    
+    if message.text in [get_text('dev_yes', 'ru'), get_text('dev_yes', 'uz')]:
+        await state.update_data(has_balcony=True)
+        await message.answer(get_text('dev_enter_balcony_area', lang), reply_markup=get_dev_back_keyboard(lang))
+        await state.set_state(DeveloperPropertyStates.balcony_area)
+    elif message.text in [get_text('dev_no', 'ru'), get_text('dev_no', 'uz')]:
+        await state.update_data(has_balcony=False, balcony_area=None)
+        keyboard = ReplyKeyboardMarkup(
+            keyboard=[
+                [KeyboardButton(text=get_text('dev_renovation_partial', lang))],
+                [KeyboardButton(text=get_text('dev_renovation_full', lang))],
+                [KeyboardButton(text=get_text('dev_renovation_clean', lang))],
+                [KeyboardButton(text=get_text('dev_renovation_preclean', lang))],
+                [KeyboardButton(text=get_text('dev_back', lang))]
+            ],
+            resize_keyboard=True
+        )
+        await message.answer(get_text('dev_choose_renovation', lang), reply_markup=keyboard)
+        await state.set_state(DeveloperPropertyStates.renovation)
+
+
+@dp.message(F.text.in_(["⬅️ Назад", "⬅️ Orqaga"]), DeveloperPropertyStates.balcony_area)
+async def dev_back_to_has_balcony(message: types.Message, state: FSMContext):
+    data = await state.get_data()
+    lang = data.get('user_lang', 'ru')
+    keyboard = ReplyKeyboardMarkup(
+        keyboard=[
+            [KeyboardButton(text=get_text('dev_yes', lang)), KeyboardButton(text=get_text('dev_no', lang))],
+            [KeyboardButton(text=get_text('dev_back', lang))]
+        ],
+        resize_keyboard=True
+    )
+    await message.answer(get_text('dev_has_balcony', lang), reply_markup=keyboard)
+    await state.set_state(DeveloperPropertyStates.has_balcony)
+
+
+@dp.message(DeveloperPropertyStates.balcony_area)
+async def dev_process_balcony_area(message: types.Message, state: FSMContext):
+    data = await state.get_data()
+    lang = data.get('user_lang', 'ru')
+    
+    area = validate_number(message.text)
+    if area is None or area < 1 or area > 100:
+        await message.answer(get_text('dev_invalid_number', lang))
+        return
+    
+    await state.update_data(balcony_area=float(area))
+    
+    keyboard = ReplyKeyboardMarkup(
+        keyboard=[
+            [KeyboardButton(text=get_text('dev_renovation_partial', lang))],
+            [KeyboardButton(text=get_text('dev_renovation_full', lang))],
+            [KeyboardButton(text=get_text('dev_renovation_clean', lang))],
+            [KeyboardButton(text=get_text('dev_renovation_preclean', lang))],
+            [KeyboardButton(text=get_text('dev_back', lang))]
+        ],
+        resize_keyboard=True
+    )
+    await message.answer(get_text('dev_choose_renovation', lang), reply_markup=keyboard)
+    await state.set_state(DeveloperPropertyStates.renovation)
+
+
+@dp.message(F.text.in_(["⬅️ Назад", "⬅️ Orqaga"]), DeveloperPropertyStates.renovation)
+async def dev_back_to_balcony(message: types.Message, state: FSMContext):
+    data = await state.get_data()
+    lang = data.get('user_lang', 'ru')
+    if data.get('has_balcony'):
+        await message.answer(get_text('dev_enter_balcony_area', lang), reply_markup=get_dev_back_keyboard(lang))
+        await state.set_state(DeveloperPropertyStates.balcony_area)
+    else:
+        keyboard = ReplyKeyboardMarkup(
+            keyboard=[
+                [KeyboardButton(text=get_text('dev_yes', lang)), KeyboardButton(text=get_text('dev_no', lang))],
+                [KeyboardButton(text=get_text('dev_back', lang))]
+            ],
+            resize_keyboard=True
+        )
+        await message.answer(get_text('dev_has_balcony', lang), reply_markup=keyboard)
+        await state.set_state(DeveloperPropertyStates.has_balcony)
+
+
+@dp.message(DeveloperPropertyStates.renovation)
+async def dev_process_renovation(message: types.Message, state: FSMContext):
+    data = await state.get_data()
+    lang = data.get('user_lang', 'ru')
+    
+    reno_map = {
+        get_text('dev_renovation_partial', 'ru'): "Частичный ремонт",
+        get_text('dev_renovation_partial', 'uz'): "Частичный ремонт",
+        get_text('dev_renovation_full', 'ru'): "Полный ремонт",
+        get_text('dev_renovation_full', 'uz'): "Полный ремонт",
+        get_text('dev_renovation_clean', 'ru'): "Чистовая отделка",
+        get_text('dev_renovation_clean', 'uz'): "Чистовая отделка",
+        get_text('dev_renovation_preclean', 'ru'): "Предчистовая отделка",
+        get_text('dev_renovation_preclean', 'uz'): "Предчистовая отделка",
+    }
+    
+    if message.text not in reno_map:
+        return
+    
+    await state.update_data(renovation=reno_map[message.text])
+    await message.answer(get_text('dev_enter_included', lang), reply_markup=get_dev_back_keyboard(lang))
+    await state.set_state(DeveloperPropertyStates.included_in_price)
+
+
+@dp.message(F.text.in_(["⬅️ Назад", "⬅️ Orqaga"]), DeveloperPropertyStates.included_in_price)
+async def dev_back_to_renovation(message: types.Message, state: FSMContext):
+    data = await state.get_data()
+    lang = data.get('user_lang', 'ru')
+    keyboard = ReplyKeyboardMarkup(
+        keyboard=[
+            [KeyboardButton(text=get_text('dev_renovation_partial', lang))],
+            [KeyboardButton(text=get_text('dev_renovation_full', lang))],
+            [KeyboardButton(text=get_text('dev_renovation_clean', lang))],
+            [KeyboardButton(text=get_text('dev_renovation_preclean', lang))],
+            [KeyboardButton(text=get_text('dev_back', lang))]
+        ],
+        resize_keyboard=True
+    )
+    await message.answer(get_text('dev_choose_renovation', lang), reply_markup=keyboard)
+    await state.set_state(DeveloperPropertyStates.renovation)
+
+
+@dp.message(DeveloperPropertyStates.included_in_price)
+async def dev_process_included(message: types.Message, state: FSMContext):
+    data = await state.get_data()
+    lang = data.get('user_lang', 'ru')
+    
+    await state.update_data(included_in_price=message.text)
+    
+    db = SessionLocal()
+    districts = db.query(District).all()
+    db.close()
+    
+    keyboard_buttons = []
+    row = []
+    for district in districts:
+        row.append(KeyboardButton(text=district.name))
+        if len(row) == 2:
+            keyboard_buttons.append(row)
+            row = []
+    if row:
+        keyboard_buttons.append(row)
+    keyboard_buttons.append([KeyboardButton(text=get_text('dev_back', lang))])
+    
+    keyboard = ReplyKeyboardMarkup(keyboard=keyboard_buttons, resize_keyboard=True)
+    await message.answer(get_text('dev_choose_district', lang), reply_markup=keyboard)
+    await state.set_state(DeveloperPropertyStates.district)
+
+
+@dp.message(F.text.in_(["⬅️ Назад", "⬅️ Orqaga"]), DeveloperPropertyStates.district)
+async def dev_back_to_included(message: types.Message, state: FSMContext):
+    data = await state.get_data()
+    lang = data.get('user_lang', 'ru')
+    await message.answer(get_text('dev_enter_included', lang), reply_markup=get_dev_back_keyboard(lang))
+    await state.set_state(DeveloperPropertyStates.included_in_price)
+
+
+@dp.message(DeveloperPropertyStates.district)
+async def dev_process_district(message: types.Message, state: FSMContext):
+    data = await state.get_data()
+    lang = data.get('user_lang', 'ru')
+    
+    db = SessionLocal()
+    districts = [d.name for d in db.query(District).all()]
+    db.close()
+    
+    if message.text in districts:
+        await state.update_data(district=message.text)
+        await message.answer(get_text('dev_enter_metro', lang), reply_markup=get_dev_skip_back_keyboard(lang))
+        await state.set_state(DeveloperPropertyStates.metro_station)
+
+
+@dp.message(F.text.in_(["⬅️ Назад", "⬅️ Orqaga"]), DeveloperPropertyStates.metro_station)
+async def dev_back_to_district(message: types.Message, state: FSMContext):
+    data = await state.get_data()
+    lang = data.get('user_lang', 'ru')
+    
+    db = SessionLocal()
+    districts = db.query(District).all()
+    db.close()
+    
+    keyboard_buttons = []
+    row = []
+    for district in districts:
+        row.append(KeyboardButton(text=district.name))
+        if len(row) == 2:
+            keyboard_buttons.append(row)
+            row = []
+    if row:
+        keyboard_buttons.append(row)
+    keyboard_buttons.append([KeyboardButton(text=get_text('dev_back', lang))])
+    
+    keyboard = ReplyKeyboardMarkup(keyboard=keyboard_buttons, resize_keyboard=True)
+    await message.answer(get_text('dev_choose_district', lang), reply_markup=keyboard)
+    await state.set_state(DeveloperPropertyStates.district)
+
+
+@dp.message(DeveloperPropertyStates.metro_station)
+async def dev_process_metro(message: types.Message, state: FSMContext):
+    data = await state.get_data()
+    lang = data.get('user_lang', 'ru')
+    
+    if message.text in [get_text('dev_skip', 'ru'), get_text('dev_skip', 'uz')]:
+        await state.update_data(metro_station=None)
+    else:
+        await state.update_data(metro_station=message.text)
+    
+    keyboard = ReplyKeyboardMarkup(
+        keyboard=[
+            [KeyboardButton(text=get_text('dev_skip_location', lang))],
+            [KeyboardButton(text=get_text('dev_back', lang))]
+        ],
+        resize_keyboard=True
+    )
+    await message.answer(get_text('dev_send_location', lang), reply_markup=keyboard)
+    await state.set_state(DeveloperPropertyStates.location)
+
+
+@dp.message(F.text.in_(["⬅️ Назад", "⬅️ Orqaga"]), DeveloperPropertyStates.location)
+async def dev_back_to_metro(message: types.Message, state: FSMContext):
+    data = await state.get_data()
+    lang = data.get('user_lang', 'ru')
+    await message.answer(get_text('dev_enter_metro', lang), reply_markup=get_dev_skip_back_keyboard(lang))
+    await state.set_state(DeveloperPropertyStates.metro_station)
+
+
+@dp.message(DeveloperPropertyStates.location, F.location)
+async def dev_process_location_geo(message: types.Message, state: FSMContext):
+    data = await state.get_data()
+    lang = data.get('user_lang', 'ru')
+    
+    await state.update_data(
+        latitude=message.location.latitude,
+        longitude=message.location.longitude
+    )
+    await message.answer(get_text('dev_enter_price_sqm', lang), reply_markup=get_dev_back_keyboard(lang))
+    await state.set_state(DeveloperPropertyStates.price_per_sqm)
+
+
+@dp.message(DeveloperPropertyStates.location)
+async def dev_process_location_skip(message: types.Message, state: FSMContext):
+    data = await state.get_data()
+    lang = data.get('user_lang', 'ru')
+    
+    if message.text in [get_text('dev_skip_location', 'ru'), get_text('dev_skip_location', 'uz'), get_text('dev_skip', 'ru'), get_text('dev_skip', 'uz')]:
+        await state.update_data(latitude=None, longitude=None)
+        await message.answer(get_text('dev_enter_price_sqm', lang), reply_markup=get_dev_back_keyboard(lang))
+        await state.set_state(DeveloperPropertyStates.price_per_sqm)
+
+
+@dp.message(F.text.in_(["⬅️ Назад", "⬅️ Orqaga"]), DeveloperPropertyStates.price_per_sqm)
+async def dev_back_to_location(message: types.Message, state: FSMContext):
+    data = await state.get_data()
+    lang = data.get('user_lang', 'ru')
+    keyboard = ReplyKeyboardMarkup(
+        keyboard=[
+            [KeyboardButton(text=get_text('dev_skip_location', lang))],
+            [KeyboardButton(text=get_text('dev_back', lang))]
+        ],
+        resize_keyboard=True
+    )
+    await message.answer(get_text('dev_send_location', lang), reply_markup=keyboard)
+    await state.set_state(DeveloperPropertyStates.location)
+
+
+@dp.message(DeveloperPropertyStates.price_per_sqm)
+async def dev_process_price_sqm(message: types.Message, state: FSMContext):
+    data = await state.get_data()
+    lang = data.get('user_lang', 'ru')
+    
+    price = validate_number(message.text.replace("$", "").replace(" ", ""))
+    if price is None or price < 100:
+        await message.answer(get_text('dev_invalid_number', lang))
+        return
+    
+    await state.update_data(price_per_sqm=int(price))
+    
+    keyboard = ReplyKeyboardMarkup(
+        keyboard=[
+            [KeyboardButton(text=get_text('dev_dp_amount', lang))],
+            [KeyboardButton(text=get_text('dev_dp_percent', lang))],
+            [KeyboardButton(text=get_text('dev_back', lang))]
+        ],
+        resize_keyboard=True
+    )
+    await message.answer(get_text('dev_down_payment_type', lang), reply_markup=keyboard)
+    await state.set_state(DeveloperPropertyStates.down_payment_type)
+
+
+@dp.message(F.text.in_(["⬅️ Назад", "⬅️ Orqaga"]), DeveloperPropertyStates.down_payment_type)
+async def dev_back_to_price_sqm(message: types.Message, state: FSMContext):
+    data = await state.get_data()
+    lang = data.get('user_lang', 'ru')
+    await message.answer(get_text('dev_enter_price_sqm', lang), reply_markup=get_dev_back_keyboard(lang))
+    await state.set_state(DeveloperPropertyStates.price_per_sqm)
+
+
+@dp.message(DeveloperPropertyStates.down_payment_type)
+async def dev_process_dp_type(message: types.Message, state: FSMContext):
+    data = await state.get_data()
+    lang = data.get('user_lang', 'ru')
+    
+    if message.text in [get_text('dev_dp_amount', 'ru'), get_text('dev_dp_amount', 'uz')]:
+        await state.update_data(down_payment_type='amount')
+        await message.answer(get_text('dev_enter_dp_amount', lang), reply_markup=get_dev_back_keyboard(lang))
+    elif message.text in [get_text('dev_dp_percent', 'ru'), get_text('dev_dp_percent', 'uz')]:
+        await state.update_data(down_payment_type='percent')
+        await message.answer(get_text('dev_enter_dp_percent', lang), reply_markup=get_dev_back_keyboard(lang))
+    else:
+        return
+    
+    await state.set_state(DeveloperPropertyStates.down_payment_value)
+
+
+@dp.message(F.text.in_(["⬅️ Назад", "⬅️ Orqaga"]), DeveloperPropertyStates.down_payment_value)
+async def dev_back_to_dp_type(message: types.Message, state: FSMContext):
+    data = await state.get_data()
+    lang = data.get('user_lang', 'ru')
+    keyboard = ReplyKeyboardMarkup(
+        keyboard=[
+            [KeyboardButton(text=get_text('dev_dp_amount', lang))],
+            [KeyboardButton(text=get_text('dev_dp_percent', lang))],
+            [KeyboardButton(text=get_text('dev_back', lang))]
+        ],
+        resize_keyboard=True
+    )
+    await message.answer(get_text('dev_down_payment_type', lang), reply_markup=keyboard)
+    await state.set_state(DeveloperPropertyStates.down_payment_type)
+
+
+@dp.message(DeveloperPropertyStates.down_payment_value)
+async def dev_process_dp_value(message: types.Message, state: FSMContext):
+    data = await state.get_data()
+    lang = data.get('user_lang', 'ru')
+    
+    value = validate_number(message.text.replace("%", "").replace("$", "").replace(" ", ""))
+    if value is None:
+        await message.answer(get_text('dev_invalid_number', lang))
+        return
+    
+    if data.get('down_payment_type') == 'percent' and (value < 0 or value > 100):
+        await message.answer(get_text('dev_invalid_percent', lang))
+        return
+    
+    await state.update_data(down_payment_value=float(value))
+    
+    keyboard = ReplyKeyboardMarkup(
+        keyboard=[
+            [KeyboardButton(text=get_text('dev_yes', lang)), KeyboardButton(text=get_text('dev_no', lang))],
+            [KeyboardButton(text=get_text('dev_back', lang))]
+        ],
+        resize_keyboard=True
+    )
+    await message.answer(get_text('dev_has_discount', lang), reply_markup=keyboard)
+    await state.set_state(DeveloperPropertyStates.has_discount)
+
+
+@dp.message(F.text.in_(["⬅️ Назад", "⬅️ Orqaga"]), DeveloperPropertyStates.has_discount)
+async def dev_back_to_dp_value(message: types.Message, state: FSMContext):
+    data = await state.get_data()
+    lang = data.get('user_lang', 'ru')
+    if data.get('down_payment_type') == 'amount':
+        await message.answer(get_text('dev_enter_dp_amount', lang), reply_markup=get_dev_back_keyboard(lang))
+    else:
+        await message.answer(get_text('dev_enter_dp_percent', lang), reply_markup=get_dev_back_keyboard(lang))
+    await state.set_state(DeveloperPropertyStates.down_payment_value)
+
+
+@dp.message(DeveloperPropertyStates.has_discount)
+async def dev_process_has_discount(message: types.Message, state: FSMContext):
+    data = await state.get_data()
+    lang = data.get('user_lang', 'ru')
+    
+    if message.text in [get_text('dev_yes', 'ru'), get_text('dev_yes', 'uz')]:
+        await state.update_data(discounts=[])
+        await message.answer(get_text('dev_enter_discount', lang), reply_markup=get_dev_back_keyboard(lang))
+        await state.set_state(DeveloperPropertyStates.discount_conditions)
+    elif message.text in [get_text('dev_no', 'ru'), get_text('dev_no', 'uz')]:
+        await state.update_data(discounts=[])
+        await dev_show_payment_methods(message, state, lang)
+
+
+async def dev_show_payment_methods(message, state, lang):
+    keyboard = ReplyKeyboardMarkup(
+        keyboard=[
+            [KeyboardButton(text=get_text('dev_pay_full', lang))],
+            [KeyboardButton(text=get_text('dev_pay_mortgage', lang))],
+            [KeyboardButton(text=get_text('dev_pay_installment', lang))],
+            [KeyboardButton(text=get_text('dev_pay_mixed', lang))],
+            [KeyboardButton(text=get_text('dev_payment_done', lang))],
+            [KeyboardButton(text=get_text('dev_back', lang))]
+        ],
+        resize_keyboard=True
+    )
+    data = await state.get_data()
+    selected = data.get('payment_methods', [])
+    selected_text = ", ".join(selected) if selected else "-"
+    await message.answer(f"{get_text('dev_choose_payment', lang)}\n\nВыбрано: {selected_text}", reply_markup=keyboard)
+    await state.set_state(DeveloperPropertyStates.payment_methods)
+
+
+@dp.message(F.text.in_(["⬅️ Назад", "⬅️ Orqaga"]), DeveloperPropertyStates.discount_conditions)
+async def dev_back_to_has_discount(message: types.Message, state: FSMContext):
+    data = await state.get_data()
+    lang = data.get('user_lang', 'ru')
+    keyboard = ReplyKeyboardMarkup(
+        keyboard=[
+            [KeyboardButton(text=get_text('dev_yes', lang)), KeyboardButton(text=get_text('dev_no', lang))],
+            [KeyboardButton(text=get_text('dev_back', lang))]
+        ],
+        resize_keyboard=True
+    )
+    await message.answer(get_text('dev_has_discount', lang), reply_markup=keyboard)
+    await state.set_state(DeveloperPropertyStates.has_discount)
+
+
+@dp.message(DeveloperPropertyStates.discount_conditions)
+async def dev_process_discount(message: types.Message, state: FSMContext):
+    data = await state.get_data()
+    lang = data.get('user_lang', 'ru')
+    
+    discounts = data.get('discounts', [])
+    discounts.append(message.text)
+    await state.update_data(discounts=discounts)
+    
+    keyboard = ReplyKeyboardMarkup(
+        keyboard=[
+            [KeyboardButton(text=get_text('dev_yes', lang)), KeyboardButton(text=get_text('dev_no', lang))],
+            [KeyboardButton(text=get_text('dev_back', lang))]
+        ],
+        resize_keyboard=True
+    )
+    await message.answer(get_text('dev_add_more_discount', lang), reply_markup=keyboard)
+    await state.set_state(DeveloperPropertyStates.add_more_discount)
+
+
+@dp.message(F.text.in_(["⬅️ Назад", "⬅️ Orqaga"]), DeveloperPropertyStates.add_more_discount)
+async def dev_back_to_discount(message: types.Message, state: FSMContext):
+    data = await state.get_data()
+    lang = data.get('user_lang', 'ru')
+    await message.answer(get_text('dev_enter_discount', lang), reply_markup=get_dev_back_keyboard(lang))
+    await state.set_state(DeveloperPropertyStates.discount_conditions)
+
+
+@dp.message(DeveloperPropertyStates.add_more_discount)
+async def dev_process_add_more_discount(message: types.Message, state: FSMContext):
+    data = await state.get_data()
+    lang = data.get('user_lang', 'ru')
+    
+    if message.text in [get_text('dev_yes', 'ru'), get_text('dev_yes', 'uz')]:
+        await message.answer(get_text('dev_enter_discount', lang), reply_markup=get_dev_back_keyboard(lang))
+        await state.set_state(DeveloperPropertyStates.discount_conditions)
+    elif message.text in [get_text('dev_no', 'ru'), get_text('dev_no', 'uz')]:
+        await dev_show_payment_methods(message, state, lang)
+
+
+@dp.message(F.text.in_(["⬅️ Назад", "⬅️ Orqaga"]), DeveloperPropertyStates.payment_methods)
+async def dev_back_to_discounts(message: types.Message, state: FSMContext):
+    data = await state.get_data()
+    lang = data.get('user_lang', 'ru')
+    keyboard = ReplyKeyboardMarkup(
+        keyboard=[
+            [KeyboardButton(text=get_text('dev_yes', lang)), KeyboardButton(text=get_text('dev_no', lang))],
+            [KeyboardButton(text=get_text('dev_back', lang))]
+        ],
+        resize_keyboard=True
+    )
+    await message.answer(get_text('dev_has_discount', lang), reply_markup=keyboard)
+    await state.set_state(DeveloperPropertyStates.has_discount)
+
+
+@dp.message(DeveloperPropertyStates.payment_methods)
+async def dev_process_payment_method(message: types.Message, state: FSMContext):
+    data = await state.get_data()
+    lang = data.get('user_lang', 'ru')
+    payment_methods = data.get('payment_methods', [])
+    
+    method_map = {
+        get_text('dev_pay_full', 'ru'): "100% оплата",
+        get_text('dev_pay_full', 'uz'): "100% оплата",
+        get_text('dev_pay_mortgage', 'ru'): "Ипотека",
+        get_text('dev_pay_mortgage', 'uz'): "Ипотека",
+        get_text('dev_pay_installment', 'ru'): "Рассрочка",
+        get_text('dev_pay_installment', 'uz'): "Рассрочка",
+        get_text('dev_pay_mixed', 'ru'): "Рассрочка + Ипотека",
+        get_text('dev_pay_mixed', 'uz'): "Рассрочка + Ипотека",
+    }
+    
+    if message.text in [get_text('dev_payment_done', 'ru'), get_text('dev_payment_done', 'uz')]:
+        if not payment_methods:
+            await message.answer("❌ Выберите хотя бы один метод оплаты!")
+            return
+        
+        if "Ипотека" in payment_methods:
+            await message.answer(get_text('dev_mortgage_dp', lang), reply_markup=get_dev_back_keyboard(lang))
+            await state.set_state(DeveloperPropertyStates.mortgage_details)
+        elif "Рассрочка" in payment_methods:
+            await message.answer(get_text('dev_installment_dp', lang), reply_markup=get_dev_back_keyboard(lang))
+            await state.set_state(DeveloperPropertyStates.installment_details)
+        else:
+            await dev_show_photos_step(message, state, lang)
+    elif message.text in method_map:
+        method = method_map[message.text]
+        if method in payment_methods:
+            payment_methods.remove(method)
+        else:
+            payment_methods.append(method)
+        await state.update_data(payment_methods=payment_methods)
+        await dev_show_payment_methods(message, state, lang)
+
+
+async def dev_show_photos_step(message, state, lang):
+    keyboard = ReplyKeyboardMarkup(
+        keyboard=[
+            [KeyboardButton(text=get_text('dev_skip_photos', lang))],
+            [KeyboardButton(text=get_text('dev_back', lang))]
+        ],
+        resize_keyboard=True
+    )
+    await message.answer(get_text('dev_add_photos', lang), reply_markup=keyboard)
+    await state.set_state(DeveloperPropertyStates.photos)
+
+
+@dp.message(F.text.in_(["⬅️ Назад", "⬅️ Orqaga"]), DeveloperPropertyStates.mortgage_details)
+async def dev_back_to_payment_methods(message: types.Message, state: FSMContext):
+    data = await state.get_data()
+    lang = data.get('user_lang', 'ru')
+    await dev_show_payment_methods(message, state, lang)
+
+
+@dp.message(DeveloperPropertyStates.mortgage_details)
+async def dev_process_mortgage(message: types.Message, state: FSMContext):
+    data = await state.get_data()
+    lang = data.get('user_lang', 'ru')
+    mortgage_step = data.get('mortgage_step', 'dp')
+    
+    value = validate_number(message.text.replace("%", "").replace(" ", ""))
+    if value is None:
+        await message.answer(get_text('dev_invalid_number', lang))
+        return
+    
+    if mortgage_step == 'dp':
+        if value < 0 or value > 100:
+            await message.answer(get_text('dev_invalid_percent', lang))
+            return
+        await state.update_data(mortgage_down_payment=float(value), mortgage_step='months')
+        await message.answer(get_text('dev_mortgage_months', lang), reply_markup=get_dev_back_keyboard(lang))
+    elif mortgage_step == 'months':
+        await state.update_data(mortgage_months=int(value), mortgage_step='grace')
+        await message.answer(get_text('dev_mortgage_grace', lang), reply_markup=get_dev_back_keyboard(lang))
+    elif mortgage_step == 'grace':
+        await state.update_data(mortgage_grace_period=int(value), mortgage_step='dp')
+        
+        payment_methods = data.get('payment_methods', [])
+        if "Рассрочка" in payment_methods:
+            await state.update_data(installment_step='dp')
+            await message.answer(get_text('dev_installment_dp', lang), reply_markup=get_dev_back_keyboard(lang))
+            await state.set_state(DeveloperPropertyStates.installment_details)
+        else:
+            await dev_show_photos_step(message, state, lang)
+
+
+@dp.message(F.text.in_(["⬅️ Назад", "⬅️ Orqaga"]), DeveloperPropertyStates.installment_details)
+async def dev_back_from_installment(message: types.Message, state: FSMContext):
+    data = await state.get_data()
+    lang = data.get('user_lang', 'ru')
+    payment_methods = data.get('payment_methods', [])
+    if "Ипотека" in payment_methods:
+        await state.update_data(mortgage_step='dp')
+        await message.answer(get_text('dev_mortgage_dp', lang), reply_markup=get_dev_back_keyboard(lang))
+        await state.set_state(DeveloperPropertyStates.mortgage_details)
+    else:
+        await dev_show_payment_methods(message, state, lang)
+
+
+@dp.message(DeveloperPropertyStates.installment_details)
+async def dev_process_installment(message: types.Message, state: FSMContext):
+    data = await state.get_data()
+    lang = data.get('user_lang', 'ru')
+    installment_step = data.get('installment_step', 'dp')
+    
+    value = validate_number(message.text.replace("%", "").replace(" ", ""))
+    if value is None:
+        await message.answer(get_text('dev_invalid_number', lang))
+        return
+    
+    if installment_step == 'dp':
+        if value < 0 or value > 100:
+            await message.answer(get_text('dev_invalid_percent', lang))
+            return
+        await state.update_data(installment_down_payment=float(value), installment_step='months')
+        await message.answer(get_text('dev_installment_months', lang), reply_markup=get_dev_back_keyboard(lang))
+    elif installment_step == 'months':
+        await state.update_data(installment_months=int(value), installment_step='grace')
+        await message.answer(get_text('dev_installment_grace', lang), reply_markup=get_dev_back_keyboard(lang))
+    elif installment_step == 'grace':
+        await state.update_data(installment_grace_period=int(value), installment_step='dp')
+        await dev_show_photos_step(message, state, lang)
+
+
+@dp.message(F.text.in_(["⬅️ Назад", "⬅️ Orqaga"]), DeveloperPropertyStates.photos)
+async def dev_back_from_photos(message: types.Message, state: FSMContext):
+    data = await state.get_data()
+    lang = data.get('user_lang', 'ru')
+    payment_methods = data.get('payment_methods', [])
+    if "Рассрочка" in payment_methods:
+        await state.update_data(installment_step='dp')
+        await message.answer(get_text('dev_installment_dp', lang), reply_markup=get_dev_back_keyboard(lang))
+        await state.set_state(DeveloperPropertyStates.installment_details)
+    elif "Ипотека" in payment_methods:
+        await state.update_data(mortgage_step='dp')
+        await message.answer(get_text('dev_mortgage_dp', lang), reply_markup=get_dev_back_keyboard(lang))
+        await state.set_state(DeveloperPropertyStates.mortgage_details)
+    else:
+        await dev_show_payment_methods(message, state, lang)
+
+
+@dp.message(DeveloperPropertyStates.photos, F.photo)
+async def dev_process_photo(message: types.Message, state: FSMContext):
+    data = await state.get_data()
+    lang = data.get('user_lang', 'ru')
+    photos = data.get("photos", [])
+    
+    if len(photos) >= 10:
+        await message.answer("⚠️ Достигнут лимит в 10 фотографий!")
+        return
+    
+    photo_id = message.photo[-1].file_id
+    photos.append(photo_id)
+    await state.update_data(photos=photos)
+    
+    keyboard = ReplyKeyboardMarkup(
+        keyboard=[
+            [KeyboardButton(text=get_text('dev_photos_done', lang))],
+            [KeyboardButton(text=get_text('dev_back', lang))]
+        ],
+        resize_keyboard=True
+    )
+    
+    await message.answer(
+        f"✅ Фото добавлено ({len(photos)}/10)\n\nОтправьте еще фото или нажмите 'Готово'",
+        reply_markup=keyboard
+    )
+
+
+@dp.message(DeveloperPropertyStates.photos)
+async def dev_photos_done(message: types.Message, state: FSMContext):
+    data = await state.get_data()
+    lang = data.get('user_lang', 'ru')
+    
+    if message.text in [get_text('dev_photos_done', 'ru'), get_text('dev_photos_done', 'uz'), 
+                        get_text('dev_skip_photos', 'ru'), get_text('dev_skip_photos', 'uz')]:
+        keyboard = ReplyKeyboardMarkup(
+            keyboard=[
+                [KeyboardButton(text=get_text('dev_skip_photos', lang))],
+                [KeyboardButton(text=get_text('dev_back', lang))]
+            ],
+            resize_keyboard=True
+        )
+        await message.answer(get_text('dev_add_layout', lang), reply_markup=keyboard)
+        await state.set_state(DeveloperPropertyStates.layout_photos)
+
+
+@dp.message(F.text.in_(["⬅️ Назад", "⬅️ Orqaga"]), DeveloperPropertyStates.layout_photos)
+async def dev_back_to_photos(message: types.Message, state: FSMContext):
+    data = await state.get_data()
+    lang = data.get('user_lang', 'ru')
+    await dev_show_photos_step(message, state, lang)
+
+
+@dp.message(DeveloperPropertyStates.layout_photos, F.photo)
+async def dev_process_layout_photo(message: types.Message, state: FSMContext):
+    data = await state.get_data()
+    lang = data.get('user_lang', 'ru')
+    layout_photos = data.get("layout_photos", [])
+    
+    if len(layout_photos) >= 5:
+        await message.answer("⚠️ Достигнут лимит в 5 фотографий планировки!")
+        return
+    
+    photo_id = message.photo[-1].file_id
+    layout_photos.append(photo_id)
+    await state.update_data(layout_photos=layout_photos)
+    
+    keyboard = ReplyKeyboardMarkup(
+        keyboard=[
+            [KeyboardButton(text=get_text('dev_photos_done', lang))],
+            [KeyboardButton(text=get_text('dev_back', lang))]
+        ],
+        resize_keyboard=True
+    )
+    
+    await message.answer(
+        f"✅ Планировка добавлена ({len(layout_photos)}/5)\n\nОтправьте еще фото или нажмите 'Готово'",
+        reply_markup=keyboard
+    )
+
+
+@dp.message(DeveloperPropertyStates.layout_photos)
+async def dev_layout_done(message: types.Message, state: FSMContext):
+    data = await state.get_data()
+    lang = data.get('user_lang', 'ru')
+    
+    if message.text in [get_text('dev_photos_done', 'ru'), get_text('dev_photos_done', 'uz'),
+                        get_text('dev_skip_photos', 'ru'), get_text('dev_skip_photos', 'uz')]:
+        await dev_save_property(message, state, lang)
+
+
+async def dev_save_property(message, state, lang):
+    from aiogram.types import InputMediaPhoto
+    
+    data = await state.get_data()
+    
+    db = SessionLocal()
+    user = db.query(User).filter(User.telegram_id == message.from_user.id).first()
+    
+    photos_str = ",".join(data.get("photos", []))
+    layout_photos_str = ",".join(data.get("layout_photos", []))
+    
+    area = data.get("area", 50)
+    price_per_sqm = data.get("price_per_sqm", 1000)
+    total_price = int(area * price_per_sqm)
+    
+    prop = Property(
+        owner_id=user.id,
+        property_type=data.get("property_type", PropertyType.SALE),
+        category="Квартира",
+        housing_class=data.get("housing_class"),
+        district=data.get("district", ""),
+        rooms=data.get("rooms", 1),
+        floor=data.get("floor", 1),
+        total_floors=data.get("total_floors", 9),
+        area=area,
+        price=total_price,
+        price_per_sqm=price_per_sqm,
+        has_balcony=data.get("has_balcony", False),
+        balcony_area=data.get("balcony_area"),
+        renovation=data.get("renovation", ""),
+        included_in_price=data.get("included_in_price"),
+        metro_station=data.get("metro_station"),
+        latitude=data.get("latitude"),
+        longitude=data.get("longitude"),
+        down_payment_type=data.get("down_payment_type"),
+        down_payment_value=data.get("down_payment_value"),
+        discounts=json.dumps(data.get("discounts", []), ensure_ascii=False) if data.get("discounts") else None,
+        payment_methods=json.dumps(data.get("payment_methods", []), ensure_ascii=False) if data.get("payment_methods") else None,
+        mortgage_down_payment=data.get("mortgage_down_payment"),
+        mortgage_months=data.get("mortgage_months"),
+        mortgage_grace_period=data.get("mortgage_grace_period"),
+        installment_down_payment=data.get("installment_down_payment"),
+        installment_months=data.get("installment_months"),
+        installment_grace_period=data.get("installment_grace_period"),
+        has_mixed_payment="Рассрочка + Ипотека" in data.get("payment_methods", []),
+        photos=photos_str,
+        layout_photos=layout_photos_str,
+        status=PropertyStatus.MODERATION,
+        source='manual'
+    )
+    db.add(prop)
+    db.commit()
+    
+    prop.unique_id = f"F2F-{prop.id:05d}"
+    db.commit()
+    db.close()
+    
+    type_name = "Продажа" if data.get("property_type") == PropertyType.SALE else "Аренда"
+    balcony_text = f"Да ({data.get('balcony_area')} м²)" if data.get('has_balcony') else "Нет"
+    
+    dp_text = ""
+    if data.get("down_payment_type") == "amount":
+        dp_text = f"${int(data.get('down_payment_value', 0)):,}"
+    elif data.get("down_payment_type") == "percent":
+        dp_text = f"{data.get('down_payment_value', 0)}%"
+    
+    discounts_text = "\n".join(data.get("discounts", [])) if data.get("discounts") else "Нет"
+    payment_text = ", ".join(data.get("payment_methods", []))
+    
+    summary = (
+        f"📝 Объявление отправлено на модерацию!\n\n"
+        f"🆔 <b>ID: {prop.unique_id}</b>\n\n"
+        f"📋 ХАРАКТЕРИСТИКИ:\n"
+        f"🏷 Тип сделки: {type_name}\n"
+        f"🏠 Класс жилья: {data.get('housing_class', '')}\n"
+        f"📍 Район: {data.get('district', '')}\n"
+        f"🚇 Метро: {data.get('metro_station', 'Не указано')}\n"
+        f"🚪 Комнат: {data.get('rooms', '')}\n"
+        f"🏢 Этаж: {data.get('floor', '')}/{data.get('total_floors', '')}\n"
+        f"📐 Площадь: {area} м²\n"
+        f"🪟 Балкон: {balcony_text}\n"
+        f"🔨 Ремонт: {data.get('renovation', '')}\n"
+        f"💵 Цена за м²: ${price_per_sqm:,}\n"
+        f"💰 Общая стоимость: ${total_price:,}\n"
+        f"💳 Первоначальный взнос: {dp_text}\n\n"
+        f"🏷 Скидки:\n{discounts_text}\n\n"
+        f"💳 Методы оплаты: {payment_text}\n"
+    )
+    
+    if data.get("mortgage_months"):
+        summary += f"🏦 Ипотека: {data.get('mortgage_down_payment', 0)}% взнос, {data.get('mortgage_months')} мес."
+        if data.get("mortgage_grace_period"):
+            summary += f", льготный период {data.get('mortgage_grace_period')} мес."
+        summary += "\n"
+    
+    if data.get("installment_months"):
+        summary += f"📄 Рассрочка: {data.get('installment_down_payment', 0)}% взнос, {data.get('installment_months')} мес."
+        if data.get("installment_grace_period"):
+            summary += f", льготный период {data.get('installment_grace_period')} мес."
+        summary += "\n"
+    
+    if data.get("included_in_price"):
+        summary += f"\n📦 В стоимость входит:\n{data.get('included_in_price')}"
+    
+    photos_list = data.get("photos", [])
+    
+    await state.clear()
+    
+    if photos_list:
+        media_group = []
+        for i, photo_id in enumerate(photos_list):
+            if i == 0:
+                media_group.append(InputMediaPhoto(media=photo_id, caption=summary[:1024], parse_mode="HTML"))
+            else:
+                media_group.append(InputMediaPhoto(media=photo_id))
+        await message.answer_media_group(media_group)
+    else:
+        await message.answer(summary, parse_mode="HTML")
+    
+    buyers_count = get_active_buyers_count(
+        rooms=data.get("rooms"),
+        district=data.get("district"),
+        budget_max=total_price
+    )
+    
+    db = SessionLocal()
+    user = db.query(User).filter(User.telegram_id == message.from_user.id).first()
+    lang = get_user_lang(user)
+    is_developer = user.seller_type == SellerType.DEVELOPER if user else False
+    db.close()
+    
+    keyboard = get_seller_menu(lang, is_developer=is_developer)
+    
+    await message.answer(
+        f"🎯 {buyers_count} покупателей ищут похожие квартиры.\n"
+        f"Ваш объект уже виден им в ленте!",
+        reply_markup=keyboard
+    )
+
+
+# =====================================================
+# END DEVELOPER PROPERTY FORM HANDLERS
+# =====================================================
 
 
 @dp.message(F.text.in_(["🏠 Смотреть квартиры", "🏠 Kvartiralarni ko'rish"]))
@@ -2674,7 +3828,17 @@ class FindBuyerStates(StatesGroup):
     budget = State()
 
 
-def get_seller_menu(lang='ru'):
+def get_seller_menu(lang='ru', is_developer=False):
+    if is_developer:
+        return ReplyKeyboardMarkup(
+            keyboard=[
+                [KeyboardButton(text=get_text('add_property', lang))],
+                [KeyboardButton(text=get_text('add_property_extended', lang))],
+                [KeyboardButton(text=get_text('find_buyer', lang))],
+                [KeyboardButton(text=get_text('profile', lang))]
+            ],
+            resize_keyboard=True
+        )
     return ReplyKeyboardMarkup(
         keyboard=[
             [KeyboardButton(text=get_text('add_property', lang))],
