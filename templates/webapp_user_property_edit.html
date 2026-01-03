@@ -258,6 +258,11 @@
             </div>
             
             <div class="form-group">
+                <label>Метро</label>
+                <input type="text" name="metro_station" value="{{ prop.metro_station or '' }}" placeholder="Ближайшая станция метро">
+            </div>
+            
+            <div class="form-group">
                 <label>Адрес</label>
                 <input type="text" name="address" value="{{ prop.address or '' }}" placeholder="Улица, дом">
             </div>
@@ -325,6 +330,117 @@
                     <option value="true" {% if prop.has_furniture == true %}selected{% endif %}>Есть</option>
                     <option value="false" {% if prop.has_furniture == false and prop.has_furniture is not none %}selected{% endif %}>Нет</option>
                 </select>
+            </div>
+            
+            <div class="form-group">
+                <label>Класс жилья</label>
+                <select name="housing_class">
+                    <option value="">Не указано</option>
+                    <option value="Эконом" {% if prop.housing_class == 'Эконом' %}selected{% endif %}>Эконом</option>
+                    <option value="Комфорт" {% if prop.housing_class == 'Комфорт' %}selected{% endif %}>Комфорт</option>
+                    <option value="Бизнес" {% if prop.housing_class == 'Бизнес' %}selected{% endif %}>Бизнес</option>
+                    <option value="Премиум" {% if prop.housing_class == 'Премиум' %}selected{% endif %}>Премиум</option>
+                </select>
+            </div>
+            
+            <div class="form-row">
+                <div class="form-group">
+                    <label>Балкон</label>
+                    <select name="has_balcony">
+                        <option value="">Не указано</option>
+                        <option value="true" {% if prop.has_balcony == true %}selected{% endif %}>Есть</option>
+                        <option value="false" {% if prop.has_balcony == false and prop.has_balcony is not none %}selected{% endif %}>Нет</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label>Площадь балкона (м²)</label>
+                    <input type="number" name="balcony_area" value="{{ prop.balcony_area or '' }}" step="0.1" placeholder="0.0">
+                </div>
+            </div>
+            
+            <div class="form-group">
+                <label>В стоимость входит</label>
+                <input type="text" name="included_in_price" value="{{ prop.included_in_price or '' }}" placeholder="Окна, Котёл, ...">
+            </div>
+        </div>
+        
+        <div class="form-section">
+            <div class="form-section-title">
+                <i class="bi bi-cash-stack"></i> Условия оплаты
+            </div>
+            
+            <div class="form-group">
+                <label>Цена за м² (сум)</label>
+                <input type="number" name="price_per_sqm" value="{{ prop.price_per_sqm or '' }}" placeholder="0">
+            </div>
+            
+            <div class="form-row">
+                <div class="form-group">
+                    <label>Первоначальный взнос (%)</label>
+                    <input type="number" name="down_payment_value" value="{{ prop.down_payment_value or '' }}" step="0.1" placeholder="0">
+                </div>
+                <div class="form-group">
+                    <label>Тип взноса</label>
+                    <select name="down_payment_type">
+                        <option value="">Не указано</option>
+                        <option value="percent" {% if prop.down_payment_type == 'percent' %}selected{% endif %}>Процент</option>
+                        <option value="amount" {% if prop.down_payment_type == 'amount' %}selected{% endif %}>Сумма</option>
+                    </select>
+                </div>
+            </div>
+            
+            <div class="form-group">
+                <label>Методы оплаты</label>
+                <input type="text" name="payment_methods" value="{{ prop.payment_methods or '' }}" placeholder="100% оплата, Ипотека, Рассрочка">
+            </div>
+            
+            <div class="form-group">
+                <label>Скидки</label>
+                <input type="text" name="discounts" value="{{ prop.discounts or '' }}" placeholder="Описание скидок">
+            </div>
+        </div>
+        
+        <div class="form-section">
+            <div class="form-section-title">
+                <i class="bi bi-bank"></i> Ипотека
+            </div>
+            
+            <div class="form-row">
+                <div class="form-group">
+                    <label>Первый взнос (%)</label>
+                    <input type="number" name="mortgage_down_payment" value="{{ prop.mortgage_down_payment or '' }}" step="0.1" placeholder="0">
+                </div>
+                <div class="form-group">
+                    <label>Срок (мес.)</label>
+                    <input type="number" name="mortgage_months" value="{{ prop.mortgage_months or '' }}" placeholder="0">
+                </div>
+            </div>
+            
+            <div class="form-group">
+                <label>Льготный период (мес.)</label>
+                <input type="number" name="mortgage_grace_period" value="{{ prop.mortgage_grace_period or '' }}" placeholder="0">
+            </div>
+        </div>
+        
+        <div class="form-section">
+            <div class="form-section-title">
+                <i class="bi bi-calendar-check"></i> Рассрочка
+            </div>
+            
+            <div class="form-row">
+                <div class="form-group">
+                    <label>Первый взнос (%)</label>
+                    <input type="number" name="installment_down_payment" value="{{ prop.installment_down_payment or '' }}" step="0.1" placeholder="0">
+                </div>
+                <div class="form-group">
+                    <label>Срок (мес.)</label>
+                    <input type="number" name="installment_months" value="{{ prop.installment_months or '' }}" placeholder="0">
+                </div>
+            </div>
+            
+            <div class="form-group">
+                <label>Льготный период (мес.)</label>
+                <input type="number" name="installment_grace_period" value="{{ prop.installment_grace_period or '' }}" placeholder="0">
             </div>
         </div>
         

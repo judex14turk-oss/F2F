@@ -1448,6 +1448,43 @@ def webapp_user_property_save(property_id):
             prop.has_furniture = False
         else:
             prop.has_furniture = None
+    if 'metro_station' in data:
+        prop.metro_station = data['metro_station']
+    if 'housing_class' in data:
+        prop.housing_class = data['housing_class']
+    if 'has_balcony' in data:
+        if data['has_balcony'] == 'true':
+            prop.has_balcony = True
+        elif data['has_balcony'] == 'false':
+            prop.has_balcony = False
+        else:
+            prop.has_balcony = None
+    if 'balcony_area' in data and data['balcony_area']:
+        prop.balcony_area = float(data['balcony_area'])
+    if 'included_in_price' in data:
+        prop.included_in_price = data['included_in_price']
+    if 'price_per_sqm' in data and data['price_per_sqm']:
+        prop.price_per_sqm = int(data['price_per_sqm'])
+    if 'down_payment_type' in data:
+        prop.down_payment_type = data['down_payment_type']
+    if 'down_payment_value' in data and data['down_payment_value']:
+        prop.down_payment_value = float(data['down_payment_value'])
+    if 'payment_methods' in data:
+        prop.payment_methods = data['payment_methods']
+    if 'discounts' in data:
+        prop.discounts = data['discounts']
+    if 'mortgage_down_payment' in data and data['mortgage_down_payment']:
+        prop.mortgage_down_payment = float(data['mortgage_down_payment'])
+    if 'mortgage_months' in data and data['mortgage_months']:
+        prop.mortgage_months = int(data['mortgage_months'])
+    if 'mortgage_grace_period' in data and data['mortgage_grace_period']:
+        prop.mortgage_grace_period = int(data['mortgage_grace_period'])
+    if 'installment_down_payment' in data and data['installment_down_payment']:
+        prop.installment_down_payment = float(data['installment_down_payment'])
+    if 'installment_months' in data and data['installment_months']:
+        prop.installment_months = int(data['installment_months'])
+    if 'installment_grace_period' in data and data['installment_grace_period']:
+        prop.installment_grace_period = int(data['installment_grace_period'])
     
     db.commit()
     db.close()
