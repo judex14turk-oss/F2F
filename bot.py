@@ -1021,6 +1021,11 @@ async def add_property_start(message: types.Message, state: FSMContext):
             await message.answer("Нажмите /start чтобы начать.")
         return
     
+    if user.seller_type == SellerType.DEVELOPER:
+        db.close()
+        await dev_add_property_start(message, state)
+        return
+    
     limits = get_tariff_limits(user.tariff, user.is_admin)
     current_properties = db.query(Property).filter(
         Property.owner_id == user.id,
@@ -1453,7 +1458,6 @@ def get_dev_skip_back_keyboard(lang='ru'):
         resize_keyboard=True
     )
 
-@dp.message(F.text.in_(["➕ Добавить объект (расширенная форма)", "➕ Obyekt qo'shish (kengaytirilgan)"]))
 async def dev_add_property_start(message: types.Message, state: FSMContext):
     db = SessionLocal()
     user = db.query(User).filter(User.telegram_id == message.from_user.id).first()
@@ -3832,16 +3836,6 @@ class FindBuyerStates(StatesGroup):
 
 
 def get_seller_menu(lang='ru', is_developer=False):
-    if is_developer:
-        return ReplyKeyboardMarkup(
-            keyboard=[
-                [KeyboardButton(text=get_text('add_property', lang))],
-                [KeyboardButton(text=get_text('add_property_extended', lang))],
-                [KeyboardButton(text=get_text('find_buyer', lang))],
-                [KeyboardButton(text=get_text('profile', lang))]
-            ],
-            resize_keyboard=True
-        )
     return ReplyKeyboardMarkup(
         keyboard=[
             [KeyboardButton(text=get_text('add_property', lang))],
