@@ -127,6 +127,7 @@ class RegistrationStates(StatesGroup):
 class PropertyStates(StatesGroup):
     property_type = State()
     category = State()
+    housing_type = State()
     district = State()
     rooms = State()
     floor = State()
@@ -1189,6 +1190,46 @@ async def process_property_category(callback: types.CallbackQuery, state: FSMCon
     category = category_map.get(callback.data, "Квартира")
     await state.update_data(category=category)
     
+    if category == "Квартира":
+        await callback.message.edit_text(
+            "🏠 Выберите тип жилья:",
+            reply_markup=InlineKeyboardMarkup(inline_keyboard=[
+                [InlineKeyboardButton(text="🏗 Новостройка", callback_data="prophousing_new")],
+                [InlineKeyboardButton(text="🏠 Вторичка", callback_data="prophousing_secondary")],
+            ])
+        )
+        await state.set_state(PropertyStates.housing_type)
+    else:
+        db = SessionLocal()
+        districts = db.query(District).all()
+        db.close()
+        
+        keyboard_buttons = []
+        row = []
+        for district in districts:
+            row.append(InlineKeyboardButton(text=district.name, callback_data=f"propdistrict_{district.id}"))
+            if len(row) == 2:
+                keyboard_buttons.append(row)
+                row = []
+        if row:
+            keyboard_buttons.append(row)
+        
+        await callback.message.edit_text(
+            "📍 Выберите район:",
+            reply_markup=InlineKeyboardMarkup(inline_keyboard=keyboard_buttons)
+        )
+        await state.set_state(PropertyStates.district)
+
+
+@dp.callback_query(F.data.startswith("prophousing_"))
+async def process_property_housing_type(callback: types.CallbackQuery, state: FSMContext):
+    housing_map = {
+        "prophousing_new": "Новостройка",
+        "prophousing_secondary": "Вторичка"
+    }
+    housing_type = housing_map.get(callback.data, "Вторичка")
+    await state.update_data(housing_type=housing_type)
+    
     db = SessionLocal()
     districts = db.query(District).all()
     db.close()
@@ -1452,6 +1493,7 @@ async def finish_photos(callback: types.CallbackQuery, state: FSMContext):
         owner_id=user.id,
         property_type=data.get("property_type", PropertyType.SALE),
         category=data.get("category", "Квартира"),
+        housing_type=data.get("housing_type", ""),
         district=data.get("district", ""),
         rooms=data.get("rooms", 1),
         floor=data.get("floor", 1),
@@ -1483,6 +1525,7 @@ async def finish_photos(callback: types.CallbackQuery, state: FSMContext):
     furniture = "Да" if data.get("has_furniture") else "Нет"
     
     category_display = data.get("category", "Квартира")
+    housing_type_display = data.get("housing_type", "")
     
     summary = (
         f"📝 Объявление отправлено на модерацию!\n\n"
@@ -1490,6 +1533,12 @@ async def finish_photos(callback: types.CallbackQuery, state: FSMContext):
         f"📋 ХАРАКТЕРИСТИКИ:\n"
         f"🏷 Тип сделки: {type_name}\n"
         f"🏠 Категория: {category_display}\n"
+    )
+    
+    if housing_type_display:
+        summary += f"🏗 Тип жилья: {housing_type_display}\n"
+    
+    summary += (
         f"📍 Район: {data.get('district', '')}\n"
         f"🚪 Комнат: {data.get('rooms', '')}\n"
         f"🏢 Этаж: {data.get('floor', '')}/{data.get('total_floors', '')}\n"
