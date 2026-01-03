@@ -2692,10 +2692,15 @@ async def view_properties(message: types.Message, state: FSMContext):
             query = query.filter(or_(*district_filters))
     
     if user.search_budget_max:
-        query = query.filter(Property.price <= user.search_budget_max)
+        # Budget is in USD, convert to UZS for filtering (properties stored in UZS)
+        usd_rate = get_usd_rate()
+        budget_max_uzs = int(user.search_budget_max * usd_rate)
+        query = query.filter(Property.price <= budget_max_uzs)
     
     if user.search_budget_min:
-        query = query.filter(Property.price >= user.search_budget_min)
+        usd_rate = get_usd_rate()
+        budget_min_uzs = int(user.search_budget_min * usd_rate)
+        query = query.filter(Property.price >= budget_min_uzs)
     
     if user.search_floor and user.search_floor not in ["any", "Любой", ""]:
         floor_filter = user.search_floor
