@@ -181,6 +181,62 @@
         .error-message {
             background: #ef4444;
         }
+        
+        .discount-row {
+            display: grid;
+            grid-template-columns: 1fr 1fr auto;
+            gap: 8px;
+            margin-bottom: 10px;
+            align-items: end;
+        }
+        
+        .discount-row input {
+            width: 100%;
+            padding: 10px;
+            background: #1a1a1a;
+            border: 1px solid #333;
+            border-radius: 8px;
+            color: #fff;
+            font-size: 0.9rem;
+        }
+        
+        .discount-row input:focus {
+            outline: none;
+            border-color: #3b82f6;
+        }
+        
+        .discount-row label {
+            font-size: 0.7rem;
+            color: #888;
+            margin-bottom: 4px;
+            display: block;
+        }
+        
+        .remove-discount-btn {
+            background: #ef4444;
+            border: none;
+            border-radius: 8px;
+            color: #fff;
+            padding: 10px 12px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        
+        .add-discount-btn {
+            background: #22c55e;
+            border: none;
+            border-radius: 8px;
+            color: #fff;
+            padding: 10px 16px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-size: 0.85rem;
+            margin-top: 8px;
+        }
     </style>
 </head>
 <body>
@@ -396,7 +452,13 @@
             
             <div class="form-group">
                 <label>Скидки</label>
-                <input type="text" name="discounts" value="{{ prop.discounts or '' }}" placeholder="Описание скидок">
+                <div id="discounts-container">
+                    <!-- Discount entries will be added here -->
+                </div>
+                <button type="button" class="add-discount-btn" onclick="addDiscountRow()">
+                    <i class="bi bi-plus-circle"></i> Добавить скидку
+                </button>
+                <input type="hidden" name="discounts" id="discounts-hidden" value="{{ prop.discounts or '' }}">
             </div>
         </div>
         
@@ -482,9 +544,90 @@
         const form = document.getElementById('editForm');
         const submitBtn = document.getElementById('submitBtn');
         const successMsg = document.getElementById('successMsg');
+        const discountsContainer = document.getElementById('discounts-container');
+        const discountsHidden = document.getElementById('discounts-hidden');
+        
+        let discountRowId = 0;
+        
+        function addDiscountRow(paymentPercent = '', discountPercent = '') {
+            const row = document.createElement('div');
+            row.className = 'discount-row';
+            row.id = 'discount-row-' + discountRowId;
+            row.innerHTML = `
+                <div>
+                    <label>От % оплаты</label>
+                    <input type="number" class="discount-payment" value="${paymentPercent}" placeholder="100" min="0" max="100" step="1" onchange="updateDiscountsHidden()">
+                </div>
+                <div>
+                    <label>Скидка %</label>
+                    <input type="number" class="discount-value" value="${discountPercent}" placeholder="5" min="0" max="100" step="0.1" onchange="updateDiscountsHidden()">
+                </div>
+                <button type="button" class="remove-discount-btn" onclick="removeDiscountRow(${discountRowId})">
+                    <i class="bi bi-trash"></i>
+                </button>
+            `;
+            discountsContainer.appendChild(row);
+            discountRowId++;
+            updateDiscountsHidden();
+        }
+        
+        function removeDiscountRow(id) {
+            const row = document.getElementById('discount-row-' + id);
+            if (row) {
+                row.remove();
+                updateDiscountsHidden();
+            }
+        }
+        
+        function updateDiscountsHidden() {
+            const rows = discountsContainer.querySelectorAll('.discount-row');
+            const discounts = [];
+            rows.forEach(row => {
+                const payment = row.querySelector('.discount-payment').value;
+                const discount = row.querySelector('.discount-value').value;
+                if (payment || discount) {
+                    discounts.push({
+                        payment_percent: parseFloat(payment) || 0,
+                        discount_percent: parseFloat(discount) || 0
+                    });
+                }
+            });
+            discountsHidden.value = JSON.stringify(discounts);
+        }
+        
+        function loadExistingDiscounts() {
+            const existingData = discountsHidden.value;
+            if (existingData && existingData.trim() !== '') {
+                try {
+                    const discounts = JSON.parse(existingData);
+                    if (Array.isArray(discounts)) {
+                        discounts.forEach(d => {
+                            addDiscountRow(d.payment_percent || '', d.discount_percent || '');
+                        });
+                    }
+                } catch (e) {
+                    const textMatch = existingData.match(/(\d+)%\s*при\s*(\d+)%/g);
+                    if (textMatch) {
+                        textMatch.forEach(match => {
+                            const nums = match.match(/(\d+)/g);
+                            if (nums && nums.length >= 2) {
+                                addDiscountRow(nums[1], nums[0]);
+                            }
+                        });
+                    }
+                }
+            }
+            if (discountsContainer.children.length === 0) {
+                addDiscountRow();
+            }
+        }
+        
+        loadExistingDiscounts();
         
         form.addEventListener('submit', async (e) => {
             e.preventDefault();
+            
+            updateDiscountsHidden();
             
             submitBtn.disabled = true;
             submitBtn.innerHTML = '<i class="bi bi-hourglass-split"></i> Сохранение...';
