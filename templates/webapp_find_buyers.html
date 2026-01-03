@@ -388,6 +388,19 @@
                 </select>
             </div>
             <div class="filter-group">
+                <label class="filter-label">{{ t.get('webapp_property_type', 'Тип недвижимости') }}</label>
+                <select class="filter-select" id="propType">
+                    <option value="">{{ t.get('webapp_all', 'Все') }}</option>
+                    <option value="new_building">{{ t.get('webapp_new_building', 'Новостройка') }}</option>
+                    <option value="secondary">{{ t.get('webapp_secondary', 'Вторичка') }}</option>
+                    <option value="commercial">{{ t.get('webapp_commercial', 'Коммерческая') }}</option>
+                    <option value="house">{{ t.get('webapp_house', 'Дом/Участок') }}</option>
+                </select>
+            </div>
+        </div>
+        
+        <div class="filter-row">
+            <div class="filter-group">
                 <label class="filter-label">{{ t.get('webapp_district', 'Район') }}</label>
                 <select class="filter-select" id="district">
                     <option value="">{{ t.get('webapp_any', 'Любой') }}</option>
@@ -396,12 +409,27 @@
                     {% endfor %}
                 </select>
             </div>
+            <div class="filter-group">
+                <label class="filter-label">{{ t.get('webapp_rooms', 'Комнаты') }}</label>
+                <select class="filter-select" id="rooms">
+                    <option value="">{{ t.get('webapp_any', 'Любые') }}</option>
+                    <option value="1">1</option>
+                    <option value="2">2</option>
+                    <option value="3">3</option>
+                    <option value="4">4</option>
+                    <option value="5+">5+</option>
+                </select>
+            </div>
         </div>
         
         <div class="filter-row">
-            <div class="filter-group full-width">
+            <div class="filter-group">
+                <label class="filter-label">{{ t.get('webapp_min_budget', 'Мин. бюджет ($)') }}</label>
+                <input type="number" class="filter-input" id="budgetMin" placeholder="0">
+            </div>
+            <div class="filter-group">
                 <label class="filter-label">{{ t.get('webapp_max_budget', 'Макс. бюджет ($)') }}</label>
-                <input type="number" class="filter-input" id="budgetMax" placeholder="{{ t.get('webapp_any_budget', 'Любой бюджет') }}">
+                <input type="number" class="filter-input" id="budgetMax" placeholder="{{ t.get('webapp_any_budget', 'Любой') }}">
             </div>
         </div>
         
@@ -453,13 +481,19 @@
         function searchBuyers(page = 0) {
             currentPage = page;
             const dealType = document.getElementById('dealType').value;
+            const propType = document.getElementById('propType').value;
             const district = document.getElementById('district').value;
+            const rooms = document.getElementById('rooms').value;
+            const budgetMin = document.getElementById('budgetMin').value;
             const budgetMax = document.getElementById('budgetMax').value;
             
             const params = new URLSearchParams({
                 tg_id: tgId,
                 deal_type: dealType,
+                prop_type: propType,
                 district: district,
+                rooms: rooms,
+                budget_min: budgetMin,
                 budget_max: budgetMax,
                 page: page
             });

@@ -1158,6 +1158,8 @@ def webapp_find_buyers_search():
     deal_type = request.args.get('deal_type', '')
     prop_type = request.args.get('prop_type', '')
     district = request.args.get('district', '')
+    rooms = request.args.get('rooms', '')
+    budget_min = request.args.get('budget_min', '')
     budget_max = request.args.get('budget_max', '')
     page = int(request.args.get('page', 0))
     
@@ -1182,11 +1184,30 @@ def webapp_find_buyers_search():
         query = query.filter(User.search_deal_type == deal_type)
     
     if prop_type:
-        pass
+        prop_type_mapping = {
+            'new_building': 'новостройка',
+            'secondary': 'вторичка',
+            'commercial': 'коммерческая',
+            'house': 'дом'
+        }
+        if prop_type in prop_type_mapping:
+            query = query.filter(User.search_property_type.ilike(f"%{prop_type_mapping[prop_type]}%"))
     
     if district and district not in ["Любой", ""]:
         district_base = district.replace("ский", "").replace("ий", "")
         query = query.filter(User.search_district.ilike(f"%{district_base}%"))
+    
+    if rooms:
+        query = query.filter(User.search_rooms == rooms)
+    
+    usd_rate = get_usd_rate_for_webapp()
+    
+    if budget_min:
+        try:
+            budget_min_val = int(budget_min)
+            query = query.filter(User.search_budget_max >= budget_min_val)
+        except:
+            pass
     
     if budget_max:
         try:
