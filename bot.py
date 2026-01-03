@@ -2849,6 +2849,8 @@ async def show_property_card(message, property_id, state=None):
     details = []
     if prop.district:
         details.append(f"📍 {prop.district}")
+    if prop.address:
+        details.append(f"🏠 {prop.address}")
     if prop.rooms:
         details.append(f"🚪 {prop.rooms} комн.")
     if prop.area:
@@ -2860,6 +2862,10 @@ async def show_property_card(message, property_id, state=None):
     
     if details:
         text += "\n".join(details) + "\n"
+    
+    if prop.latitude and prop.longitude:
+        maps_link = f"https://www.google.com/maps?q={prop.latitude},{prop.longitude}"
+        text += f"\n🗺 <a href='{maps_link}'>Показать на карте</a>\n"
     
     extras = []
     if prop.building_type:
