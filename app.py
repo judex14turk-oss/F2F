@@ -2120,12 +2120,21 @@ def webapp_user_save(user_id):
     if user:
         role = request.form.get('role')
         tariff = request.form.get('tariff')
+        seller_type_val = request.form.get('seller_type')
         
         role_map = {
             'buyer': UserRole.BUYER,
             'seller': UserRole.SELLER
         }
         user.role = role_map.get(role, UserRole.BUYER)
+        
+        if role == 'seller' and seller_type_val:
+            seller_type_map = {
+                'owner': SellerType.OWNER,
+                'realtor': SellerType.REALTOR,
+                'developer': SellerType.DEVELOPER
+            }
+            user.seller_type = seller_type_map.get(seller_type_val, SellerType.OWNER)
         
         if permissions['can_edit_tariff']:
             tariff_map = {

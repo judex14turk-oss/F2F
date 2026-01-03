@@ -283,9 +283,18 @@
         <div class="form-section">
             <div class="form-group">
                 <label class="form-label">Роль</label>
-                <select name="role" class="form-select">
+                <select name="role" class="form-select" id="role-select" onchange="toggleSellerType()">
                     <option value="buyer" {% if user.role and user.role.value == 'buyer' %}selected{% endif %}>Покупатель</option>
                     <option value="seller" {% if user.role and user.role.value == 'seller' %}selected{% endif %}>Продавец</option>
+                </select>
+            </div>
+            
+            <div class="form-group" id="seller-type-group" style="{% if not user.role or user.role.value != 'seller' %}display: none;{% endif %}">
+                <label class="form-label">Тип продавца</label>
+                <select name="seller_type" class="form-select">
+                    <option value="owner" {% if user.seller_type and user.seller_type.value == 'owner' %}selected{% endif %}>Собственник (частное лицо)</option>
+                    <option value="realtor" {% if user.seller_type and user.seller_type.value == 'realtor' %}selected{% endif %}>Риелтор</option>
+                    <option value="developer" {% if user.seller_type and user.seller_type.value == 'developer' %}selected{% endif %}>Застройщик</option>
                 </select>
             </div>
             
@@ -401,6 +410,16 @@
         const tg = window.Telegram.WebApp;
         tg.ready();
         tg.expand();
+        
+        function toggleSellerType() {
+            const roleSelect = document.getElementById('role-select');
+            const sellerTypeGroup = document.getElementById('seller-type-group');
+            if (roleSelect.value === 'seller') {
+                sellerTypeGroup.style.display = 'block';
+            } else {
+                sellerTypeGroup.style.display = 'none';
+            }
+        }
     </script>
 </body>
 </html>
