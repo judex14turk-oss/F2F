@@ -296,6 +296,36 @@
                     <option value="Блочный" {% if prop.building_type == 'Блочный' %}selected{% endif %}>Блочный</option>
                 </select>
             </div>
+            
+            <div class="form-row">
+                <div class="form-group">
+                    <label>Тип комнат</label>
+                    <select name="room_type">
+                        <option value="">Не указано</option>
+                        <option value="Раздельные" {% if prop.room_type == 'Раздельные' %}selected{% endif %}>Раздельные</option>
+                        <option value="Смежные" {% if prop.room_type == 'Смежные' %}selected{% endif %}>Смежные</option>
+                        <option value="Смежно-раздельные" {% if prop.room_type == 'Смежно-раздельные' %}selected{% endif %}>Смежно-раздельные</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label>Санузел</label>
+                    <select name="bathroom_type">
+                        <option value="">Не указано</option>
+                        <option value="Раздельный" {% if prop.bathroom_type == 'Раздельный' %}selected{% endif %}>Раздельный</option>
+                        <option value="Совмещённый" {% if prop.bathroom_type == 'Совмещённый' %}selected{% endif %}>Совмещённый</option>
+                        <option value="2 и более" {% if prop.bathroom_type == '2 и более' %}selected{% endif %}>2 и более</option>
+                    </select>
+                </div>
+            </div>
+            
+            <div class="form-group">
+                <label>Мебель</label>
+                <select name="has_furniture">
+                    <option value="">Не указано</option>
+                    <option value="true" {% if prop.has_furniture == true %}selected{% endif %}>Есть</option>
+                    <option value="false" {% if prop.has_furniture == false and prop.has_furniture is not none %}selected{% endif %}>Нет</option>
+                </select>
+            </div>
         </div>
         
         <div class="form-section">

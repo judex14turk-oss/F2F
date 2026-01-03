@@ -1437,6 +1437,17 @@ def webapp_user_property_save(property_id):
         prop.description = data['description']
     if 'phone' in data:
         prop.phone = data['phone']
+    if 'room_type' in data:
+        prop.room_type = data['room_type']
+    if 'bathroom_type' in data:
+        prop.bathroom_type = data['bathroom_type']
+    if 'has_furniture' in data:
+        if data['has_furniture'] == 'true':
+            prop.has_furniture = True
+        elif data['has_furniture'] == 'false':
+            prop.has_furniture = False
+        else:
+            prop.has_furniture = None
     
     db.commit()
     db.close()
