@@ -94,6 +94,7 @@ class PropertyStates(StatesGroup):
 
 class DeveloperPropertyStates(StatesGroup):
     property_type = State()  # продажа/аренда
+    property_category = State()  # квартира/коммерция
     housing_class = State()  # класс жилья
     rooms = State()  # количество комнат
     area = State()  # площадь квартиры
@@ -1530,19 +1531,18 @@ async def dev_process_property_type(message: types.Message, state: FSMContext):
     
     keyboard = ReplyKeyboardMarkup(
         keyboard=[
-            [KeyboardButton(text=get_text('dev_class_comfort', lang))],
-            [KeyboardButton(text=get_text('dev_class_business', lang))],
-            [KeyboardButton(text=get_text('dev_class_premium', lang))],
+            [KeyboardButton(text=get_text('dev_cat_apartment', lang))],
+            [KeyboardButton(text=get_text('dev_cat_commercial', lang))],
             [KeyboardButton(text=get_text('dev_back', lang))]
         ],
         resize_keyboard=True
     )
     
-    await message.answer(get_text('dev_choose_housing_class', lang), reply_markup=keyboard)
-    await state.set_state(DeveloperPropertyStates.housing_class)
+    await message.answer(get_text('dev_choose_category', lang), reply_markup=keyboard)
+    await state.set_state(DeveloperPropertyStates.property_category)
 
 
-@dp.message(F.text.in_(["⬅️ Назад", "⬅️ Orqaga"]), DeveloperPropertyStates.housing_class)
+@dp.message(F.text.in_(["⬅️ Назад", "⬅️ Orqaga"]), DeveloperPropertyStates.property_category)
 async def dev_back_to_property_type(message: types.Message, state: FSMContext):
     data = await state.get_data()
     lang = data.get('user_lang', 'ru')
@@ -1556,6 +1556,46 @@ async def dev_back_to_property_type(message: types.Message, state: FSMContext):
     )
     await message.answer(get_text('dev_choose_deal_type', lang), reply_markup=keyboard)
     await state.set_state(DeveloperPropertyStates.property_type)
+
+
+@dp.message(DeveloperPropertyStates.property_category)
+async def dev_process_property_category(message: types.Message, state: FSMContext):
+    data = await state.get_data()
+    lang = data.get('user_lang', 'ru')
+    
+    if message.text in [get_text('dev_cat_apartment', 'ru'), get_text('dev_cat_apartment', 'uz')]:
+        await state.update_data(property_category="Квартира")
+        
+        keyboard = ReplyKeyboardMarkup(
+            keyboard=[
+                [KeyboardButton(text=get_text('dev_class_comfort', lang))],
+                [KeyboardButton(text=get_text('dev_class_business', lang))],
+                [KeyboardButton(text=get_text('dev_class_premium', lang))],
+                [KeyboardButton(text=get_text('dev_back', lang))]
+            ],
+            resize_keyboard=True
+        )
+        
+        await message.answer(get_text('dev_choose_housing_class', lang), reply_markup=keyboard)
+        await state.set_state(DeveloperPropertyStates.housing_class)
+    elif message.text in [get_text('dev_cat_commercial', 'ru'), get_text('dev_cat_commercial', 'uz')]:
+        await message.answer(get_text('dev_commercial_coming_soon', lang))
+
+
+@dp.message(F.text.in_(["⬅️ Назад", "⬅️ Orqaga"]), DeveloperPropertyStates.housing_class)
+async def dev_back_to_category(message: types.Message, state: FSMContext):
+    data = await state.get_data()
+    lang = data.get('user_lang', 'ru')
+    keyboard = ReplyKeyboardMarkup(
+        keyboard=[
+            [KeyboardButton(text=get_text('dev_cat_apartment', lang))],
+            [KeyboardButton(text=get_text('dev_cat_commercial', lang))],
+            [KeyboardButton(text=get_text('dev_back', lang))]
+        ],
+        resize_keyboard=True
+    )
+    await message.answer(get_text('dev_choose_category', lang), reply_markup=keyboard)
+    await state.set_state(DeveloperPropertyStates.property_category)
 
 
 @dp.message(DeveloperPropertyStates.housing_class)
