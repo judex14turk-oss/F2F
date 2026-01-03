@@ -3213,6 +3213,7 @@ class EditPropertyStates(StatesGroup):
     editing_floor = State()
     editing_description = State()
     editing_photos = State()
+    editing_location = State()
 
 
 @dp.callback_query(F.data.startswith("prop_toggle_"))
@@ -3324,6 +3325,7 @@ async def edit_property_menu(callback: types.CallbackQuery, state: FSMContext):
         [InlineKeyboardButton(text="🚪 Комнаты", callback_data=f"edit_field_rooms")],
         [InlineKeyboardButton(text="📐 Площадь", callback_data=f"edit_field_area")],
         [InlineKeyboardButton(text="🏢 Этаж", callback_data=f"edit_field_floor")],
+        [InlineKeyboardButton(text="📍 Локация", callback_data=f"edit_field_location")],
         [InlineKeyboardButton(text="📝 Описание", callback_data=f"edit_field_description")],
         [InlineKeyboardButton(text="📷 Фото", callback_data=f"edit_field_photos")],
         [InlineKeyboardButton(text="❌ Отмена", callback_data="edit_cancel")]
@@ -3371,6 +3373,45 @@ async def edit_floor_start(callback: types.CallbackQuery, state: FSMContext):
 async def edit_description_start(callback: types.CallbackQuery, state: FSMContext):
     await callback.message.edit_text("📝 Введите новое описание:")
     await state.set_state(EditPropertyStates.editing_description)
+
+
+@dp.callback_query(F.data == "edit_field_location", EditPropertyStates.choosing_field)
+async def edit_location_start(callback: types.CallbackQuery, state: FSMContext):
+    db = SessionLocal()
+    districts = db.query(District).all()
+    db.close()
+    
+    keyboard_buttons = []
+    for district in districts:
+        keyboard_buttons.append([InlineKeyboardButton(text=district.name, callback_data=f"edit_loc_{district.name}")])
+    keyboard_buttons.append([InlineKeyboardButton(text="❌ Отмена", callback_data="edit_cancel")])
+    
+    keyboard = InlineKeyboardMarkup(inline_keyboard=keyboard_buttons)
+    
+    await callback.message.edit_text(
+        "📍 <b>Выберите новый район:</b>",
+        reply_markup=keyboard,
+        parse_mode="HTML"
+    )
+    await state.set_state(EditPropertyStates.editing_location)
+
+
+@dp.callback_query(F.data.startswith("edit_loc_"), EditPropertyStates.editing_location)
+async def save_location(callback: types.CallbackQuery, state: FSMContext):
+    new_district = callback.data.replace("edit_loc_", "")
+    
+    data = await state.get_data()
+    prop_id = data.get("editing_prop_id")
+    
+    db = SessionLocal()
+    prop = db.query(Property).filter(Property.id == prop_id).first()
+    if prop:
+        prop.district = new_district
+        db.commit()
+    db.close()
+    
+    await state.clear()
+    await callback.message.edit_text(f"✅ Локация изменена на {new_district}")
 
 
 @dp.message(EditPropertyStates.editing_price)
