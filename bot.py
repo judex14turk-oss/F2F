@@ -2851,6 +2851,10 @@ async def show_property_card(message, property_id, state=None):
         details.append(f"📍 {prop.district}")
     if prop.address:
         details.append(f"🏠 {prop.address}")
+    if prop.metro_station:
+        details.append(f"🚇 {prop.metro_station}")
+    if prop.residential_complex:
+        details.append(f"🏘 ЖК: {prop.residential_complex}")
     if prop.rooms:
         details.append(f"🚪 {prop.rooms} комн.")
     if prop.area:
@@ -2872,13 +2876,23 @@ async def show_property_card(message, property_id, state=None):
         extras.append(prop.building_type)
     if prop.renovation:
         extras.append(prop.renovation)
-    if prop.has_furniture:
-        extras.append("с мебелью")
+    if prop.room_type:
+        extras.append(prop.room_type)
     if prop.bathroom_type:
         extras.append(prop.bathroom_type)
+    if prop.has_furniture:
+        extras.append("с мебелью")
+    if prop.has_balcony:
+        extras.append("балкон")
+    if prop.housing_class:
+        extras.append(prop.housing_class)
     
     if extras:
         text += f"\n🏠 {' • '.join(extras)}\n"
+    
+    if prop.price_per_sqm:
+        price_sqm_display = format_price_for_user(prop.price_per_sqm, 'UZS', user_currency)
+        text += f"💵 Цена за м²: {price_sqm_display}\n"
     
     text += "\n━━━━━━━━━━━━━━━━━━━━\n"
     text += f"📞 <b><u>Контакт: {contact_phone}</u></b>\n"
