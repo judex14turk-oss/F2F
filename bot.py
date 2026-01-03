@@ -4236,18 +4236,31 @@ async def show_buyers_page(message_or_callback, deal_type: str, prop_type: str, 
         rooms = buyer.search_rooms or "Любые"
         district = buyer.search_district or "Любой район"
         budget_raw = buyer.search_budget_max or 0
+        original_budget = int(budget_raw / 1.2) if budget_raw else 0
         buyer_currency = buyer.search_currency or 'USD'
         
         if buyer_currency == 'UZS' and usd_rate > 0:
-            budget_usd = int(budget_raw / usd_rate)
+            budget_usd = int(original_budget / usd_rate)
         else:
-            budget_usd = budget_raw
+            budget_usd = original_budget
+        
+        housing_type_display = {
+            'new_building': '🏗 Новостройка',
+            'secondary': '🏠 Вторичка',
+            'any': 'Любой тип',
+            'Новостройка': '🏗 Новостройка',
+            'Вторичный рынок': '🏠 Вторичка',
+            'Любой': 'Любой тип'
+        }
+        housing = buyer.search_housing_type or ''
+        housing_line = f"   🏢 {housing_type_display.get(housing, housing)}\n" if housing else ""
         
         bio_line = f"   📝 {buyer.buyer_bio}\n" if buyer.buyer_bio else ""
         
         text += (
             f"👤 {buyer.first_name or 'Клиент'}\n"
             f"   🚪 {rooms} комн. | 📍 {district}\n"
+            f"{housing_line}"
             f"   💰 до ${budget_usd:,}\n"
             f"{bio_line}\n"
         )
