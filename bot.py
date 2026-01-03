@@ -117,8 +117,7 @@ class DeveloperPropertyStates(StatesGroup):
     mortgage_details = State()  # детали ипотеки
     installment_details = State()  # детали рассрочки
     has_mixed_payment = State()  # смешанный тип оплаты
-    photos = State()  # фото проекта
-    layout_photos = State()  # фото планировки
+    photos = State()  # фото проекта (включая планировки)
     confirm = State()  # подтверждение
 
 
@@ -1489,7 +1488,7 @@ async def dev_add_property_start(message: types.Message, state: FSMContext):
         )
         return
     
-    await state.update_data(photos=[], layout_photos=[], discounts=[], payment_methods=[], user_lang=lang)
+    await state.update_data(photos=[], discounts=[], payment_methods=[], user_lang=lang)
     
     keyboard = ReplyKeyboardMarkup(
         keyboard=[
@@ -2398,59 +2397,6 @@ async def dev_photos_done(message: types.Message, state: FSMContext):
     
     if message.text in [get_text('dev_photos_done', 'ru'), get_text('dev_photos_done', 'uz'), 
                         get_text('dev_skip_photos', 'ru'), get_text('dev_skip_photos', 'uz')]:
-        keyboard = ReplyKeyboardMarkup(
-            keyboard=[
-                [KeyboardButton(text=get_text('dev_skip_photos', lang))],
-                [KeyboardButton(text=get_text('dev_back', lang))]
-            ],
-            resize_keyboard=True
-        )
-        await message.answer(get_text('dev_add_layout', lang), reply_markup=keyboard)
-        await state.set_state(DeveloperPropertyStates.layout_photos)
-
-
-@dp.message(F.text.in_(["⬅️ Назад", "⬅️ Orqaga"]), DeveloperPropertyStates.layout_photos)
-async def dev_back_to_photos(message: types.Message, state: FSMContext):
-    data = await state.get_data()
-    lang = data.get('user_lang', 'ru')
-    await dev_show_photos_step(message, state, lang)
-
-
-@dp.message(DeveloperPropertyStates.layout_photos, F.photo)
-async def dev_process_layout_photo(message: types.Message, state: FSMContext):
-    data = await state.get_data()
-    lang = data.get('user_lang', 'ru')
-    layout_photos = data.get("layout_photos", [])
-    
-    if len(layout_photos) >= 5:
-        await message.answer("⚠️ Достигнут лимит в 5 фотографий планировки!")
-        return
-    
-    photo_id = message.photo[-1].file_id
-    layout_photos.append(photo_id)
-    await state.update_data(layout_photos=layout_photos)
-    
-    keyboard = ReplyKeyboardMarkup(
-        keyboard=[
-            [KeyboardButton(text=get_text('dev_photos_done', lang))],
-            [KeyboardButton(text=get_text('dev_back', lang))]
-        ],
-        resize_keyboard=True
-    )
-    
-    await message.answer(
-        f"✅ Планировка добавлена ({len(layout_photos)}/5)\n\nОтправьте еще фото или нажмите 'Готово'",
-        reply_markup=keyboard
-    )
-
-
-@dp.message(DeveloperPropertyStates.layout_photos)
-async def dev_layout_done(message: types.Message, state: FSMContext):
-    data = await state.get_data()
-    lang = data.get('user_lang', 'ru')
-    
-    if message.text in [get_text('dev_photos_done', 'ru'), get_text('dev_photos_done', 'uz'),
-                        get_text('dev_skip_photos', 'ru'), get_text('dev_skip_photos', 'uz')]:
         await dev_save_property(message, state, lang)
 
 
@@ -2463,7 +2409,6 @@ async def dev_save_property(message, state, lang):
     user = db.query(User).filter(User.telegram_id == message.from_user.id).first()
     
     photos_str = ",".join(data.get("photos", []))
-    layout_photos_str = ",".join(data.get("layout_photos", []))
     
     area = data.get("area", 50)
     price_per_sqm = data.get("price_per_sqm", 1000)
@@ -2500,7 +2445,7 @@ async def dev_save_property(message, state, lang):
         installment_grace_period=data.get("installment_grace_period"),
         has_mixed_payment="Рассрочка + Ипотека" in data.get("payment_methods", []),
         photos=photos_str,
-        layout_photos=layout_photos_str,
+        layout_photos="",
         status=PropertyStatus.MODERATION,
         source='manual'
     )
