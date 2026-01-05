@@ -1148,18 +1148,18 @@ class OLXParser:
         
         if title:
             title_lower = title.lower()
-            if any(w in title_lower for w in ['сдается', 'сдаётся', 'аренда', 'rent']):
+            if any(w in title_lower for w in ['сдается', 'сдаётся', 'аренда', 'rent', 'ijara', 'ijaraga']):
                 return 'rent'
-            if any(w in title_lower for w in ['продаж', 'продам', 'sale', 'buy']):
+            if any(w in title_lower for w in ['продаж', 'продам', 'sale', 'buy', 'sotish', 'sotiladi']):
                 return 'sale'
         
         # 3. Проверяем параметры
         params = self._extract_parameters(soup)
         if params.get('Тип сделки'):
             deal_val = params['Тип сделки'].lower()
-            if 'аренда' in deal_val:
+            if any(w in deal_val for w in ['аренда', 'rent', 'ijara']):
                 return 'rent'
-            if 'продаж' in deal_val:
+            if any(w in deal_val for w in ['продаж', 'sale', 'sotish']):
                 return 'sale'
 
         # По умолчанию если ничего не нашли - считаем продажей, но это может быть неточно
