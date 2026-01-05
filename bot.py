@@ -12,7 +12,7 @@ from aiogram.fsm.storage.memory import MemoryStorage
 from typing import Callable, Dict, Any, Awaitable
 
 from models import SessionLocal, User, Property, Like, Match, Offer, District, ResidentialComplex, Advertisement, Setting
-from models import UserRole, SellerType, TariffType, PropertyType, PropertyStatus, init_db, get_tashkent_now
+from models import UserRole, SellerType, TariffType, PropertyType, PropertyStatus, AdminRole, init_db, get_tashkent_now
 
 
 def get_usd_rate():
@@ -328,10 +328,18 @@ async def cmd_start(message: types.Message, state: FSMContext):
             username=message.from_user.username,
             first_name=message.from_user.first_name,
             last_name=message.from_user.last_name,
-            is_admin=(message.from_user.username == ADMIN_USERNAME)
+            is_admin=(message.from_user.username == ADMIN_USERNAME),
+            admin_role=AdminRole.SUPER_ADMIN if message.from_user.username == ADMIN_USERNAME else None
         )
         db.add(user)
         db.commit()
+    else:
+        # Check if this is the admin and update permissions if needed
+        if message.from_user.username == ADMIN_USERNAME:
+            if not user.is_admin or user.admin_role != AdminRole.SUPER_ADMIN:
+                user.is_admin = True
+                user.admin_role = AdminRole.SUPER_ADMIN
+                db.commit()
     
     db.close()
     
@@ -4620,9 +4628,14 @@ async def back_to_main_menu(message: types.Message):
 
 
 async def show_seller_profile_info(message, user):
-    webapp_url = os.environ.get('REPLIT_DEV_DOMAIN', '')
+    webapp_url = os.environ.get('WEBAPP_URL', '')
+    if not webapp_url:
+        webapp_url = os.environ.get('REPLIT_DEV_DOMAIN', '')
     if not webapp_url:
         webapp_url = os.environ.get('REPLIT_DOMAINS', '').split(',')[0] if os.environ.get('REPLIT_DOMAINS') else ''
+    
+    if webapp_url and "://" not in webapp_url:
+        webapp_url = f"https://{webapp_url}"
     
     db = SessionLocal()
     user = db.query(User).filter(User.id == user.id).first()
@@ -4712,13 +4725,13 @@ async def show_seller_profile_info(message, user):
     if webapp_url:
         buttons.append([InlineKeyboardButton(
             text=details_text,
-            web_app=types.WebAppInfo(url=f"https://{webapp_url}/webapp/user_stats?tg_id={user.telegram_id}")
+            web_app=types.WebAppInfo(url=f"{webapp_url}/webapp/user_stats?tg_id={user.telegram_id}")
         )])
     
     if user.is_admin and webapp_url:
         buttons.append([InlineKeyboardButton(
             text=admin_text,
-            web_app=types.WebAppInfo(url=f"https://{webapp_url}/webapp/admin/home?tg_id={user.telegram_id}")
+            web_app=types.WebAppInfo(url=f"{webapp_url}/webapp/admin/home?tg_id={user.telegram_id}")
         )])
     
     keyboard = InlineKeyboardMarkup(inline_keyboard=buttons)
@@ -4726,9 +4739,14 @@ async def show_seller_profile_info(message, user):
 
 
 async def show_buyer_profile(message, user):
-    webapp_url = os.environ.get('REPLIT_DEV_DOMAIN', '')
+    webapp_url = os.environ.get('WEBAPP_URL', '')
+    if not webapp_url:
+        webapp_url = os.environ.get('REPLIT_DEV_DOMAIN', '')
     if not webapp_url:
         webapp_url = os.environ.get('REPLIT_DOMAINS', '').split(',')[0] if os.environ.get('REPLIT_DOMAINS') else ''
+    
+    if webapp_url and "://" not in webapp_url:
+        webapp_url = f"https://{webapp_url}"
     
     lang = get_user_lang(user)
     
@@ -4790,13 +4808,13 @@ async def show_buyer_profile(message, user):
     if webapp_url:
         buttons.append([InlineKeyboardButton(
             text=details_text,
-            web_app=types.WebAppInfo(url=f"https://{webapp_url}/webapp/user_stats?tg_id={user.telegram_id}")
+            web_app=types.WebAppInfo(url=f"{webapp_url}/webapp/user_stats?tg_id={user.telegram_id}")
         )])
     
     if user.is_admin and webapp_url:
         buttons.append([InlineKeyboardButton(
             text=admin_text,
-            web_app=types.WebAppInfo(url=f"https://{webapp_url}/webapp/admin/home?tg_id={user.telegram_id}")
+            web_app=types.WebAppInfo(url=f"{webapp_url}/webapp/admin/home?tg_id={user.telegram_id}")
         )])
     
     keyboard = InlineKeyboardMarkup(inline_keyboard=buttons)
