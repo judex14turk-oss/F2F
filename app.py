@@ -3382,13 +3382,6 @@ def webapp_parser_single():
         
         db = get_db()
         
-        olx_id = listing.get('olx_id')
-        if olx_id:
-            existing = db.query(Property).filter(Property.olx_id == olx_id).first()
-            if existing:
-                db.close()
-                return jsonify({'error': 'Это объявление уже есть в базе', 'parsed': 1, 'added_to_db': 0, 'skipped_duplicates': 1, 'listings': [listing]}), 200
-        
         try:
             price_str = listing.get('price', '0')
             price = int(price_str.replace(' ', '').replace(',', '')) if price_str else 0
@@ -3421,9 +3414,48 @@ def webapp_parser_single():
         furnished_val = listing.get('furnished')
         has_furniture = furnished_val == 'Да' if furnished_val else False
         
+        deal_type_str = listing.get('deal_type', 'sale')
+        prop_type_enum = PropertyType.RENT if deal_type_str == 'rent' else PropertyType.SALE
+
+        olx_id = listing.get('olx_id')
+        if olx_id:
+            existing = db.query(Property).filter(Property.olx_id == olx_id).first()
+            if existing:
+                # Update existing property
+                existing.price = price
+                existing.property_type = prop_type_enum
+                existing.status = PropertyStatus.ACTIVE
+                existing.district = listing.get('district') or listing.get('location')
+                existing.address = listing.get('location')
+                existing.rooms = rooms_count
+                existing.floor = floor_val
+                existing.total_floors = total_floors_val
+                existing.area = area_val
+                existing.photos = photos_str
+                existing.description = listing.get('description')
+                existing.phone = listing.get('phone')
+                existing.seller_name = listing.get('seller_name')
+                existing.housing_type = listing.get('property_type')
+                existing.building_type = listing.get('building_type')
+                existing.renovation = listing.get('renovation')
+                existing.layout = listing.get('layout')
+                existing.has_furniture = has_furniture
+                existing.olx_title = listing.get('title')
+                existing.updated_at = get_tashkent_now()
+                
+                db.commit()
+                db.close()
+                return jsonify({
+                    'parsed': 1,
+                    'added_to_db': 0,
+                    'updated_in_db': 1,
+                    'skipped_duplicates': 0,
+                    'listings': [listing]
+                })
+
         new_property = Property(
             owner_id=admin_user_id,
-            property_type=PropertyType.SALE,
+            property_type=prop_type_enum,
             district=listing.get('district') or listing.get('location'),
             address=listing.get('location'),
             rooms=rooms_count,

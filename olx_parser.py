@@ -1131,7 +1131,345 @@ class OLXParser:
         
         return None
     
+
+    def _extract_deal_type(self, soup, title=None):
+        # 1. Проверяем хлебные крошки
+        breadcrumbs_container = soup.find('ol', {'data-testid': 'breadcrumbs'})
+        if breadcrumbs_container:
+            breadcrumbs_text = breadcrumbs_container.get_text().lower()
+            if 'аренда' in breadcrumbs_text:
+                return 'rent'
+            if 'продажа' in breadcrumbs_text:
+                return 'sale'
+        
+        # 2. Проверяем заголовок (если передан или находим)
+        if not title:
+            title = self._extract_title(soup)
+        
+        if title:
+            title_lower = title.lower()
+            if any(w in title_lower for w in ['сдается', 'сдаётся', 'аренда', 'rent']):
+                return 'rent'
+            if any(w in title_lower for w in ['продаж', 'продам', 'sale', 'buy']):
+                return 'sale'
+        
+        # 3. Проверяем параметры
+        params = self._extract_parameters(soup)
+        if params.get('Тип сделки'):
+            deal_val = params['Тип сделки'].lower()
+            if 'аренда' in deal_val:
+                return 'rent'
+            if 'продаж' in deal_val:
+                return 'sale'
+
+        # По умолчанию если ничего не нашли - считаем продажей, но это может быть неточно
+        return 'sale'
+
+    def parse_listing_with_requests(self, url):
+        result = {
+            'url': url,
+            'title': None,
+            'price': None,
+            'currency': None,
+            'deal_type': 'sale',  # Default
+            'phone': None,
+            'photos': [],
+            'property_type': None,
+            'rooms': None,
+            'total_area': None,
+            'floor': None,
+            'total_floors': None,
+            'layout': None,
+            'bathroom': None,
+            'furnished': None,
+            'nearby': [],
+            'commission': None,
+            'description': None,
+            'location': None,
+            'district': None,
+            'seller_name': None,
+            'olx_id': None,
+            'published_date': None,
+            'error': None
+        }
+        
+        try:
+            response = requests.get(url, headers=self.headers, timeout=30)
+            if response.status_code != 200:
+                result['error'] = f'HTTP {response.status_code}'
+                return result
+            
+            soup = BeautifulSoup(response.text, 'lxml')
+            page_text = response.text
+            
+            result['title'] = self._extract_title(soup)
+            result['price'], result['currency'] = self._extract_price(soup)
+            result['deal_type'] = self._extract_deal_type(soup, result['title'])
+            result['photos'] = self._extract_photos(soup)
+            result['olx_id'] = self._extract_olx_id(soup, url)
+            result['description'] = self._extract_description(soup)
+            result['location'] = self._extract_location(soup)
+            result['seller_name'] = self._extract_seller(soup)
+            result['published_date'] = self._extract_date(soup)
+            
+            params = self._extract_parameters(soup)
+            result['property_type'] = params.get('Тип жилья') or params.get('Тип недвижимости')
+            result['rooms'] = params.get('Количество комнат')
+            result['total_area'] = params.get('Общая площадь')
+            result['floor'] = params.get('Этаж')
+            result['total_floors'] = params.get('Этажность дома')
+            result['layout'] = params.get('Планировка')
+            result['bathroom'] = params.get('Санузел')
+            result['furnished'] = params.get('Меблирована')
+            result['nearby'] = params.get('Рядом есть', '').split(', ') if params.get('Рядом есть') else []
+            result['commission'] = params.get('Комиссионные')
+            result['building_type'] = params.get('Тип строения')
+            result['renovation'] = params.get('Ремонт')
+            result['land_area'] = params.get('Участок')
+            result['useful_area'] = params.get('Полезная площадь')
+            result['ceiling_height'] = params.get('Высота потолков')
+            result['amenities'] = params.get('В помещении есть')
+            result['location_type'] = params.get('Расположение')
+            
+            phone = self._extract_phone_from_text(result['description'])
+            if not phone and result['seller_name']:
+                phone = self._extract_phone_from_text(result['seller_name'])
+            result['phone'] = phone
+            
+            for district_key, district_name in self.TASHKENT_DISTRICTS.items():
+                if district_name and district_name in (result['location'] or ''):
+                    result['district'] = district_name
+                    break
+            
+        except Exception as e:
+            result['error'] = str(e)
+            
+        return result
+
+    def parse_listing_with_driver(self, driver, url, get_phone=False, timeout=20):
+        result = {
+            'url': url,
+            'title': None,
+            'price': None,
+            'currency': None,
+            'deal_type': 'sale', # Default
+            'phone': None,
+            'photos': [],
+            'property_type': None,
+            'rooms': None,
+            'total_area': None,
+            'floor': None,
+            'total_floors': None,
+            'layout': None,
+            'bathroom': None,
+            'furnished': None,
+            'nearby': [],
+            'commission': None,
+            'description': None,
+            'location': None,
+            'district': None,
+            'seller_name': None,
+            'olx_id': None,
+            'published_date': None,
+            'error': None
+        }
+        
+        start_time = time.time()
+        
+        try:
+            driver.set_page_load_timeout(15)
+            try:
+                driver.get(url)
+            except TimeoutException:
+                result['error'] = 'Page load timeout'
+                return result
+            except Exception as e:
+                result['error'] = f'Page load error: {str(e)}'
+                return result
+            
+            time.sleep(0.5)
+            
+            page_source = driver.page_source
+            soup = BeautifulSoup(page_source, 'lxml')
+            
+            result['title'] = self._extract_title(soup)
+            result['price'], result['currency'] = self._extract_price(soup)
+            result['deal_type'] = self._extract_deal_type(soup, result['title'])
+            result['photos'] = self._extract_photos(soup)
+            result['olx_id'] = self._extract_olx_id(soup, url)
+            result['description'] = self._extract_description(soup)
+            result['location'] = self._extract_location(soup)
+            result['seller_name'] = self._extract_seller(soup)
+            result['published_date'] = self._extract_date(soup)
+            
+            params = self._extract_parameters(soup)
+            # ... (rest of the fields as before)
+            result['property_type'] = params.get('Тип жилья') or params.get('Тип недвижимости')
+            result['rooms'] = params.get('Количество комнат')
+            result['total_area'] = params.get('Общая площадь')
+            result['floor'] = params.get('Этаж')
+            result['total_floors'] = params.get('Этажность дома')
+            result['layout'] = params.get('Планировка')
+            result['bathroom'] = params.get('Санузел')
+            result['furnished'] = params.get('Меблирована')
+            result['nearby'] = params.get('Рядом есть', '').split(', ') if params.get('Рядом есть') else []
+            result['commission'] = params.get('Комиссионные')
+            result['building_type'] = params.get('Тип строения')
+            result['renovation'] = params.get('Ремонт')
+            result['land_area'] = params.get('Участок')
+            result['useful_area'] = params.get('Полезная площадь')
+            result['ceiling_height'] = params.get('Высота потолков')
+            result['amenities'] = params.get('В помещении есть')
+            result['location_type'] = params.get('Расположение')
+            
+            for district_key, district_name in self.TASHKENT_DISTRICTS.items():
+                if district_name and district_name in (result['location'] or ''):
+                    result['district'] = district_name
+                    break
+            
+            if result['description']:
+                phone_from_desc = self._extract_phone_from_text(result['description'])
+                if phone_from_desc:
+                    result['phone'] = phone_from_desc
+            
+            if not result['phone'] and result['seller_name']:
+                phone_from_seller = self._extract_phone_from_text(result['seller_name'])
+                if phone_from_seller:
+                    result['phone'] = phone_from_seller
+            
+            if get_phone and not result['phone']:
+                if time.time() - start_time > timeout:
+                    result['error'] = 'Timeout before phone extraction'
+                    return result
+                    
+                try:
+                    from selenium.webdriver.support.ui import WebDriverWait
+                    from selenium.webdriver.support import expected_conditions as EC
+                    
+                    time.sleep(0.5)
+                    
+                    phone_button_clicked = False
+                    phone_button_selectors = [
+                        "//button[contains(., 'показать')]",
+                        "//button[contains(., 'Показать')]",
+                        "//button[contains(text(), 'показать')]",
+                        "//button[contains(text(), 'Показать')]",
+                        "//*[contains(@data-testid, 'phones-container')]//button",
+                        "//div[contains(@data-testid, 'phones')]//button",
+                        "//button[contains(@class, 'phones')]",
+                    ]
+                    
+                    for selector in phone_button_selectors:
+                        if phone_button_clicked:
+                            break
+                        try:
+                            phone_btn = WebDriverWait(driver, 2).until(
+                                EC.element_to_be_clickable((By.XPATH, selector))
+                            )
+                            driver.execute_script("arguments[0].click();", phone_btn)
+                            phone_button_clicked = True
+                            time.sleep(2)
+                        except:
+                            pass
+                    
+                    if not phone_button_clicked:
+                        try:
+                            buttons = driver.find_elements(By.TAG_NAME, "button")
+                            for btn in buttons:
+                                btn_text = btn.text.lower() if btn.text else ''
+                                if 'показать' in btn_text or 'show' in btn_text:
+                                    driver.execute_script("arguments[0].click();", btn)
+                                    phone_button_clicked = True
+                                    time.sleep(2)
+                                    break
+                        except:
+                            pass
+                    
+                    try:
+                        contact_phone = driver.find_element(By.CSS_SELECTOR, "[data-testid='contact-phone']")
+                        if contact_phone:
+                            href = contact_phone.get_attribute('href')
+                            if href and 'tel:' in href:
+                                phone = href.replace('tel:', '').replace(' ', '').replace('-', '').strip()
+                                if len(phone) >= 9:
+                                    result['phone'] = phone
+                            else:
+                                phone_text = contact_phone.text.strip()
+                                if phone_text:
+                                    phone = phone_text.replace(' ', '').replace('-', '')
+                                    if len(phone) >= 9:
+                                        result['phone'] = phone if phone.startswith('+') else '+' + phone
+                    except:
+                        pass
+                    
+                    if not result['phone']:
+                        try:
+                            tel_links = driver.find_elements(By.XPATH, "//a[contains(@href, 'tel:')]")
+                            for tel_link in tel_links:
+                                href = tel_link.get_attribute('href')
+                                if href and 'tel:' in href:
+                                    phone = href.replace('tel:', '').replace(' ', '').replace('-', '').strip()
+                                    if len(phone) >= 9:
+                                        result['phone'] = phone
+                                        break
+                        except:
+                            pass
+                    
+                    if not result['phone']:
+                        try:
+                            phones_container = driver.find_element(By.CSS_SELECTOR, "[data-testid='phones-container']")
+                            if phones_container:
+                                links = phones_container.find_elements(By.TAG_NAME, 'a')
+                                for link in links:
+                                    href = link.get_attribute('href')
+                                    if href and 'tel:' in href:
+                                        phone = href.replace('tel:', '').replace(' ', '').replace('-', '').strip()
+                                        if len(phone) >= 9:
+                                            result['phone'] = phone
+                                            break
+                        except:
+                            pass
+                    
+                    if not result['phone']:
+                        page_text = driver.page_source
+                        phone_regexes = [
+                            r'tel:\+?[\d\s\-]+',
+                            r'\+998[\s\-]?\d{2}[\s\-]?\d{3}[\s\-]?\d{2}[\s\-]?\d{2}',
+                            r'\+998\d{9}',
+                            r'\+99[\s\-]?\d{2,3}[\s\-]?\d{3,7}[\s\-]?\d{0,4}',
+                            r'\+99\s+\d{3}\s+\d+',
+                            r'998[\s\-]?\d{2}[\s\-]?\d{3}[\s\-]?\d{2}[\s\-]?\d{2}',
+                            r'998\d{9}',
+                            r'[89]\d{2}[\s\-]?\d{3}[\s\-]?\d{3}',
+                            r'9\d{2}[\s\-]?\d{3}[\s\-]?\d{3}',
+                            r'\d{3}[\s\-]\d{3}[\s\-]\d{3}',
+                            r'\d{2}[\s\-]?\d{3}[\s\-]?\d{2}[\s\-]?\d{2}',
+                        ]
+                        for regex in phone_regexes:
+                            phone_match = re.search(regex, page_text)
+                            if phone_match:
+                                phone = phone_match.group(0).replace('tel:', '').replace(' ', '').replace('-', '')
+                                if len(phone) >= 9:
+                                    if len(phone) == 9 and phone[0] in '89':
+                                        result['phone'] = '+998' + phone
+                                    elif phone.startswith('998'):
+                                        result['phone'] = '+' + phone if not phone.startswith('+') else phone
+                                    elif phone.startswith('+'):
+                                        result['phone'] = phone
+                                    else:
+                                        result['phone'] = '+998' + phone
+                                    break
+                        
+                except Exception as e:
+                    result['phone_error'] = str(e)
+            
+        except Exception as e:
+            result['error'] = str(e)
+            
+        return result
+
     def is_listing_fresh(self, date_str, max_days):
+
         if max_days is None or max_days == 0:
             return True
         
