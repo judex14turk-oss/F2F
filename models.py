@@ -353,6 +353,18 @@ def init_db():
             if not existing:
                 session.add(ResidentialComplex(**complex_data))
         
+        # Initialize TariffSettings
+        tariffs = [
+            {"tariff_type": "free", "price": 0, "properties_limit": 2, "likes_per_day": 1, "priority_display": False},
+            {"tariff_type": "pro", "price": 100000, "properties_limit": 50, "likes_per_day": 10, "priority_display": False},
+            {"tariff_type": "premium", "price": 300000, "properties_limit": 100, "likes_per_day": 30, "priority_display": True}
+        ]
+        
+        for tariff_data in tariffs:
+            existing = session.query(TariffSettings).filter_by(tariff_type=tariff_data["tariff_type"]).first()
+            if not existing:
+                session.add(TariffSettings(**tariff_data))
+        
         session.commit()
     except Exception as e:
         session.rollback()
