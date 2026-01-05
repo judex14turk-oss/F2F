@@ -1,5 +1,6 @@
 <!DOCTYPE html>
 <html lang="ru">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
@@ -7,33 +8,37 @@
     <script src="https://telegram.org/js/telegram-web-app.js"></script>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.0/font/bootstrap-icons.css" rel="stylesheet">
     <style>
-        * { margin: 0; padding: 0; box-sizing: border-box; }
-        
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
         body {
             background: #0a0a0a;
             color: #e5e5e5;
             font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
             padding-bottom: 80px;
         }
-        
+
         .header {
             background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
             padding: 20px 16px;
             border-bottom: 1px solid #2a2a2a;
         }
-        
+
         .header h1 {
             font-size: 1.2rem;
             font-weight: 600;
             color: #fff;
         }
-        
+
         .header-sub {
             font-size: 0.8rem;
             color: #888;
             margin-top: 4px;
         }
-        
+
         .bottom-nav {
             position: fixed;
             bottom: 0;
@@ -46,7 +51,7 @@
             padding: 8px 0;
             z-index: 100;
         }
-        
+
         .bottom-nav-item {
             display: flex;
             flex-direction: column;
@@ -56,22 +61,22 @@
             font-size: 0.65rem;
             padding: 4px 8px;
         }
-        
+
         .bottom-nav-item.active {
             color: #3b82f6;
         }
-        
+
         .bottom-nav-item i {
             font-size: 1.3rem;
             margin-bottom: 2px;
         }
-        
+
         .sub-tabs {
             display: flex;
             gap: 8px;
             padding: 12px;
         }
-        
+
         .sub-tab {
             flex: 1;
             padding: 14px;
@@ -84,27 +89,27 @@
             cursor: pointer;
             font-size: 0.85rem;
         }
-        
+
         .sub-tab.active {
             background: #3b82f6;
             color: white;
             border-color: #3b82f6;
         }
-        
+
         .sub-tab i {
             display: block;
             font-size: 1.3rem;
             margin-bottom: 4px;
         }
-        
+
         .content-section {
             display: none;
         }
-        
+
         .content-section.active {
             display: block;
         }
-        
+
         .tariff-card {
             background: #151515;
             border: 1px solid #252525;
@@ -112,40 +117,48 @@
             border-radius: 12px;
             overflow: hidden;
         }
-        
+
         .tariff-header {
             padding: 16px;
             border-bottom: 1px solid #252525;
         }
-        
-        .tariff-header.free { background: linear-gradient(135deg, #1e3a5f 0%, #1e293b 100%); }
-        .tariff-header.pro { background: linear-gradient(135deg, #166534 0%, #14532d 100%); }
-        .tariff-header.premium { background: linear-gradient(135deg, #831843 0%, #701a3c 100%); }
-        
+
+        .tariff-header.free {
+            background: linear-gradient(135deg, #1e3a5f 0%, #1e293b 100%);
+        }
+
+        .tariff-header.pro {
+            background: linear-gradient(135deg, #166534 0%, #14532d 100%);
+        }
+
+        .tariff-header.premium {
+            background: linear-gradient(135deg, #831843 0%, #701a3c 100%);
+        }
+
         .tariff-name {
             font-size: 1rem;
             font-weight: 700;
             color: #fff;
         }
-        
+
         .tariff-price {
             font-size: 1.2rem;
             font-weight: 800;
             color: #4ade80;
             margin-top: 4px;
         }
-        
+
         .tariff-body {
             padding: 16px;
         }
-        
+
         .input-group-custom {
             display: grid;
             grid-template-columns: repeat(3, 1fr);
             gap: 10px;
             margin-bottom: 12px;
         }
-        
+
         .input-item {
             background: #1a1a1a;
             border: 1px solid #2a2a2a;
@@ -153,7 +166,7 @@
             padding: 10px;
             text-align: center;
         }
-        
+
         .input-item label {
             display: block;
             font-size: 0.65rem;
@@ -161,7 +174,7 @@
             margin-bottom: 6px;
             text-transform: uppercase;
         }
-        
+
         .input-item input {
             width: 100%;
             padding: 8px;
@@ -173,7 +186,7 @@
             background: #0a0a0a;
             color: #e5e5e5;
         }
-        
+
         .priority-toggle {
             display: flex;
             align-items: center;
@@ -184,29 +197,36 @@
             border-radius: 8px;
             margin-bottom: 12px;
         }
-        
+
         .priority-toggle label {
             font-size: 0.85rem;
             color: #ccc;
         }
-        
+
         .toggle-switch {
             position: relative;
             width: 44px;
             height: 24px;
         }
-        
-        .toggle-switch input { opacity: 0; width: 0; height: 0; }
-        
+
+        .toggle-switch input {
+            opacity: 0;
+            width: 0;
+            height: 0;
+        }
+
         .toggle-slider {
             position: absolute;
             cursor: pointer;
-            top: 0; left: 0; right: 0; bottom: 0;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
             background: #3f3f46;
             border-radius: 24px;
             transition: .3s;
         }
-        
+
         .toggle-slider:before {
             position: absolute;
             content: "";
@@ -218,10 +238,15 @@
             border-radius: 50%;
             transition: .3s;
         }
-        
-        .toggle-switch input:checked + .toggle-slider { background: #3b82f6; }
-        .toggle-switch input:checked + .toggle-slider:before { transform: translateX(20px); }
-        
+
+        .toggle-switch input:checked+.toggle-slider {
+            background: #3b82f6;
+        }
+
+        .toggle-switch input:checked+.toggle-slider:before {
+            transform: translateX(20px);
+        }
+
         .btn-save-tariff {
             width: 100%;
             padding: 12px;
@@ -233,7 +258,7 @@
             font-weight: 600;
             cursor: pointer;
         }
-        
+
         .promo-create-card {
             background: #151515;
             border: 1px solid #252525;
@@ -241,27 +266,27 @@
             border-radius: 12px;
             padding: 16px;
         }
-        
+
         .promo-create-card h3 {
             font-size: 0.95rem;
             font-weight: 600;
             margin-bottom: 14px;
             color: #fff;
         }
-        
+
         .form-grid {
             display: grid;
             grid-template-columns: repeat(2, 1fr);
             gap: 10px;
         }
-        
+
         .form-field {
             background: #1a1a1a;
             border: 1px solid #2a2a2a;
             border-radius: 8px;
             padding: 10px;
         }
-        
+
         .form-field label {
             display: block;
             font-size: 0.65rem;
@@ -269,8 +294,9 @@
             margin-bottom: 4px;
             text-transform: uppercase;
         }
-        
-        .form-field input, .form-field select {
+
+        .form-field input,
+        .form-field select {
             width: 100%;
             padding: 6px 0;
             border: none;
@@ -279,11 +305,11 @@
             font-weight: 500;
             color: #e5e5e5;
         }
-        
+
         .form-field select option {
             background: #1a1a1a;
         }
-        
+
         .btn-create-promo {
             width: 100%;
             padding: 12px;
@@ -296,7 +322,7 @@
             margin-top: 12px;
             cursor: pointer;
         }
-        
+
         .section-title {
             color: #888;
             font-size: 0.85rem;
@@ -304,7 +330,7 @@
             padding: 0 12px;
             margin: 16px 0 10px;
         }
-        
+
         .promo-card {
             background: #151515;
             border: 1px solid #252525;
@@ -312,53 +338,80 @@
             border-radius: 10px;
             padding: 14px;
         }
-        
+
         .promo-top {
             display: flex;
             justify-content: space-between;
             align-items: center;
             margin-bottom: 10px;
         }
-        
+
         .promo-code {
             font-size: 1rem;
             font-weight: 700;
             color: #60a5fa;
         }
-        
+
         .promo-badges {
             display: flex;
             flex-wrap: wrap;
             gap: 5px;
             margin-bottom: 10px;
         }
-        
+
         .badge {
             padding: 4px 8px;
             border-radius: 4px;
             font-size: 0.7rem;
             font-weight: 500;
         }
-        
-        .badge-discount { background: rgba(34,197,94,0.2); color: #4ade80; }
-        .badge-tariff { background: rgba(59,130,246,0.2); color: #60a5fa; }
-        .badge-uses { background: rgba(255,255,255,0.1); color: #888; }
-        .badge-active { background: rgba(34,197,94,0.2); color: #4ade80; }
-        .badge-inactive { background: rgba(239,68,68,0.2); color: #f87171; }
-        .badge-date { background: rgba(245,158,11,0.2); color: #fbbf24; }
-        .badge-bonus { background: rgba(168,85,247,0.2); color: #c084fc; }
-        
+
+        .badge-discount {
+            background: rgba(34, 197, 94, 0.2);
+            color: #4ade80;
+        }
+
+        .badge-tariff {
+            background: rgba(59, 130, 246, 0.2);
+            color: #60a5fa;
+        }
+
+        .badge-uses {
+            background: rgba(255, 255, 255, 0.1);
+            color: #888;
+        }
+
+        .badge-active {
+            background: rgba(34, 197, 94, 0.2);
+            color: #4ade80;
+        }
+
+        .badge-inactive {
+            background: rgba(239, 68, 68, 0.2);
+            color: #f87171;
+        }
+
+        .badge-date {
+            background: rgba(245, 158, 11, 0.2);
+            color: #fbbf24;
+        }
+
+        .badge-bonus {
+            background: rgba(168, 85, 247, 0.2);
+            color: #c084fc;
+        }
+
         .promo-desc {
             font-size: 0.8rem;
             color: #888;
             margin-bottom: 10px;
         }
-        
+
         .promo-actions {
             display: flex;
             gap: 8px;
         }
-        
+
         .btn-toggle {
             flex: 1;
             padding: 10px;
@@ -370,9 +423,11 @@
             font-weight: 600;
             cursor: pointer;
         }
-        
-        .btn-toggle.off { background: #10b981; }
-        
+
+        .btn-toggle.off {
+            background: #10b981;
+        }
+
         .btn-delete {
             padding: 10px 14px;
             background: #dc2626;
@@ -381,13 +436,13 @@
             border-radius: 8px;
             cursor: pointer;
         }
-        
+
         .empty-state {
             text-align: center;
             padding: 40px 20px;
             color: #666;
         }
-        
+
         .empty-state i {
             font-size: 2.5rem;
             margin-bottom: 10px;
@@ -395,13 +450,14 @@
         }
     </style>
 </head>
+
 <body>
     <div class="header">
         <h1><i class="bi bi-sliders"></i> Управление</h1>
         <div class="header-sub">Тарифы и промокоды</div>
     </div>
-    
-    
+
+
     <div class="sub-tabs">
         <div class="sub-tab active" onclick="showSection('tariffs')">
             <i class="bi bi-currency-dollar"></i>
@@ -412,12 +468,13 @@
             Промокоды
         </div>
     </div>
-    
+
     <div id="tariffs-section" class="content-section active">
         {% for tariff in tariffs %}
         {% if tariff.tariff_type in ['free', 'pro', 'premium'] %}
         <div class="tariff-card">
-            <div class="tariff-header {% if tariff.tariff_type == 'free' %}free{% elif tariff.tariff_type == 'pro' %}pro{% elif tariff.tariff_type == 'premium' %}premium{% endif %}">
+            <div
+                class="tariff-header {% if tariff.tariff_type == 'free' %}free{% elif tariff.tariff_type == 'pro' %}pro{% elif tariff.tariff_type == 'premium' %}premium{% endif %}">
                 <div class="tariff-name">
                     {% if tariff.tariff_type == 'free' %}<i class="bi bi-gift"></i> Бесплатный
                     {% elif tariff.tariff_type == 'pro' %}<i class="bi bi-star"></i> PRO
@@ -426,12 +483,12 @@
                 </div>
                 <div class="tariff-price">{{ "{:,.0f}".format(tariff.price).replace(",", " ") }} сум</div>
             </div>
-            
+
             <div class="tariff-body">
                 <form method="POST" action="{{ url_for('webapp_update_tariff_settings') }}">
                     <input type="hidden" name="tg_id" value="{{ tg_id }}">
                     <input type="hidden" name="tariff_type" value="{{ tariff.tariff_type }}">
-                    
+
                     <div class="input-group-custom">
                         <div class="input-item">
                             <label>Цена</label>
@@ -446,15 +503,16 @@
                             <input type="number" name="likes_per_day" value="{{ tariff.likes_per_day }}" min="0">
                         </div>
                     </div>
-                    
+
                     <div class="priority-toggle">
                         <label><i class="bi bi-lightning"></i> Приоритет</label>
                         <label class="toggle-switch">
-                            <input type="checkbox" name="priority_display" {% if tariff.priority_display %}checked{% endif %}>
+                            <input type="checkbox" name="priority_display" {% if tariff.priority_display %}checked{%
+                                endif %}>
                             <span class="toggle-slider"></span>
                         </label>
                     </div>
-                    
+
                     <button type="submit" class="btn-save-tariff">
                         <i class="bi bi-check-lg"></i> Сохранить
                     </button>
@@ -464,13 +522,13 @@
         {% endif %}
         {% endfor %}
     </div>
-    
+
     <div id="promos-section" class="content-section">
         <div class="promo-create-card">
             <h3><i class="bi bi-plus-circle"></i> Создать промокод</h3>
             <form method="POST" action="{{ url_for('webapp_create_promo') }}">
                 <input type="hidden" name="tg_id" value="{{ tg_id }}">
-                
+
                 <div class="form-grid">
                     <div class="form-field">
                         <label>Код</label>
@@ -509,13 +567,13 @@
                         <input type="text" name="description" placeholder="Акция">
                     </div>
                 </div>
-                
+
                 <button type="submit" class="btn-create-promo">
                     <i class="bi bi-plus-lg"></i> Создать
                 </button>
             </form>
         </div>
-        
+
         {% if promo_codes %}
         <div class="section-title">Активные промокоды</div>
         {% for promo in promo_codes %}
@@ -528,11 +586,12 @@
                 <span class="badge badge-inactive">Отключён</span>
                 {% endif %}
             </div>
-            
+
             <div class="promo-badges">
                 <span class="badge badge-discount">-{{ promo.discount_percent }}%</span>
                 <span class="badge badge-tariff">
-                    {% if promo.tariff == 'free' %}Бесплатный{% elif promo.tariff == 'pro' %}PRO{% elif promo.tariff == 'premium' %}Премиум{% else %}{{ promo.tariff }}{% endif %}
+                    {% if promo.tariff == 'free' %}Бесплатный{% elif promo.tariff == 'pro' %}PRO{% elif promo.tariff ==
+                    'premium' %}Премиум{% else %}{{ promo.tariff }}{% endif %}
                 </span>
                 <span class="badge badge-uses">{{ promo.current_uses }}/{{ promo.max_uses }}</span>
                 {% if promo.bonus_properties and promo.bonus_properties > 0 %}
@@ -545,19 +604,21 @@
                 <span class="badge badge-date">до {{ promo.expires_at.strftime('%d.%m') }}</span>
                 {% endif %}
             </div>
-            
+
             {% if promo.description %}
             <div class="promo-desc">{{ promo.description }}</div>
             {% endif %}
-            
+
             <div class="promo-actions">
                 <form method="POST" action="{{ url_for('webapp_toggle_promo', promo_id=promo.id) }}" style="flex:1;">
                     <input type="hidden" name="tg_id" value="{{ tg_id }}">
-                    <button type="submit" class="btn-toggle {% if not promo.is_active %}off{% endif %}" style="width:100%;">
+                    <button type="submit" class="btn-toggle {% if not promo.is_active %}off{% endif %}"
+                        style="width:100%;">
                         {% if promo.is_active %}Отключить{% else %}Включить{% endif %}
                     </button>
                 </form>
-                <form method="POST" action="{{ url_for('webapp_delete_promo', promo_id=promo.id) }}" onsubmit="return confirm('Удалить?')">
+                <form method="POST" action="{{ url_for('webapp_delete_promo', promo_id=promo.id) }}"
+                    onsubmit="return confirm('Удалить?')">
                     <input type="hidden" name="tg_id" value="{{ tg_id }}">
                     <button type="submit" class="btn-delete"><i class="bi bi-trash"></i></button>
                 </form>
@@ -571,7 +632,7 @@
         </div>
         {% endif %}
     </div>
-    
+
     <div class="bottom-nav">
         <a href="{{ url_for('webapp_admin_home', tg_id=tg_id) }}" class="bottom-nav-item">
             <i class="bi bi-house"></i>
@@ -590,19 +651,20 @@
             <span>Модерация</span>
         </a>
     </div>
-    
+
     <script>
         const tg = window.Telegram.WebApp;
         tg.ready();
         tg.expand();
-        
+
         function showSection(section) {
             document.querySelectorAll('.content-section').forEach(el => el.classList.remove('active'));
             document.querySelectorAll('.sub-tab').forEach(el => el.classList.remove('active'));
-            
+
             document.getElementById(section + '-section').classList.add('active');
             event.target.closest('.sub-tab').classList.add('active');
         }
     </script>
 </body>
+
 </html>
