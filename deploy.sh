@@ -84,16 +84,18 @@ log "Restarting application..."
 # pm2 restart bot || error "Failed to restart bot with PM2"
 # pm2 status
 
-# Method 3: Manual process restart
-# pkill -f "python.*bot.py" || true
-# sleep 2
-# nohup python bot.py > /var/log/bot.log 2>&1 &
-# sleep 1
-# if pgrep -f "python.*bot.py" > /dev/null; then
-#     success "Bot restarted successfully"
-# else
-#     error "Bot failed to start"
-# fi
+# Method 3: Manual process restart (ACTIVE)
+pkill -f "python.*main.py" || true
+sleep 2
+cd "$APP_DIR"
+nohup /home/app/venv/bin/python3 /home/app/main.py > /var/log/bot.log 2>&1 &
+sleep 2
+if pgrep -f "python.*main.py" > /dev/null; then
+    success "Bot restarted successfully"
+    log "Check logs: tail -f /var/log/bot.log"
+else
+    error "Bot failed to start - check /var/log/bot.log for errors"
+fi
 
 # Method 4: Screen session
 # screen -S bot -X quit || true
@@ -105,9 +107,6 @@ log "Restarting application..."
 # docker-compose down
 # docker-compose up -d --build
 # success "Docker containers restarted"
-
-log "⚠️  RESTART METHOD NOT CONFIGURED!"
-log "Please edit deploy.sh and uncomment your preferred restart method"
 
 # Display current version
 CURRENT_COMMIT=$(git rev-parse --short HEAD)
