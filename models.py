@@ -3,6 +3,10 @@ from sqlalchemy.orm import declarative_base, sessionmaker, relationship
 from datetime import datetime, timedelta, timezone
 import enum
 import os
+from dotenv import load_dotenv
+
+# Load environment variables from .env file
+load_dotenv()
 
 
 def get_tashkent_now():
