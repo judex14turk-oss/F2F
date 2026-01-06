@@ -1,0 +1,44 @@
+name: Deploy and Fix Permissions
+
+on:
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+
+jobs:
+  deploy:
+    name: Deploy to Server
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+      
+      - name: Deploy to server via SSH
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: ${{ secrets.SERVER_HOST }}
+          username: ${{ secrets.SERVER_USER }}
+          key: ${{ secrets.SSH_PRIVATE_KEY }}
+          port: 22
+          script: |
+            echo "🚀 Starting deployment..."
+            
+            cd /home/app || exit 1
+            
+            echo "📥 Pulling latest changes..."
+            git fetch origin main
+            git reset --hard origin/main
+            
+            echo "📦 Update dependencies..."
+            pip install -r requirements.txt
+            
+            # Run the fix script
+            echo "🔧 Fixing admin permissions..."
+            python3 fix_permissions.py
+            
+            echo "🔄 Restarting application..."
+            sudo systemctl restart bot || pm2 restart bot || echo "⚠️ Could not restart bot automatically"
+            
+            echo "✅ Done!"
