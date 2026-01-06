@@ -53,23 +53,19 @@ jobs:
             # Restart the application
             echo "🔄 Restarting application..."
             
-            # Option 1: Using systemd
-            sudo systemctl restart bot
-            sudo systemctl status bot --no-pager
+            # Kill old process and start new one
+            pkill -f "python.*main.py" || true
+            sleep 2
+            nohup /home/app/venv/bin/python3 /home/app/main.py > /var/log/bot.log 2>&1 &
+            sleep 2
             
-            # Option 2: Using PM2 (uncomment if using PM2)
-            # pm2 restart bot
-            # pm2 status
-            
-            # Option 3: Kill and restart manually (uncomment if needed)
-            # pkill -f "python.*bot.py" || true
-            # sleep 2
-            # nohup python bot.py > /var/log/bot.log 2>&1 &
-            
-            # Option 4: Using screen or tmux (uncomment if needed)
-            # screen -S bot -X quit || true
-            # sleep 2
-            # screen -dmS bot python bot.py
+            # Check if started successfully
+            if pgrep -f "python.*main.py" > /dev/null; then
+                echo "✅ Bot restarted successfully"
+            else
+                echo "❌ Bot failed to start - check /var/log/bot.log"
+                exit 1
+            fi
             
             echo "✅ Deployment completed successfully!"
             echo "📊 Current commit: $(git rev-parse --short HEAD)"
