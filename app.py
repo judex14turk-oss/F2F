@@ -3357,7 +3357,7 @@ def webapp_parser():
         db.close()
         return "Доступ запрещён", 403
     
-    permissions = get_admin_permissions(admin_user.admin_role)
+    permissions = get_admin_permissions(admin_user.admin_role, telegram_id=admin_user.telegram_id)
     
     if not permissions['can_parse']:
         db.close()
@@ -3395,7 +3395,7 @@ def webapp_parser_single():
         db.close()
         return jsonify({'error': 'Доступ запрещён'}), 403
     
-    permissions = get_admin_permissions(admin_user.admin_role)
+    permissions = get_admin_permissions(admin_user.admin_role, telegram_id=admin_user.telegram_id)
     
     if not permissions['can_parse']:
         db.close()
@@ -3558,11 +3558,9 @@ def webapp_parser_run():
         db.close()
         return jsonify({'error': 'Доступ запрещён'}), 403
     
-    permissions = get_admin_permissions(admin_user.admin_role)
-    
-    if not permissions['can_parse']:
+    if 'can_parse' not in get_admin_permissions(admin_user.admin_role, telegram_id=admin_user.telegram_id) or not get_admin_permissions(admin_user.admin_role, telegram_id=admin_user.telegram_id)['can_parse']:
         db.close()
-        return jsonify({'error': 'У вас нет прав для парсинга'}), 403
+        return jsonify({'error': 'Нет прав для парсинга'}), 403
     
     admin_user_id = admin_user.id
     db.close()
