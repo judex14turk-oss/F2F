@@ -525,8 +525,9 @@ class OLXParser:
                 result['error'] = f'HTTP {response.status_code}'
                 return result
             
-            soup = BeautifulSoup(response.text, 'lxml')
-            page_text = response.text
+            # Используем content + forced decode для предотвращения проблем с кодировкой
+            soup = BeautifulSoup(response.content, 'lxml', from_encoding='utf-8')
+            page_text = response.content.decode('utf-8', errors='ignore')
             
             result['title'] = self._extract_title(soup)
             result['price'], result['currency'] = self._extract_price(soup)
@@ -884,12 +885,24 @@ class OLXParser:
             except:
                 pass
         
-        # Ищем по data-cy атрибуту (OLX использует это для заголовка)
-        title_el = soup.find(attrs={'data-cy': 'ad_title'})
-        if title_el:
-            text = title_el.get_text(strip=True)
-            if text:
-                return text
+        # Ищем по data-cy атрибуту (OLX изменил ad_title на offer_title)
+        title_selectors = [
+            {'data-cy': 'ad_title'},
+            {'data-cy': 'offer_title'},
+            {'data-testid': 'offer_title'}
+        ]
+        for selector in title_selectors:
+            title_el = soup.find(attrs=selector)
+            if title_el:
+                # Внутри может быть h1 или h4
+                h_tag = title_el.find(['h1', 'h4'])
+                if h_tag:
+                    text = h_tag.get_text(strip=True)
+                else:
+                    text = title_el.get_text(strip=True)
+                
+                if text and len(text) > 3:
+                    return text
         
         # Ищем h1 с классом или без
         for h1 in soup.find_all('h1'):
@@ -898,18 +911,27 @@ class OLXParser:
             if text and len(text) > 5 and not any(skip in text.lower() for skip in ['olx', 'войти', 'регистрация']):
                 return text
         
-        # Ищем h4
+        # Ищем h4 (но только если это не имя продавца или служебный текст)
+        seller_name = getattr(self, '_last_seller_name', None)
         for h4 in soup.find_all('h4'):
             text = h4.get_text(strip=True)
-            if text and len(text) > 5:
+            if text and len(text) > 8:
+                # Пропускаем, если это похоже на имя продавца (обычно 1-2 слова)
+                if seller_name and text.lower() == seller_name.lower():
+                    continue
+                # Пропускаем навигацию
+                if any(skip in text.lower() for skip in ['мой профиль', 'сообщения', 'подать объявление']):
+                    continue
                 return text
         
-        # Последняя попытка - ищем заголовок по классу
-        for el in soup.find_all(['h1', 'h2', 'h3', 'h4', 'div', 'span']):
-            class_name = ' '.join(el.get('class', []))
-            if 'title' in class_name.lower() or 'heading' in class_name.lower():
+        # Последняя попытка - ищем заголовок по классу (более специфичные классы)
+        title_classes = ['title', 'heading', 'ad-title', 'offer-title']
+        for el in soup.find_all(['h1', 'h4', 'div', 'span']):
+            class_list = el.get('class', [])
+            class_name = ' '.join(class_list).lower()
+            if any(tc in class_name for tc in title_classes):
                 text = el.get_text(strip=True)
-                if text and len(text) > 5:
+                if text and 10 < len(text) < 200:
                     return text
         
         return None
