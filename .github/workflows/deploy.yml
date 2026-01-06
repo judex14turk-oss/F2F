@@ -53,9 +53,9 @@ jobs:
             # Restart the application
             echo "🔄 Restarting application..."
             
-            # Option 1: Using systemd (uncomment if using systemd)
-            # sudo systemctl restart bot
-            # sudo systemctl status bot --no-pager
+            # Option 1: Using systemd
+            sudo systemctl restart bot
+            sudo systemctl status bot --no-pager
             
             # Option 2: Using PM2 (uncomment if using PM2)
             # pm2 restart bot
