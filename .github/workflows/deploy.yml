@@ -41,28 +41,8 @@ jobs:
             
             # Check if requirements.txt changed
             if git diff HEAD@{1} HEAD --name-only | grep -q "requirements.txt"; then
-              echo "📦 Installing/updating dependencies..."
-              pip install -r requirements.txt --upgrade
-            else
-              echo "✅ No dependency changes detected"
-            fi
-            
-            # Run any migration scripts if needed
-            # python migrate.py  # Uncomment if you have migrations
-            
-            # Restart the application
-            echo "🔄 Restarting application..."
-            
-            # Option 1: Using systemd (uncomment if using systemd)
-            # sudo systemctl restart bot
-            # sudo systemctl status bot --no-pager
-            
-            # Option 2: Using PM2 (uncomment if using PM2)
-            # pm2 restart bot
-            # pm2 status
-            
-            # Option 3: Kill and restart manually (uncomment if needed)
-            # pkill -f "python.*bot.py" || true
+             sudo systemctl restart bot
+            sudo systemctl status bot --no-pager
             # sleep 2
             # nohup python bot.py > /var/log/bot.log 2>&1 &
             
