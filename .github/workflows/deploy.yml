@@ -1,0 +1,84 @@
+name: Deploy to Production Server
+
+on:
+  push:
+    branches:
+      - main
+  workflow_dispatch:  # Allows manual trigger from GitHub Actions tab
+
+jobs:
+  deploy:
+    name: Deploy to Server
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+      
+      - name: Deploy to server via SSH
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: ${{ secrets.SERVER_HOST }}
+          username: ${{ secrets.SERVER_USER }}
+          key: ${{ secrets.SSH_PRIVATE_KEY }}
+          port: 22
+          script: |
+            echo "🚀 Starting deployment..."
+            
+            # Navigate to application directory
+            cd /home/app || exit 1
+            
+            # Backup current version (optional)
+            echo "📦 Creating backup..."
+            timestamp=$(date +%Y%m%d_%H%M%S)
+            mkdir -p backups
+            cp -r .git backups/backup_$timestamp/ 2>/dev/null || true
+            
+            # Fetch and pull latest changes
+            echo "📥 Pulling latest changes from GitHub..."
+            git fetch origin main
+            git reset --hard origin/main
+            
+            # Check if requirements.txt changed
+            if git diff HEAD@{1} HEAD --name-only | grep -q "requirements.txt"; then
+              echo "📦 Installing/updating dependencies..."
+              pip install -r requirements.txt --upgrade
+            else
+              echo "✅ No dependency changes detected"
+            fi
+            
+            # Run any migration scripts if needed
+            # python migrate.py  # Uncomment if you have migrations
+            
+            # Restart the application
+            echo "🔄 Restarting application..."
+            
+            # Option 1: Using systemd (uncomment if using systemd)
+            # sudo systemctl restart bot
+            # sudo systemctl status bot --no-pager
+            
+            # Option 2: Using PM2 (uncomment if using PM2)
+            # pm2 restart bot
+            # pm2 status
+            
+            # Option 3: Kill and restart manually (uncomment if needed)
+            # pkill -f "python.*bot.py" || true
+            # sleep 2
+            # nohup python bot.py > /var/log/bot.log 2>&1 &
+            
+            # Option 4: Using screen or tmux (uncomment if needed)
+            # screen -S bot -X quit || true
+            # sleep 2
+            # screen -dmS bot python bot.py
+            
+            echo "✅ Deployment completed successfully!"
+            echo "📊 Current commit: $(git rev-parse --short HEAD)"
+            
+      - name: Notify deployment status
+        if: always()
+        run: |
+          if [ ${{ job.status }} == 'success' ]; then
+            echo "✅ Deployment successful"
+          else
+            echo "❌ Deployment failed"
+          fi

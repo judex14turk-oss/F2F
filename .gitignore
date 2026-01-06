@@ -1,0 +1,61 @@
+# Environment variables and secrets
+.env
+.env.local
+.env.*.local
+*.env
+
+# Database files
+*.db
+*.sqlite
+*.sqlite3
+local_database.db
+
+# Python cache
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+
+# Virtual environments
+venv/
+env/
+ENV/
+.venv
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# Logs
+*.log
+logs/
+*.txt
+!requirements.txt
+
+# OS files
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# Replit specific
+.config/
+.local/
+.cache/
+.upm/
+.pythonlibs/
+
+# Test results
+test_*.py
+*_test.py
+*_result.txt
+parser_result.txt
+area_test_result.txt
+
+# Temporary files
+tmp/
+temp/
+*.tmp
