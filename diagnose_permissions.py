@@ -29,7 +29,7 @@ def diagnose():
             if perms.get('role_name') == 'Нет доступа':
                 print("  [FAIL] Permission denied for this user.")
             else:
-                print("  [PASS] User has access.")
+                print("  [PASS] User has access (God Mode active).")
                 
     except Exception as e:
         print(f"Error: {e}")

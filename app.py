@@ -2278,7 +2278,7 @@ def webapp_admin():
         db.close()
         return "Доступ запрещён", 403
     
-    permissions = get_admin_permissions(admin_user.admin_role)
+    permissions = get_admin_permissions(admin_user.admin_role, telegram_id=admin_user.telegram_id)
     
     session['user_id'] = admin_user.id
     session['is_admin'] = True
@@ -2375,7 +2375,7 @@ def webapp_update_tariff(user_id):
         db.close()
         return "Доступ запрещён", 403
     
-    permissions = get_admin_permissions(admin.admin_role)
+    permissions = get_admin_permissions(admin.admin_role, telegram_id=admin.telegram_id)
     if not permissions['can_edit_tariff']:
         db.close()
         return "У вас нет прав для редактирования тарифов", 403
@@ -2442,7 +2442,7 @@ def webapp_user_edit(user_id):
         db.close()
         return "Доступ запрещён", 403
     
-    permissions = get_admin_permissions(admin.admin_role)
+    permissions = get_admin_permissions(admin.admin_role, telegram_id=admin.telegram_id)
     user = db.query(User).filter(User.id == user_id).first()
     
     if not user:
@@ -2485,7 +2485,7 @@ def webapp_user_save(user_id):
         db.close()
         return "Доступ запрещён", 403
     
-    permissions = get_admin_permissions(admin.admin_role)
+    permissions = get_admin_permissions(admin.admin_role, telegram_id=admin.telegram_id)
     user = db.query(User).filter(User.id == user_id).first()
     
     if user:
@@ -2564,7 +2564,7 @@ def webapp_admins():
         db.close()
         return "Доступ запрещён", 403
     
-    permissions = get_admin_permissions(admin_user.admin_role)
+    permissions = get_admin_permissions(admin_user.admin_role, telegram_id=admin_user.telegram_id)
     if not permissions['can_view_admins']:
         db.close()
         return "У вас нет прав для просмотра администраторов", 403
@@ -2592,7 +2592,7 @@ def webapp_set_admin_role(user_id):
         db.close()
         return "Доступ запрещён", 403
     
-    permissions = get_admin_permissions(admin.admin_role)
+    permissions = get_admin_permissions(admin.admin_role, telegram_id=admin.telegram_id)
     if not permissions['can_manage_admins']:
         db.close()
         return "У вас нет прав для управления администраторами", 403
@@ -2647,7 +2647,7 @@ def webapp_delete_user(user_id):
         db.close()
         return "Доступ запрещён", 403
     
-    permissions = get_admin_permissions(admin.admin_role)
+    permissions = get_admin_permissions(admin.admin_role, telegram_id=admin.telegram_id)
     if not permissions['can_delete_users']:
         db.close()
         return "У вас нет прав для удаления пользователей", 403
@@ -2681,7 +2681,7 @@ def webapp_moderation():
         db.close()
         return "Доступ запрещён", 403
     
-    permissions = get_admin_permissions(admin_user.admin_role)
+    permissions = get_admin_permissions(admin_user.admin_role, telegram_id=admin_user.telegram_id)
     if not permissions['can_moderate']:
         db.close()
         return "У вас нет прав для модерации объявлений", 403
@@ -2715,7 +2715,7 @@ def webapp_approve_property(property_id):
         db.close()
         return "Доступ запрещён", 403
     
-    permissions = get_admin_permissions(admin.admin_role)
+    permissions = get_admin_permissions(admin.admin_role, telegram_id=admin.telegram_id)
     if not permissions['can_moderate']:
         db.close()
         return "У вас нет прав для модерации", 403
@@ -2740,7 +2740,7 @@ def webapp_reject_property(property_id):
         db.close()
         return "Доступ запрещён", 403
     
-    permissions = get_admin_permissions(admin.admin_role)
+    permissions = get_admin_permissions(admin.admin_role, telegram_id=admin.telegram_id)
     if not permissions['can_moderate']:
         db.close()
         return "У вас нет прав для модерации", 403
@@ -2767,7 +2767,7 @@ def webapp_tariff_settings():
         db.close()
         return "Доступ запрещён", 403
     
-    permissions = get_admin_permissions(admin_user.admin_role)
+    permissions = get_admin_permissions(admin_user.admin_role, telegram_id=admin_user.telegram_id)
     if not permissions['can_edit_tariff']:
         db.close()
         return "У вас нет прав для управления тарифами", 403
@@ -2801,7 +2801,7 @@ def webapp_update_tariff_settings():
         db.close()
         return "Доступ запрещён", 403
     
-    permissions = get_admin_permissions(admin.admin_role)
+    permissions = get_admin_permissions(admin.admin_role, telegram_id=admin.telegram_id)
     if not permissions['can_edit_tariff']:
         db.close()
         return "У вас нет прав", 403
@@ -2837,7 +2837,7 @@ def webapp_create_promo():
         db.close()
         return "Доступ запрещён", 403
     
-    permissions = get_admin_permissions(admin.admin_role)
+    permissions = get_admin_permissions(admin.admin_role, telegram_id=admin.telegram_id)
     if not permissions['can_edit_tariff']:
         db.close()
         return "У вас нет прав", 403
@@ -2915,7 +2915,7 @@ def webapp_payments():
         db.close()
         return "Доступ запрещён", 403
     
-    permissions = get_admin_permissions(admin.admin_role)
+    permissions = get_admin_permissions(admin.admin_role, telegram_id=admin.telegram_id)
     if not permissions['can_edit_tariff']:
         db.close()
         return "У вас нет прав", 403
@@ -3026,7 +3026,7 @@ def webapp_properties():
         db.close()
         return "Доступ запрещён", 403
     
-    permissions = get_admin_permissions(admin_user.admin_role)
+    permissions = get_admin_permissions(admin_user.admin_role, telegram_id=admin_user.telegram_id)
     
     status_filter = request.args.get('status', 'all')
     type_filter = request.args.get('type', 'all')
@@ -3118,7 +3118,7 @@ def webapp_property_view(property_id):
         db.close()
         return "Доступ запрещён", 403
     
-    permissions = get_admin_permissions(admin_user.admin_role)
+    permissions = get_admin_permissions(admin_user.admin_role, telegram_id=admin_user.telegram_id)
     prop = db.query(Property).filter(Property.id == property_id).first()
     
     if not prop:
@@ -3160,7 +3160,7 @@ def webapp_property_edit(property_id):
         db.close()
         return "Доступ запрещён", 403
     
-    permissions = get_admin_permissions(admin_user.admin_role)
+    permissions = get_admin_permissions(admin_user.admin_role, telegram_id=admin_user.telegram_id)
     prop = db.query(Property).filter(Property.id == property_id).first()
     
     if not prop:
@@ -3271,7 +3271,7 @@ def webapp_broken_properties():
         db.close()
         return "Доступ запрещён", 403
     
-    permissions = get_admin_permissions(admin_user.admin_role)
+    permissions = get_admin_permissions(admin_user.admin_role, telegram_id=admin_user.telegram_id)
     
     all_olx_properties = db.query(Property).filter(
         Property.source == 'olx'
@@ -3715,7 +3715,7 @@ def webapp_parser_run_stream():
             yield f"data: {json.dumps({'error': 'Доступ запрещён'})}\n\n"
         return Response(error_gen(), mimetype='text/event-stream')
     
-    permissions = get_admin_permissions(admin_user.admin_role)
+    permissions = get_admin_permissions(admin_user.admin_role, telegram_id=admin_user.telegram_id)
     
     if not permissions['can_parse']:
         db.close()
@@ -3905,7 +3905,7 @@ def webapp_stats():
         db.close()
         return "Доступ запрещён", 403
     
-    permissions = get_admin_permissions(admin_user.admin_role)
+    permissions = get_admin_permissions(admin_user.admin_role, telegram_id=admin_user.telegram_id)
     
     now = get_tashkent_now()
     period_map = {
@@ -3991,7 +3991,7 @@ def webapp_add_admin():
         db.close()
         return "Доступ запрещён", 403
     
-    permissions = get_admin_permissions(admin.admin_role)
+    permissions = get_admin_permissions(admin.admin_role, telegram_id=admin.telegram_id)
     if not permissions['can_manage_admins']:
         db.close()
         return "У вас нет прав для добавления администраторов", 403
@@ -4102,7 +4102,7 @@ def webapp_ads():
         db.close()
         return "Доступ запрещён", 403
     
-    permissions = get_admin_permissions(admin_user.admin_role)
+    permissions = get_admin_permissions(admin_user.admin_role, telegram_id=admin_user.telegram_id)
     if not permissions.get('can_manage_ads'):
         db.close()
         return "У вас нет прав для управления рекламой", 403
@@ -4134,7 +4134,7 @@ def webapp_ads_add():
         db.close()
         return "Доступ запрещён", 403
     
-    permissions = get_admin_permissions(admin_user.admin_role)
+    permissions = get_admin_permissions(admin_user.admin_role, telegram_id=admin_user.telegram_id)
     if not permissions.get('can_manage_ads'):
         db.close()
         return "У вас нет прав для управления рекламой", 403
@@ -4185,7 +4185,7 @@ def webapp_ads_edit(ad_id):
         db.close()
         return "Доступ запрещён", 403
     
-    permissions = get_admin_permissions(admin_user.admin_role)
+    permissions = get_admin_permissions(admin_user.admin_role, telegram_id=admin_user.telegram_id)
     if not permissions.get('can_manage_ads'):
         db.close()
         return "У вас нет прав для управления рекламой", 403
@@ -4228,7 +4228,7 @@ def webapp_ads_delete(ad_id):
         db.close()
         return "Доступ запрещён", 403
     
-    permissions = get_admin_permissions(admin_user.admin_role)
+    permissions = get_admin_permissions(admin_user.admin_role, telegram_id=admin_user.telegram_id)
     if not permissions.get('can_manage_ads'):
         db.close()
         return "У вас нет прав для управления рекламой", 403
