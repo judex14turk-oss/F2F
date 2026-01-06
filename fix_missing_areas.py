@@ -56,12 +56,22 @@ def fix_missing_areas():
             total_area_str = result.get('total_area')
             if total_area_str:
                 try:
-                    area_val = float(total_area_str)
+                    # Remove spaces and replace comma with dot
+                    clean_area = str(total_area_str).replace(' ', '').replace(',', '.')
+                    # Extract just the number if there's extra text
+                    import re
+                    match = re.search(r'([\d.]+)', clean_area)
+                    if match:
+                        area_val = float(match.group(1))
+                    else:
+                        area_val = float(clean_area)
+                        
                     prop.area = area_val
-                    print(f"  ✓ Updated area: {area_val} m²")
+                    print(f"  ✓ Updated area: {area_val} m² (raw: {total_area_str})")
                     fixed_count += 1
-                except:
-                    print(f"  ✗ Failed to convert area: '{total_area_str}'")
+                except Exception as e:
+                    print(f"  ✗ Failed to convert area: '{total_area_str}' - {e}")
+                    failed_count += 1
                     failed_count += 1
             else:
                 print(f"  ✗ Area not found in parsed data")

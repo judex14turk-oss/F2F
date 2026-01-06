@@ -3394,8 +3394,23 @@ def webapp_parser_single():
             rooms_count = None
         
         try:
-            area_val = float(listing.get('total_area')) if listing.get('total_area') else None
-        except:
+            print(f"[DEBUG] Raw total_area from parser: '{listing.get('total_area')}'")
+            raw_area = listing.get('total_area')
+            if raw_area:
+                # Remove spaces and replace comma with dot
+                clean_area = str(raw_area).replace(' ', '').replace(',', '.')
+                # Extract just the number if there's extra text
+                import re
+                match = re.search(r'([\d.]+)', clean_area)
+                if match:
+                    area_val = float(match.group(1))
+                else:
+                    area_val = float(clean_area)
+            else:
+                area_val = None
+            print(f"[DEBUG] Parsed area_val: {area_val}")
+        except Exception as e:
+            print(f"[ERROR] Failed to parse area: {e}")
             area_val = None
         
         try:
