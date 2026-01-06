@@ -2171,17 +2171,26 @@ def get_admin_permissions(admin_role):
 @app.route('/webapp/admin/home')
 def webapp_admin_home():
     tg_id = request.args.get('tg_id')
+    
+    print(f"[DEBUG] webapp_admin_home called with tg_id={tg_id}")
+
     if not tg_id:
         return "Telegram ID не указан", 400
     
     db = get_db()
     admin_user = db.query(User).filter(User.telegram_id == int(tg_id)).first()
     
+    if not admin_user:
+        print(f"[DEBUG] User not found for tg_id={tg_id}")
+    else:
+        print(f"[DEBUG] Found user: {admin_user.id}, is_admin={admin_user.is_admin}, role={admin_user.admin_role}, type={type(admin_user.admin_role)}")
+    
     if not admin_user or not admin_user.is_admin:
         db.close()
         return "Доступ запрещён", 403
     
     permissions = get_admin_permissions(admin_user.admin_role)
+    print(f"[DEBUG] Permissions: {permissions}")
     
     total_count = db.query(User).count()
     buyers_count = db.query(User).filter(User.role == UserRole.BUYER).count()
