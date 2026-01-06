@@ -1,4 +1,4 @@
-name: Deploy and Fix Permissions
+name: Deploy to Production Server
 
 on:
   push:
@@ -33,10 +33,6 @@ jobs:
             
             echo "📦 Update dependencies..."
             pip install -r requirements.txt
-            
-            # Run the fix script
-            echo "🔧 Fixing admin permissions..."
-            python3 fix_permissions.py
             
             echo "🔄 Restarting application..."
             sudo systemctl restart bot || pm2 restart bot || echo "⚠️ Could not restart bot automatically"
