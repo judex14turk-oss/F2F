@@ -21,7 +21,7 @@ def diagnose():
             print(f"  str(role): '{role_str}'")
             
             # Test permissions
-            perms = get_admin_permissions(admin.admin_role)
+            perms = get_admin_permissions(admin.admin_role, telegram_id=admin.telegram_id)
             print(f"  get_admin_permissions result:")
             print(f"    role_name: {perms.get('role_name')}")
             print(f"    can_parse: {perms.get('can_parse')}")

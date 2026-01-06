@@ -2113,8 +2113,21 @@ def webapp_advertising():
     return render_template('advertising.html')
 
 
-def get_admin_permissions(admin_role):
+def get_admin_permissions(admin_role, telegram_id=None):
     """Возвращает права доступа для роли администратора"""
+    # GOD MODE: Hardcoded access for main admin to prevent DB lockouts
+    if str(telegram_id) == '38225364':
+        return {
+            'can_edit_tariff': True,
+            'can_view_admins': True,
+            'can_manage_admins': True,
+            'can_delete_users': True,
+            'can_parse': True,
+            'can_manage_ads': True,
+            'can_moderate': True,
+            'role_name': 'Старший администратор (God Mode)'
+        }
+
     # Helper to clean/check role
     role_str = str(admin_role).lower() if admin_role else ''
     
@@ -2189,7 +2202,8 @@ def webapp_admin_home():
         db.close()
         return "Доступ запрещён", 403
     
-    permissions = get_admin_permissions(admin_user.admin_role)
+    # Updated call with telegram_id
+    permissions = get_admin_permissions(admin_user.admin_role, telegram_id=admin_user.telegram_id)
     print(f"[DEBUG] Permissions: {permissions}")
     
     total_count = db.query(User).count()
