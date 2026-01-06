@@ -2115,18 +2115,23 @@ def webapp_advertising():
 
 def get_admin_permissions(admin_role):
     """Возвращает права доступа для роли администратора"""
-    if admin_role == AdminRole.SUPER_ADMIN:
+    # Helper to clean/check role
+    role_str = str(admin_role).lower() if admin_role else ''
+    
+    # Check for SUPER_ADMIN (enum or string)
+    if admin_role == AdminRole.SUPER_ADMIN or role_str == 'super_admin' or role_str == 'adminrole.super_admin':
         return {
             'can_edit_tariff': True,
             'can_view_admins': True,
             'can_manage_admins': True,
             'can_delete_users': True,
-            'can_parse': True,
+            'can_parse': True,  # ТОЛЬКО SUPER_ADMIN может парсить
             'can_manage_ads': True,
             'can_moderate': True,
             'role_name': 'Старший администратор'
         }
-    elif admin_role == AdminRole.ADMIN:
+    # Check for ADMIN
+    elif admin_role == AdminRole.ADMIN or role_str == 'admin' or role_str == 'adminrole.admin':
         return {
             'can_edit_tariff': True,
             'can_view_admins': True,
@@ -2137,7 +2142,8 @@ def get_admin_permissions(admin_role):
             'can_moderate': True,
             'role_name': 'Администратор'
         }
-    elif admin_role == AdminRole.OPERATOR:
+    # Check for OPERATOR
+    elif admin_role == AdminRole.OPERATOR or role_str == 'operator' or role_str == 'adminrole.operator':
         return {
             'can_edit_tariff': False,
             'can_view_admins': False,
@@ -2148,6 +2154,8 @@ def get_admin_permissions(admin_role):
             'can_moderate': True,
             'role_name': 'Оператор'
         }
+    
+    # Default case (No access)
     return {
         'can_edit_tariff': False,
         'can_view_admins': False,
