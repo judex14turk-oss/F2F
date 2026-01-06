@@ -24,6 +24,11 @@ echo ""
 echo "🚀 Запускаем бота..."
 
 cd /home/app
+
+echo "🔧 Исправляем права доступа..."
+CURRENT_USER=$(whoami)
+sudo chown -R $CURRENT_USER:$CURRENT_USER /home/app 2>/dev/null
+sudo chmod -R 755 /home/app 2>/dev/null
 nohup /home/app/venv/bin/python3 /home/app/main.py > /var/log/bot.log 2>&1 &
 
 echo "⏳ Ждем 5 секунд..."
