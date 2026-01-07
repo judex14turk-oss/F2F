@@ -3405,8 +3405,13 @@ def webapp_parser_single():
     db.close()
     
     try:
+        import sys
+        print(f"[DEBUG-APP] Вызываем parser.parse_listing для {url}...", file=sys.stdout)
+        sys.stdout.flush()
         parser = OLXParser()
         listing = parser.parse_listing(url, get_phone=get_phone)
+        print(f"[DEBUG-APP] Результат парсинга: {listing.keys()}", file=sys.stdout)
+        sys.stdout.flush()
         
         if listing.get('error') and not listing.get('title'):
             return jsonify({'error': f"Ошибка парсинга: {listing.get('error')}"}), 400
@@ -3591,6 +3596,7 @@ def webapp_parser_run():
         
         db = get_db()
         added_count = 0
+        updated_count = 0
         skipped_count = 0
         
         prop_type_enum = PropertyType.SALE if deal_type == 'sale' else PropertyType.RENT
@@ -3603,14 +3609,8 @@ def webapp_parser_run():
             phone = listing.get('phone')
             if not phone:
                 skipped_no_phone += 1
-                continue
+                # Don't skip - add listing even without phone
             
-            olx_id = listing.get('olx_id')
-            if olx_id:
-                existing = db.query(Property).filter(Property.olx_id == olx_id).first()
-                if existing:
-                    skipped_count += 1
-                    continue
             
             try:
                 price_str = listing.get('price', '0')
@@ -3643,6 +3643,34 @@ def webapp_parser_run():
             
             furnished_val = listing.get('furnished')
             has_furniture = furnished_val == 'Да' if furnished_val else False
+            
+            olx_id = listing.get('olx_id')
+            if olx_id:
+                existing = db.query(Property).filter(Property.olx_id == olx_id).first()
+                if existing:
+                    existing.price = price
+                    existing.property_type = prop_type_enum
+                    existing.district = listing.get('district') or listing.get('location')
+                    existing.address = listing.get('location')
+                    existing.rooms = rooms_count
+                    existing.floor = floor_val
+                    existing.total_floors = total_floors_val
+                    existing.area = area_val
+                    existing.photos = photos_str
+                    existing.description = listing.get('description')
+                    existing.phone = listing.get('phone')
+                    existing.seller_name = listing.get('seller_name')
+                    existing.housing_type = listing.get('property_type')
+                    existing.building_type = listing.get('building_type')
+                    existing.renovation = listing.get('renovation')
+                    existing.layout = listing.get('layout')
+                    existing.has_furniture = has_furniture
+                    existing.olx_title = listing.get('title')
+                    existing.status = PropertyStatus.ACTIVE
+                    existing.updated_at = get_tashkent_now()
+                    
+                    updated_count += 1
+                    continue
             
             new_property = Property(
                 owner_id=admin_user_id,
@@ -3729,6 +3757,7 @@ def webapp_parser_run_stream():
     def generate():
         parser = OLXParser()
         added_count = 0
+        updated_count = 0
         skipped_count = 0
         skipped_no_phone = 0
         skipped_urls = []
@@ -3792,20 +3821,8 @@ def webapp_parser_run_stream():
                         if not phone:
                             skipped_no_phone += 1
                             skipped_urls.append({'url': data.get('url'), 'reason': 'no_phone', 'title': data.get('title')})
-                            yield f"data: {json.dumps({'event': 'progress', 'current': total_parsed + current_num, 'total': grand_total, 'added': added_count})}\n\n"
-                            continue
+                            # Don't skip - continue processing listing even without phone
                         
-                        olx_id = data.get('olx_id')
-                        db_check = get_db()
-                        
-                        if olx_id:
-                            existing = db_check.query(Property).filter(Property.olx_id == olx_id).first()
-                            if existing:
-                                skipped_count += 1
-                                skipped_urls.append({'url': data.get('url'), 'reason': 'duplicate', 'title': data.get('title')})
-                                db_check.close()
-                                yield f"data: {json.dumps({'event': 'progress', 'current': total_parsed + event['current'], 'total': grand_total, 'added': added_count, 'skipped_duplicates': skipped_count})}\n\n"
-                                continue
                         
                         try:
                             price_str = data.get('price', '0')
@@ -3838,6 +3855,39 @@ def webapp_parser_run_stream():
                         
                         furnished_val = data.get('furnished')
                         has_furniture = furnished_val == 'Да' if furnished_val else False
+                        
+                        olx_id = data.get('olx_id')
+                        db_check = get_db()
+                        
+                        if olx_id:
+                            existing = db_check.query(Property).filter(Property.olx_id == olx_id).first()
+                            if existing:
+                                existing.price = price
+                                existing.property_type = prop_type_enum
+                                existing.district = data.get('district') or data.get('location')
+                                existing.address = data.get('location')
+                                existing.rooms = rooms_count
+                                existing.floor = floor_val
+                                existing.total_floors = total_floors_val
+                                existing.area = area_val
+                                existing.photos = photos_str
+                                existing.description = data.get('description')
+                                existing.phone = data.get('phone')
+                                existing.seller_name = data.get('seller_name')
+                                existing.housing_type = data.get('property_type')
+                                existing.building_type = data.get('building_type')
+                                existing.renovation = data.get('renovation')
+                                existing.layout = data.get('layout')
+                                existing.has_furniture = has_furniture
+                                existing.olx_title = data.get('title')
+                                existing.status = PropertyStatus.ACTIVE
+                                existing.updated_at = get_tashkent_now()
+                                
+                                db_check.commit()
+                                db_check.close()
+                                updated_count += 1
+                                yield f"data: {json.dumps({'event': 'progress', 'current': total_parsed + event['current'], 'total': grand_total, 'added': added_count, 'updated': updated_count})}\n\n"
+                                continue
                         
                         new_property = Property(
                             owner_id=admin_user_id,

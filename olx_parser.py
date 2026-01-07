@@ -103,12 +103,22 @@ class OLXParser:
             options.add_argument('--disable-gpu')
             options.add_argument('--window-size=1920,1080')
             options.add_argument('--lang=ru-RU,ru')
+            options.add_argument('--disable-blink-features=AutomationControlled')
+            options.add_argument('user-agent=Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36')
+            options.add_experimental_option("excludeSwitches", ["enable-automation"])
+            options.add_experimental_option('useAutomationExtension', False)
             
             chromium_path = shutil.which('chromium') or shutil.which('chromium-browser')
             if chromium_path:
                 options.binary_location = chromium_path
             
-            driver = uc.Chrome(options=options, headless=True, use_subprocess=True)
+            driver = uc.Chrome(options=options, use_subprocess=False, version_main=131)
+            driver.execute_cdp_cmd('Page.addScriptToEvaluateOnNewDocument', {
+                'source': '''
+                    Object.defineProperty(navigator, 'webdriver', {get: () => undefined});
+                    Object.defineProperty(navigator, 'plugins', {get: () => [1, 2, 3, 4, 5]});
+                '''
+            })
             driver.set_page_load_timeout(20)
             driver.set_script_timeout(15)
             return driver
@@ -347,6 +357,7 @@ class OLXParser:
                     
                     phone_button_clicked = False
                     phone_button_selectors = [
+                        "//button[@data-testid='show-phone']",  # Exact match for show-phone button
                         "//button[contains(., 'показать')]",
                         "//button[contains(., 'Показать')]",
                         "//button[contains(text(), 'показать')]",
@@ -354,6 +365,11 @@ class OLXParser:
                         "//*[contains(@data-testid, 'phones-container')]//button",
                         "//div[contains(@data-testid, 'phones')]//button",
                         "//button[contains(@class, 'phones')]",
+                        "//a[contains(@class, 'contact-button')]",
+                        "//button[contains(@class, 'contact')]",
+                        "//*[contains(@class, 'phone-button')]",
+                        "//button[contains(., 'номер')]",
+                        "//button[contains(., 'Номер')]",
                     ]
                     
                     for selector in phone_button_selectors:
@@ -363,9 +379,11 @@ class OLXParser:
                             phone_btn = WebDriverWait(driver, 2).until(
                                 EC.element_to_be_clickable((By.XPATH, selector))
                             )
+                            driver.execute_script("arguments[0].scrollIntoView();", phone_btn)
+                            time.sleep(0.3)
                             driver.execute_script("arguments[0].click();", phone_btn)
                             phone_button_clicked = True
-                            time.sleep(2)
+                            time.sleep(3)  # Increased from 2 to 3 seconds
                         except:
                             pass
                     
@@ -374,10 +392,12 @@ class OLXParser:
                             buttons = driver.find_elements(By.TAG_NAME, "button")
                             for btn in buttons:
                                 btn_text = btn.text.lower() if btn.text else ''
-                                if 'показать' in btn_text or 'show' in btn_text:
+                                if 'показать' in btn_text or 'show' in btn_text or 'номер' in btn_text:
+                                    driver.execute_script("arguments[0].scrollIntoView();", btn)
+                                    time.sleep(0.3)
                                     driver.execute_script("arguments[0].click();", btn)
                                     phone_button_clicked = True
-                                    time.sleep(2)
+                                    time.sleep(3)  # Increased from 2 to 3 seconds
                                     break
                         except:
                             pass
@@ -388,13 +408,21 @@ class OLXParser:
                             href = contact_phone.get_attribute('href')
                             if href and 'tel:' in href:
                                 phone = href.replace('tel:', '').replace(' ', '').replace('-', '').strip()
-                                if len(phone) >= 9:
-                                    result['phone'] = phone
+                                if len(phone) == 9:
+                                    result['phone'] = '+998' + phone
+                                elif len(phone) == 12 and phone.startswith('998'):
+                                    result['phone'] = '+' + phone
+                                elif len(phone) >= 9:
+                                    result['phone'] = phone if phone.startswith('+') else '+' + phone
                             else:
                                 phone_text = contact_phone.text.strip()
                                 if phone_text:
                                     phone = phone_text.replace(' ', '').replace('-', '')
-                                    if len(phone) >= 9:
+                                    if len(phone) == 9:
+                                        result['phone'] = '+998' + phone
+                                    elif len(phone) == 12 and phone.startswith('998'):
+                                        result['phone'] = '+' + phone
+                                    elif len(phone) >= 7:
                                         result['phone'] = phone if phone.startswith('+') else '+' + phone
                     except:
                         pass
@@ -406,9 +434,13 @@ class OLXParser:
                                 href = tel_link.get_attribute('href')
                                 if href and 'tel:' in href:
                                     phone = href.replace('tel:', '').replace(' ', '').replace('-', '').strip()
-                                    if len(phone) >= 9:
-                                        result['phone'] = phone
-                                        break
+                                    if len(phone) == 9:
+                                        result['phone'] = '+998' + phone
+                                    elif len(phone) == 12 and phone.startswith('998'):
+                                        result['phone'] = '+' + phone
+                                    elif len(phone) >= 9:
+                                        result['phone'] = phone if phone.startswith('+') else '+' + phone
+                                    break
                         except:
                             pass
                     
@@ -421,9 +453,13 @@ class OLXParser:
                                     href = link.get_attribute('href')
                                     if href and 'tel:' in href:
                                         phone = href.replace('tel:', '').replace(' ', '').replace('-', '').strip()
-                                        if len(phone) >= 9:
-                                            result['phone'] = phone
-                                            break
+                                        if len(phone) == 9:
+                                            result['phone'] = '+998' + phone
+                                        elif len(phone) == 12 and phone.startswith('998'):
+                                            result['phone'] = '+' + phone
+                                        elif len(phone) >= 9:
+                                            result['phone'] = phone if phone.startswith('+') else '+' + phone
+                                        break
                         except:
                             pass
                     
@@ -446,16 +482,13 @@ class OLXParser:
                             phone_match = re.search(regex, page_text)
                             if phone_match:
                                 phone = phone_match.group(0).replace('tel:', '').replace(' ', '').replace('-', '')
-                                if len(phone) >= 9:
-                                    if len(phone) == 9 and phone[0] in '89':
-                                        result['phone'] = '+998' + phone
-                                    elif phone.startswith('998'):
-                                        result['phone'] = '+' + phone if not phone.startswith('+') else phone
-                                    elif phone.startswith('+'):
-                                        result['phone'] = phone
-                                    else:
-                                        result['phone'] = '+998' + phone
-                                    break
+                                if len(phone) == 9:
+                                    result['phone'] = '+998' + phone
+                                elif len(phone) == 12 and phone.startswith('998'):
+                                    result['phone'] = '+' + phone
+                                elif len(phone) >= 7:
+                                    result['phone'] = phone if phone.startswith('+') else '+' + phone
+                                break
                         
                 except Exception as e:
                     result['phone_error'] = str(e)
@@ -472,23 +505,26 @@ class OLXParser:
             r'\+998[\s\-]?\d{2}[\s\-]?\d{3}[\s\-]?\d{2}[\s\-]?\d{2}',
             r'\+998\d{9}',
             r'\+99[\s\-]?\d{3}[\s\-]?\d{3}[\s\-]?\d{4}',
+            r'99[\s\-]?\d{3}[\s\-]?\d{7}',  # For 99 890 6867777 format
             r'998[\s\-]?\d{2}[\s\-]?\d{3}[\s\-]?\d{2}[\s\-]?\d{2}',
             r'998\d{9}',
             r'(?:^|[^\d])([89]\d{8})(?:[^\d]|$)',
             r'(?:^|[^\d])(9\d{8})(?:[^\d]|$)',
             r'\d{2}[\s\-]?\d{3}[\s\-]?\d{2}[\s\-]?\d{2}',
+            r'\d{3}[\s\-]\d{3}[\s\-]\d{3}',  # Added 3-3-3 pattern
         ]
         for pattern in phone_patterns:
             match = re.search(pattern, text)
             if match:
                 phone = match.group(1) if match.lastindex else match.group(0)
                 phone = phone.replace(' ', '').replace('-', '')
-                if len(phone) == 9 and phone[0] in '89':
-                    phone = '+998' + phone
-                elif not phone.startswith('+') and not phone.startswith('998'):
-                    phone = '+998' + phone
-                elif phone.startswith('998') and not phone.startswith('+'):
-                    phone = '+' + phone
+                
+                if len(phone) == 9:
+                    return '+998' + phone
+                elif len(phone) == 12 and phone.startswith('998'):
+                    return '+' + phone
+                elif not phone.startswith('+'):
+                    return '+' + phone
                 return phone
         return None
     
@@ -573,17 +609,22 @@ class OLXParser:
         return result
     
     def parse_listing(self, url, get_phone=False):
+        print(f"[DEBUG-ENTRY] parse_listing вызван для: {url[:60]}...", flush=True)
+        print(f"[DEBUG-ENTRY] get_phone = {get_phone}", flush=True)
+        
         if get_phone:
             driver = None
             try:
+                print(f"[DEBUG-ENTRY] Создаем драйвер...")
                 driver = self.get_driver()
                 if driver:
+                    print(f"[DEBUG-ENTRY] Драйвер создан успешно!")
                     result = self.parse_listing_with_driver(driver, url, get_phone=True)
                     return result
                 else:
-                    print("Warning: Could not create driver, falling back to requests")
+                    print("[DEBUG-ENTRY] ⚠ Драйвер НЕ создан, используем requests")
             except Exception as e:
-                print(f"Driver error: {e}, falling back to requests")
+                print(f"[DEBUG-ENTRY] ⚠ Ошибка драйвера: {e}, используем requests")
             finally:
                 if driver:
                     try:
@@ -591,6 +632,7 @@ class OLXParser:
                     except:
                         pass
         
+        print(f"[DEBUG-ENTRY] Используем requests (без телефона)")
         result = self.parse_listing_with_requests(url)
         
         if get_phone and not result.get('phone'):
@@ -1368,10 +1410,12 @@ class OLXParser:
                     from selenium.webdriver.support.ui import WebDriverWait
                     from selenium.webdriver.support import expected_conditions as EC
                     
+                    print(f"[DEBUG] Начинаем извлечение телефона для: {url[:60]}...", flush=True)
                     time.sleep(0.5)
                     
                     phone_button_clicked = False
                     phone_button_selectors = [
+                        "//button[@data-testid='show-phone']",  # Exact match for show-phone button
                         "//button[contains(., 'показать')]",
                         "//button[contains(., 'Показать')]",
                         "//button[contains(text(), 'показать')]",
@@ -1385,44 +1429,77 @@ class OLXParser:
                         if phone_button_clicked:
                             break
                         try:
+                            print(f"[DEBUG] Пробуем селектор: {selector[:40]}...")
                             phone_btn = WebDriverWait(driver, 2).until(
                                 EC.element_to_be_clickable((By.XPATH, selector))
                             )
+                            print(f"[DEBUG] ✓ Кнопка найдена! Кликаем...")
+                            driver.execute_script("arguments[0].scrollIntoView();", phone_btn)
+                            time.sleep(0.5)
                             driver.execute_script("arguments[0].click();", phone_btn)
                             phone_button_clicked = True
-                            time.sleep(2)
-                        except:
+                            print(f"[DEBUG] ✓ Клик выполнен, ждем 5 сек...")
+                            time.sleep(5)  # Increased from 2 to 5 seconds
+                        except Exception as e:
+                            print(f"[DEBUG] ✗ Селектор не сработал")
                             pass
                     
                     if not phone_button_clicked:
+                        print(f"[DEBUG] Ищем кнопку вручную по тексту...")
                         try:
                             buttons = driver.find_elements(By.TAG_NAME, "button")
+                            print(f"[DEBUG] Найдено {len(buttons)} кнопок на странице")
                             for btn in buttons:
                                 btn_text = btn.text.lower() if btn.text else ''
                                 if 'показать' in btn_text or 'show' in btn_text:
+                                    print(f"[DEBUG] ✓ Нашли кнопку с текстом: {btn_text[:20]}")
+                                    driver.execute_script("arguments[0].scrollIntoView();", btn)
+                                    time.sleep(0.5)
                                     driver.execute_script("arguments[0].click();", btn)
                                     phone_button_clicked = True
-                                    time.sleep(2)
+                                    print(f"[DEBUG] ✓ Клик выполнен, ждем 5 сек...")
+                                    time.sleep(5)  # Increased from 2 to 5 seconds
                                     break
-                        except:
+                        except Exception as e:
+                            print(f"[DEBUG] ✗ Ошибка поиска вручную: {e}")
                             pass
                     
+                    if phone_button_clicked:
+                        print(f"[DEBUG] Кнопка была нажата, извлекаем телефон...")
+                    else:
+                        print(f"[DEBUG] ⚠ КНОПКА НЕ НАЙДЕНА!")
+                    
                     try:
+                        print(f"[DEBUG] Ищем [data-testid='contact-phone']...")
                         contact_phone = driver.find_element(By.CSS_SELECTOR, "[data-testid='contact-phone']")
                         if contact_phone:
+                            print(f"[DEBUG] ✓ Элемент найден!")
                             href = contact_phone.get_attribute('href')
                             if href and 'tel:' in href:
+                                print(f"[DEBUG] ✓ Найден href: {href}")
                                 phone = href.replace('tel:', '').replace(' ', '').replace('-', '').strip()
-                                if len(phone) >= 9:
-                                    result['phone'] = phone
+                                if len(phone) == 9:
+                                    result['phone'] = '+998' + phone
+                                elif len(phone) == 12 and phone.startswith('998'):
+                                    result['phone'] = '+' + phone
+                                elif len(phone) >= 9:
+                                    result['phone'] = phone if phone.startswith('+') else '+' + phone
+                                print(f"[DEBUG] ✓✓ ТЕЛЕФОН ИЗВЛЕЧЕН: {result['phone']}")
                             else:
+                                print(f"[DEBUG] href пустой или без 'tel:', пробуем text")
                                 phone_text = contact_phone.text.strip()
                                 if phone_text:
+                                    print(f"[DEBUG] Текст элемента: {phone_text}")
                                     phone = phone_text.replace(' ', '').replace('-', '')
-                                    if len(phone) >= 9:
+                                    if len(phone) == 9:
+                                        result['phone'] = '+998' + phone
+                                    elif len(phone) == 12 and phone.startswith('998'):
+                                        result['phone'] = '+' + phone
+                                    elif len(phone) >= 7:
                                         result['phone'] = phone if phone.startswith('+') else '+' + phone
-                    except:
-                        pass
+                                    print(f"[DEBUG] ✓✓ ТЕЛЕФОН ИЗВЛЕЧЕН: {result['phone']}")
+                    except Exception as e:
+                        print(f"[DEBUG] ✗ contact-phone не найден: {e}")
                     
                     if not result['phone']:
                         try:
@@ -1431,9 +1508,13 @@ class OLXParser:
                                 href = tel_link.get_attribute('href')
                                 if href and 'tel:' in href:
                                     phone = href.replace('tel:', '').replace(' ', '').replace('-', '').strip()
-                                    if len(phone) >= 9:
-                                        result['phone'] = phone
-                                        break
+                                    if len(phone) == 9:
+                                        result['phone'] = '+998' + phone
+                                    elif len(phone) == 12 and phone.startswith('998'):
+                                        result['phone'] = '+' + phone
+                                    elif len(phone) >= 9:
+                                        result['phone'] = phone if phone.startswith('+') else '+' + phone
+                                    break
                         except:
                             pass
                     
@@ -1446,9 +1527,13 @@ class OLXParser:
                                     href = link.get_attribute('href')
                                     if href and 'tel:' in href:
                                         phone = href.replace('tel:', '').replace(' ', '').replace('-', '').strip()
-                                        if len(phone) >= 9:
-                                            result['phone'] = phone
-                                            break
+                                        if len(phone) == 9:
+                                            result['phone'] = '+998' + phone
+                                        elif len(phone) == 12 and phone.startswith('998'):
+                                            result['phone'] = '+' + phone
+                                        elif len(phone) >= 9:
+                                            result['phone'] = phone if phone.startswith('+') else '+' + phone
+                                        break
                         except:
                             pass
                     
