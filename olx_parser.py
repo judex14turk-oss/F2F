@@ -1,4 +1,5 @@
 import re
+import sys
 import time
 import requests
 from bs4 import BeautifulSoup
@@ -123,7 +124,7 @@ class OLXParser:
             driver.set_script_timeout(15)
             return driver
         except Exception as e:
-            print(f"UC driver failed: {e}, trying regular Selenium")
+            print(f"UC driver failed: {e}, trying regular Selenium", flush=True)
             
         from selenium.webdriver.chrome.service import Service
         
@@ -157,7 +158,10 @@ class OLXParser:
             driver.set_script_timeout(15)
             return driver
         except Exception as e:
-            print(f"Error creating driver: {e}")
+            print(f"Error creating driver: {e}", flush=True)
+            import traceback
+            traceback.print_exc(file=sys.stdout)
+            sys.stdout.flush()
             return None
     
     def build_category_url(self, deal_type='sale', property_type='apartment', district='all', rooms=None, housing_type='all', page=1):
